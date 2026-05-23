@@ -177,4 +177,4 @@ To ensure your papers are crawled successfully:
 This project is licensed under the **ISC License**. See the `package.json` file for authorization details.
 
 ---
-*Developed with ❤️ by Lurnexa Academic Network & lurnexapublicationwebsite.*
+*Developed with ❤️ by Lurnexa Academic Network & lurnexapublicationwebsite.*  
