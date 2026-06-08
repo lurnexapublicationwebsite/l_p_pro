@@ -10,12 +10,16 @@ export default function FooterSection() {
     { label: "Company", href: "/company" },
     { label: "Services", href: "/services" },
     { label: "Articles", href: "/Articles" },
-    { label: "Textbook", href: "/textbooks" },
+    { label: "Text Books", href: "/textbooks" },
+    { label: "Book Store", href: "/textbooks/store" },
+    { label: "Access Portal", href: "/textbooks/portal" },
   ];
 
   const legalLinks = [
     { label: "Privacy Policy", href: "/privacy-policy" },
-    { label: "Terms of Service", href: "/terms-of-service" },
+    { label: "Terms and Conditions", href: "/terms-and-conditions" },
+    { label: "Refund and Cancellation Policy", href: "/refund-policy" },
+    { label: "Shipping Policy", href: "/shipping-policy" },
     { label: "Plagiarism Policy", href: "/plagiarism-policy" },
     { label: "Submission Guidelines", href: "/submission_guidelines.pdf" },
   ];
@@ -39,7 +43,7 @@ export default function FooterSection() {
               />
             </Link>
             <div className="space-y-4">
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">Lurnexa Publications</h3>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">LURNEXA PUBLICATIONS PRIVATE LIMITED</h3>
               <p className="text-slate-500 leading-relaxed max-w-xs text-sm md:text-base">
                 Empowering technology, innovation, and creativity through professional scholarly publishing.
               </p>
@@ -124,7 +128,7 @@ export default function FooterSection() {
                 <div>
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Address</p>
                   <p className="text-sm font-medium text-slate-700 leading-relaxed">
-                    Lurnexa Publications, <br />
+                    LURNEXA PUBLICATIONS PRIVATE LIMITED, <br />
                     130–187, Ramulavari Gudi Centre, Gorantla, Guntur – 522034, AP, India
                   </p>
                 </div>
@@ -136,7 +140,7 @@ export default function FooterSection() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-sm text-slate-400 font-medium order-2 md:order-1">
-            © {currentYear} Lurnexa Publications. All rights reserved.
+            © {currentYear} LURNEXA PUBLICATIONS PRIVATE LIMITED. All rights reserved.
           </p>
           
           <div className="flex items-center gap-4 order-1 md:order-2">

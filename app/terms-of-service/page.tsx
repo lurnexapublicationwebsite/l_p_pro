@@ -13,12 +13,12 @@ const sections = [
   {
     title: "Acceptance of Terms",
     icon: <CheckCircleIcon />,
-    content: "By accessing or using the Lurnexa Publications website and services, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site."
+    content: "By accessing or using the LURNEXA PUBLICATIONS PRIVATE LIMITED website and services, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this site."
   },
   {
     title: "Intellectual Property",
     icon: <Scale className="text-blue-500" size={24} />,
-    content: "All content published by Lurnexa, including journals, articles, logos, and graphics, is the intellectual property of Lurnexa Publications or its licensors. Unauthorized reproduction, distribution, or modification of this content is strictly prohibited without prior written consent."
+    content: "All content published by Lurnexa, including journals, articles, logos, and graphics, is the intellectual property of LURNEXA PUBLICATIONS PRIVATE LIMITED or its licensors. Unauthorized reproduction, distribution, or modification of this content is strictly prohibited without prior written consent."
   },
   {
     title: "User Obligations",
@@ -33,7 +33,7 @@ const sections = [
   {
     title: "Limitation of Liability",
     icon: <AlertCircle className="text-rose-500" size={24} />,
-    content: "Lurnexa Publications shall not be liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our services, even if we have been advised of the possibility of such damages."
+    content: "LURNEXA PUBLICATIONS PRIVATE LIMITED shall not be liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our services, even if we have been advised of the possibility of such damages."
   },
   {
     title: "Governing Law",
@@ -62,7 +62,7 @@ export default function TermsOfServicePage() {
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-slate-950 mb-6 tracking-tight">Terms of <span className="text-orange-500">Service</span></h1>
           <p className="text-slate-500 text-lg leading-relaxed">
-            Last Updated: May 1, 2026. These terms govern your relationship with Lurnexa Publications.
+            Last Updated: May 1, 2026. These terms govern your relationship with LURNEXA PUBLICATIONS PRIVATE LIMITED.
           </p>
         </section>
 

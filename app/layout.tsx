@@ -25,12 +25,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://lurnexa.in"),
   title: {
-    default: "Lurnexa Publications | Excellence in Scholarly Publishing & Academic Research",
-    template: "%s | Lurnexa Publications",
+    default: "LURNEXA PUBLICATIONS PRIVATE LIMITED | Excellence in Scholarly Publishing & Academic Research",
+    template: "%s | LURNEXA PUBLICATIONS PRIVATE LIMITED",
   },
   description:
-    "Lurnexa Publications is a premier techno-management powerhouse and scholarly publisher. We bridge the gap between high-impact academic publishing, peer-reviewed journals, and global research dissemination to drive science and innovation.",
+    "LURNEXA PUBLICATIONS PRIVATE LIMITED is a premier techno-management powerhouse and scholarly publisher. We bridge the gap between high-impact academic publishing, peer-reviewed journals, and global research dissemination to drive science and innovation.",
   keywords: [
+    "LURNEXA PUBLICATIONS PRIVATE LIMITED",
     "Lurnexa Publications",
     "Narendra Kumar Kurakula",
     "Rushik Burla",
@@ -64,9 +65,9 @@ export const metadata: Metadata = {
     "Double Blind Peer Review Publications",
     "Fast Track Research Publication"
   ],
-  authors: [{ name: "Lurnexa Publications" }],
-  creator: "Lurnexa Publications",
-  publisher: "Lurnexa Publications",
+  authors: [{ name: "LURNEXA PUBLICATIONS PRIVATE LIMITED" }],
+  creator: "LURNEXA PUBLICATIONS PRIVATE LIMITED",
+  publisher: "LURNEXA PUBLICATIONS PRIVATE LIMITED",
   formatDetection: {
     email: false,
     address: false,
@@ -76,11 +77,11 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Lurnexa Publications | Bridging Knowledge and Research",
+    title: "LURNEXA PUBLICATIONS PRIVATE LIMITED | Bridging Knowledge and Research",
     description:
       "A multidisciplinary hub driving excellence through scholarly publishing and academic research dissemination.",
     url: "https://lurnexa.in",
-    siteName: "Lurnexa Publications",
+    siteName: "LURNEXA PUBLICATIONS PRIVATE LIMITED",
     images: [
       {
         url: "/og-image.png",
@@ -94,7 +95,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lurnexa Publications | Excellence in Research & Publications",
+    title: "LURNEXA PUBLICATIONS PRIVATE LIMITED | Excellence in Research & Publications",
     description:
       "Driving the future of academic publishing and global research accessibility.",
     images: ["/og-image.png"],

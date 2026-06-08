@@ -210,6 +210,20 @@ export default function ContactPage() {
                   </div>
                 </div>
 
+                {/* Registered Office Card */}
+                <div className="group rounded-3xl p-8 bg-white shadow-sm ring-1 ring-slate-200/60 hover:shadow-lg transition-all duration-300 text-center">
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-100 text-orange-700">
+                    <Navigation size={24} />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900">Registered Office</h3>
+                  <p className="mt-2 text-xs text-slate-500 font-bold uppercase">LURNEXA PUBLICATIONS PRIVATE LIMITED</p>
+                  <p className="mt-3 text-sm text-slate-600 leading-relaxed font-medium">
+                    130–187, Ramulavari Gudi Centre, <br />
+                    Gorantla, Guntur – 522034, <br />
+                    Andhra Pradesh, India
+                  </p>
+                </div>
+
               </div>
             </CardContent>
           </Card>

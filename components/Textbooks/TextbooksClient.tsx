@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Upcoming from "@/components/Textbooks/Upcoming";
 import PublishedBooks from "@/components/Textbooks/PublishedBooks";
 import { motion, AnimatePresence } from "framer-motion";
+import { ShoppingBag } from "lucide-react";
 
 /* 🔥 Tab Config */
 const TABS = [
@@ -28,20 +29,40 @@ export default function TextbooksClient() {
 
   return (
     <>
-      <div className="flex justify-around mb-8">
-        {TABS.map((tab) => (
+      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-8 border-b border-[#E2E8F0] pb-5">
+        {/* Segmented Control Tabs */}
+        <div className="bg-[#F1F5F9] p-1 rounded-xl flex gap-1 self-start">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-250 ${
+                activeTab === tab.key
+                  ? "bg-white text-[#0F172A] shadow-sm font-bold"
+                  : "text-[#64748B] hover:text-[#0F172A]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex gap-3 justify-end">
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-              activeTab === tab.key
-                ? tab.activeClass
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
+            onClick={() => router.push('/textbooks/store')}
+            className="bg-[#0F172A] hover:bg-slate-850 text-white font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all duration-200 text-xs flex items-center gap-1.5 active:scale-98"
           >
-            {tab.label}
+            <ShoppingBag size={14} />
+            <span>Go to Bookstore</span>
           </button>
-        ))}
+          <button
+            onClick={() => router.push('/textbooks/portal')}
+            className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md shadow-fuchsia-500/10 hover:shadow-fuchsia-500/20 transition-all duration-200 text-xs active:scale-98"
+          >
+            Access Portal
+          </button>
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
