@@ -87,34 +87,42 @@ export interface PracticeAttempt {
 
 const isClient = typeof window !== 'undefined';
 
-function getStorageItem<T>(key: string, defaultValue: T): T {
-  if (!isClient) return defaultValue;
-  try {
-    const data = localStorage.getItem(key);
-    if (!data || data === "null" || data === "undefined") {
-      return defaultValue;
-    }
-    const parsed = JSON.parse(data);
-    if (parsed === null || parsed === undefined) {
-      return defaultValue;
-    }
-    if (Array.isArray(defaultValue) && !Array.isArray(parsed)) {
-      return defaultValue;
-    }
-    return parsed as T;
-  } catch (e) {
-    console.error(`Error reading key ${key} from localStorage:`, e);
-    return defaultValue;
+// In-memory cache for all portal tables to prevent storage in browser cache or localStorage
+const IN_MEMORY_DB: Record<string, any> = {};
+
+export function getStorageItem<T>(key: string, defaultValue: T): T {
+  if (IN_MEMORY_DB[key] !== undefined) {
+    return IN_MEMORY_DB[key] as T;
   }
+  return defaultValue;
 }
 
-function setStorageItem<T>(key: string, value: T): void {
-  if (!isClient) return;
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error(`Error writing key ${key} to localStorage:`, e);
-  }
+const KEY_TO_TABLE: Record<string, string> = {
+  'lurnexa_users': 'users',
+  'lurnexa_allowed_access_ids': 'allowed_access_ids',
+  'lurnexa_colleges': 'colleges',
+  'lurnexa_textbooks': 'textbooks',
+  'lurnexa_quizzes': 'quizzes',
+  'lurnexa_attempts': 'attempts',
+  'lurnexa_book_chapters': 'book_chapters',
+  'lurnexa_practice_configs': 'practice_configs',
+  'lurnexa_practice_attempts': 'practice_attempts',
+  'lurnexa_practice_tests': 'practice_tests'
+};
+
+function syncKeyToServer(key: string, value: any) {
+  const table = KEY_TO_TABLE[key];
+  if (!table) return;
+  fetch('/api/textbooks/db/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'save', table, data: value })
+  }).catch(err => console.error(`Failed to sync key ${key} to server database:`, err));
+}
+
+export function setStorageItem<T>(key: string, value: T): void {
+  IN_MEMORY_DB[key] = value;
+  syncKeyToServer(key, value);
 }
 
 // Helpers for Access ID Prefix logic
@@ -133,28 +141,74 @@ export function getBookIdFromCode(code: string): string {
 }
 
 /**
- * Initializes the database tables in localStorage with default seed data
+ * Initializes the database tables in IN_MEMORY_DB with default seed data
  */
 export function initDb(): void {
   if (!isClient) return;
 
-  // One-time database purge: Delete all legacy custom data, keeping only admin config
-  const dbPurgeCompleted = localStorage.getItem('lurnexa_db_purge_v5');
+  // Background-sync the entire database state from PostgreSQL
+  if (typeof window !== 'undefined' && !window.hasOwnProperty('__db_sync_started')) {
+    (window as any).__db_sync_started = true;
+    fetch('/api/textbooks/db/sync')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          if (data.users) IN_MEMORY_DB['lurnexa_users'] = data.users;
+          if (data.allowedAccessIds) IN_MEMORY_DB['lurnexa_allowed_access_ids'] = data.allowedAccessIds;
+          if (data.colleges) IN_MEMORY_DB['lurnexa_colleges'] = data.colleges;
+          if (data.textbooks) IN_MEMORY_DB['lurnexa_textbooks'] = data.textbooks;
+          if (data.quizzes) IN_MEMORY_DB['lurnexa_quizzes'] = data.quizzes;
+          if (data.attempts) IN_MEMORY_DB['lurnexa_attempts'] = data.attempts;
+          if (data.chaptersMap) IN_MEMORY_DB['lurnexa_book_chapters'] = data.chaptersMap;
+          if (data.configsMap) IN_MEMORY_DB['lurnexa_practice_configs'] = data.configsMap;
+          if (data.practiceAttempts) IN_MEMORY_DB['lurnexa_practice_attempts'] = data.practiceAttempts;
+          if (data.practiceTests) IN_MEMORY_DB['lurnexa_practice_tests'] = data.practiceTests;
+        }
+      })
+      .catch(err => console.error("Error loading sync data from server database:", err));
+  }
+
+  // Purge/clean up browser's legacy localStorage to guarantee compliance
+  if (typeof window !== 'undefined') {
+    const keysToPurge = [
+      'lurnexa_users',
+      'lurnexa_allowed_access_ids',
+      'lurnexa_colleges',
+      'lurnexa_textbooks',
+      'lurnexa_quizzes',
+      'lurnexa_attempts',
+      'lurnexa_book_chapters',
+      'lurnexa_practice_configs',
+      'lurnexa_practice_attempts',
+      'lurnexa_practice_tests',
+      'lurnexa_sent_quiz_emails',
+      'lurnexa_admin_custom_profile',
+      'lurnexa_db_purge_v5'
+    ];
+    keysToPurge.forEach(k => {
+      try {
+        localStorage.removeItem(k);
+      } catch (e) {}
+    });
+  }
+
+  // One-time database purge inside in-memory store
+  const dbPurgeCompleted = IN_MEMORY_DB['lurnexa_db_purge_v5'];
   if (!dbPurgeCompleted) {
-    localStorage.removeItem('lurnexa_users');
-    localStorage.removeItem('lurnexa_allowed_access_ids');
-    localStorage.removeItem('lurnexa_colleges');
-    localStorage.removeItem('lurnexa_quizzes');
-    localStorage.removeItem('lurnexa_attempts');
-    localStorage.removeItem('lurnexa_sent_quiz_emails');
-    localStorage.removeItem('lurnexa_admin_custom_profile');
-    localStorage.removeItem('lurnexa_practice_attempts');
-    localStorage.removeItem('lurnexa_practice_tests');
-    localStorage.setItem('lurnexa_db_purge_v5', 'true');
+    delete IN_MEMORY_DB['lurnexa_users'];
+    delete IN_MEMORY_DB['lurnexa_allowed_access_ids'];
+    delete IN_MEMORY_DB['lurnexa_colleges'];
+    delete IN_MEMORY_DB['lurnexa_quizzes'];
+    delete IN_MEMORY_DB['lurnexa_attempts'];
+    delete IN_MEMORY_DB['lurnexa_sent_quiz_emails'];
+    delete IN_MEMORY_DB['lurnexa_admin_custom_profile'];
+    delete IN_MEMORY_DB['lurnexa_practice_attempts'];
+    delete IN_MEMORY_DB['lurnexa_practice_tests'];
+    IN_MEMORY_DB['lurnexa_db_purge_v5'] = 'true';
   }
 
   // Initialize Access IDs Registry as empty (no default seeded IDs)
-  if (!localStorage.getItem('lurnexa_allowed_access_ids')) {
+  if (!IN_MEMORY_DB['lurnexa_allowed_access_ids']) {
     setStorageItem('lurnexa_allowed_access_ids', []);
   }
 
@@ -196,17 +250,17 @@ export function initDb(): void {
   }
 
   // Initialize Quizzes
-  if (!localStorage.getItem('lurnexa_quizzes')) {
+  if (!IN_MEMORY_DB['lurnexa_quizzes']) {
     setStorageItem('lurnexa_quizzes', []);
   }
 
   // Initialize Attempts
-  if (!localStorage.getItem('lurnexa_attempts')) {
+  if (!IN_MEMORY_DB['lurnexa_attempts']) {
     setStorageItem('lurnexa_attempts', []);
   }
 
   // Initialize Chapters count mapping
-  if (!localStorage.getItem('lurnexa_book_chapters')) {
+  if (!IN_MEMORY_DB['lurnexa_book_chapters']) {
     setStorageItem('lurnexa_book_chapters', {
       "1": 5,
       "2": 5,
@@ -216,7 +270,7 @@ export function initDb(): void {
   }
 
   // Initialize Practice Test Configurations
-  if (!localStorage.getItem('lurnexa_practice_configs')) {
+  if (!IN_MEMORY_DB['lurnexa_practice_configs']) {
     setStorageItem('lurnexa_practice_configs', {
       "1": { duration: 10, questionLimit: 5 },
       "2": { duration: 15, questionLimit: 5 },
@@ -226,7 +280,7 @@ export function initDb(): void {
   }
 
   // Initialize Textbooks
-  if (!localStorage.getItem('lurnexa_textbooks')) {
+  if (!IN_MEMORY_DB['lurnexa_textbooks']) {
     const defaultBooks: Textbook[] = [
       { id: "1", title: "Indian Mineral Import Policy Options", code: "MP" },
       { id: "2", title: "Machine Learning: A Structured Approach", code: "ML" },
@@ -237,7 +291,7 @@ export function initDb(): void {
   }
 
   // Initialize Colleges
-  if (!localStorage.getItem('lurnexa_colleges')) {
+  if (!IN_MEMORY_DB['lurnexa_colleges']) {
     const defaultColleges: College[] = [
       { code: "NC", name: "Narayana College" }
     ];

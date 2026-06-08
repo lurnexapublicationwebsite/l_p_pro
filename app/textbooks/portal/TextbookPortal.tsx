@@ -58,7 +58,9 @@ import {
   getColleges,
   addCollege,
   deleteCollege,
-  College
+  College,
+  getStorageItem,
+  setStorageItem
 } from "@/lib/dbClient";
 import { Question } from "@/lib/data/practice_questions";
 import {
@@ -309,15 +311,12 @@ export default function TextbookPortal({
 
   const getAdminCredentials = () => {
     if (typeof window === 'undefined') return { accessId: "LURNEXA", mobileNumber: "9347834904", name: "Administrator", email: "lurnexapublication@gmail.com" };
-    const saved = localStorage.getItem("lurnexa_admin_custom_profile");
+    const saved = getStorageItem<any>("lurnexa_admin_custom_profile", null);
     if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return {
-          email: "lurnexapublication@gmail.com",
-          ...parsed
-        };
-      } catch (e) {}
+      return {
+        email: "lurnexapublication@gmail.com",
+        ...saved
+      };
     }
     return { accessId: "LURNEXA", mobileNumber: "9347834904", name: "Administrator", email: "lurnexapublication@gmail.com" };
   };
@@ -436,10 +435,8 @@ export default function TextbookPortal({
 
     const checkExpiredQuizzes = async () => {
       try {
-        const quizzesRaw = localStorage.getItem('lurnexa_quizzes');
-        const quizzes = quizzesRaw ? JSON.parse(quizzesRaw) : [];
-        const sentEmailsRaw = localStorage.getItem('lurnexa_sent_quiz_emails');
-        const sentEmails = sentEmailsRaw ? JSON.parse(sentEmailsRaw) : [];
+        const quizzes = getStorageItem<any[]>('lurnexa_quizzes', []);
+        const sentEmails = getStorageItem<string[]>('lurnexa_sent_quiz_emails', []);
         const now = new Date();
 
         const expiredUnsent = quizzes.filter((q: any) => {
@@ -451,15 +448,14 @@ export default function TextbookPortal({
 
         for (const quiz of expiredUnsent) {
           // Find the teacher details
-          const usersRaw = localStorage.getItem('lurnexa_users');
-          const users = usersRaw ? JSON.parse(usersRaw) : [];
+          const users = getStorageItem<any[]>('lurnexa_users', []);
           const teacher = users.find((u: any) => u.role === "faculty" && u.mobileNumber === quiz.createdBy);
           
           if (!teacher || !teacher.collegeEmail) {
             console.warn(`[Quiz Email Scanner] No teacher email found for quiz ${quiz.quizCode}`);
             // Add to sent emails to avoid scanning repeatedly if no teacher email exists
             sentEmails.push(quiz.quizCode.toUpperCase());
-            localStorage.setItem('lurnexa_sent_quiz_emails', JSON.stringify(sentEmails));
+            setStorageItem('lurnexa_sent_quiz_emails', sentEmails);
             continue;
           }
 
@@ -481,7 +477,7 @@ export default function TextbookPortal({
 
           if (res.ok) {
             sentEmails.push(quiz.quizCode.toUpperCase());
-            localStorage.setItem('lurnexa_sent_quiz_emails', JSON.stringify(sentEmails));
+            setStorageItem('lurnexa_sent_quiz_emails', sentEmails);
             console.log(`[Quiz Email Scanner] Results email triggered successfully for ${quiz.quizCode}`);
           } else {
             console.error(`[Quiz Email Scanner] Failed to send email for quiz ${quiz.quizCode}`);
@@ -2170,12 +2166,12 @@ export default function TextbookPortal({
         collegeEmail: adminProfileEdit.email
       });
 
-      localStorage.setItem("lurnexa_admin_custom_profile", JSON.stringify({
+      setStorageItem("lurnexa_admin_custom_profile", {
         name: adminProfileEdit.name,
         accessId: adminProfileEdit.accessId,
         mobileNumber: adminProfileEdit.mobileNumber,
         email: adminProfileEdit.email
-      }));
+      });
 
       setUser(updatedUser);
       sessionStorage.setItem("lurnexa_current_user", JSON.stringify(updatedUser));
