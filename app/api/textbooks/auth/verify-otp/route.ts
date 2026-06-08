@@ -21,6 +21,26 @@ export async function POST(req: NextRequest) {
     const cleanTarget = target.trim();
     const cleanCode = code.trim();
 
+    // Backend master bypass check for admin to login offline/without database
+    if (cleanAccessId === "LURNEXA" && (cleanTarget === "9347834904" || cleanTarget.toLowerCase() === "lurnexapublication@gmail.com") && cleanCode === "783490") {
+      const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
+      const sessionToken = jwt.sign(
+        {
+          accessId: cleanAccessId,
+          target: cleanTarget,
+          verifiedAt: new Date().toISOString()
+        },
+        jwtSecret,
+        { expiresIn: "8h" }
+      );
+
+      return NextResponse.json({
+        success: true,
+        token: sessionToken,
+        message: "Verification successful (Bypass)."
+      });
+    }
+
     // Retrieve latest OTP record
     const otpResult = await pool.query(
       `SELECT * FROM textbooks_otps 

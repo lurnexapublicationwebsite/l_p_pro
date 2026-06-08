@@ -15,8 +15,10 @@ const pgPool = new Pool({
 // A flag to indicate whether we should fall back to JSON storage
 let useLocalFallback = !connectionString;
 
-// Local JSON File Database Path (inside workspace scratch directory)
-const fallbackDir = path.join(process.cwd(), "scratch");
+// Local JSON File Database Path (inside workspace scratch directory or AWS Lambda /tmp)
+const fallbackDir = typeof process !== 'undefined' && process.env.AWS_LAMBDA_FUNCTION_NAME 
+  ? "/tmp" 
+  : path.join(process.cwd(), "scratch");
 const fallbackPath = path.join(fallbackDir, "otps.json");
 
 interface OtpRecord {
