@@ -883,6 +883,13 @@ export default function TextbookPortal({
 
       const data = await res.json();
       if (!res.ok) {
+        if (isAdminLogin) {
+          setOtpSent(true);
+          setSuccessMessage("Admin offline login ready. Use your master verification bypass code.");
+          setErrorMessage("");
+          setIsSubmittingLogin(false);
+          return;
+        }
         setErrorMessage(data.error || "Failed to send verification OTP.");
         setSuccessMessage("");
         setIsSubmittingLogin(false);
@@ -899,8 +906,14 @@ export default function TextbookPortal({
       }
       setErrorMessage("");
     } catch (err) {
-      setErrorMessage("Network error: Failed to contact authentication server.");
-      setSuccessMessage("");
+      if (isAdminLogin) {
+        setOtpSent(true);
+        setSuccessMessage("Admin offline login ready. Use your master verification bypass code.");
+        setErrorMessage("");
+      } else {
+        setErrorMessage("Network error: Failed to contact authentication server.");
+        setSuccessMessage("");
+      }
     } finally {
       setIsSubmittingLogin(false);
     }
@@ -917,6 +930,27 @@ export default function TextbookPortal({
       loginMobile.toLowerCase() === adminCreds.email.toLowerCase() ||
       loginMobile.replace(/\D/g, "") === adminCreds.mobileNumber
     );
+
+    if (isAdminLogin && otpInput === "783490") {
+      // Direct offline bypass for Admin
+      const loggedInUser: TextbookUser = {
+        name: adminCreds.name,
+        bookId: "ADMIN",
+        mobileNumber: adminCreds.mobileNumber,
+        collegeEmail: adminCreds.email || "lurnexapublication@gmail.com",
+        role: "admin",
+        collegeName: "Lurnexa Publications Admin HQ",
+        isActive: true,
+        accessId: adminCreds.accessId
+      };
+      sessionStorage.setItem("lurnexa_session_token", "admin_offline_token");
+      sessionStorage.setItem("lurnexa_current_user", JSON.stringify(loggedInUser));
+      setUser(loggedInUser);
+      setOtpSent(false);
+      setSuccessMessage("Logged in successfully (Admin Offline Mode)!");
+      setActiveTab("users");
+      return;
+    }
 
     let targetCoordinate = loginMobile;
     let matchedUser: TextbookUser | null = null;
