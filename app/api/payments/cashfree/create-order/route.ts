@@ -41,7 +41,8 @@ export async function POST(req: Request) {
     // Setup fallback redirect/return URL
     const headers = req.headers;
     const host = headers.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https";
+    // Cashfree Production environment strictly requires HTTPS for return_url
+    const protocol = env.toUpperCase() === "PRODUCTION" ? "https" : (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
     const returnUrl = `${protocol}://${host}/textbooks/store/checkout?order_id={order_id}&bookId=${bookId}`;
 
     // Call Cashfree API directly to create the order

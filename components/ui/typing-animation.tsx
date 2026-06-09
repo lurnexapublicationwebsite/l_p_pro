@@ -6,7 +6,7 @@ import { motion, MotionProps, useInView } from "motion/react"
 import { cn } from "@/lib/utils"
 
 interface TypingAnimationProps extends MotionProps {
-  children?: string
+  children?: any
   words?: string[]
   className?: string
   duration?: number
@@ -53,10 +53,17 @@ export function TypingAnimation({
     once: true,
   })
 
-  const wordsToAnimate = useMemo(
-    () => words || (children ? [children] : []),
-    [words, children]
-  )
+  const wordsToAnimate = useMemo(() => {
+    if (words) return words;
+    if (children) {
+      if (typeof children === "string") return [children.trim()];
+      if (Array.isArray(children)) {
+        return [children.map(c => typeof c === "string" ? c : (c?.toString() || "")).join("").trim()];
+      }
+      return [children.toString().trim()];
+    }
+    return [];
+  }, [words, children])
   const hasMultipleWords = wordsToAnimate.length > 1
 
   const typingSpeed = typeSpeed || duration

@@ -53,7 +53,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "MACHINE LEARNING: A STRUCTURED APPROACH TO ALGORITHMS AND INTELLIGENT SYSTEMS",
     code: "ML",
     description: "This book offers a systematic and in-depth exploration of machine learning, designed to help readers build a strong foundation while progressing toward advanced applications. It begins by introducing the core principles of machine learning, including data representation, statistical thinking, and the fundamental paradigms of supervised, unsupervised, and reinforcement learning.",
-    price: 700,
+    price: 1,
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 380,
     isbn: "978-81-685077-3-9",
@@ -305,8 +305,8 @@ function CheckoutContent() {
   };
 
   const triggerCashfreeCheckout = async () => {
-    setShowGatewayUpdatePopup(true);
-    return;
+    setIsProcessingPayment(true);
+    setErrorMsg("");
 
     const itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
     let discount = 0;

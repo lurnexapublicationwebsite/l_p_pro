@@ -19,11 +19,17 @@ export function LineShadowText({
   ...props
 }: LineShadowTextProps) {
   const MotionComponent = motion.create(Component)
-  const content = typeof children === "string" ? children : null
-
-  if (!content) {
-    throw new Error("LineShadowText only accepts string content")
+  
+  let content = "";
+  if (typeof children === "string") {
+    content = children;
+  } else if (Array.isArray(children)) {
+    content = children.map(c => typeof c === "string" ? c : (c?.toString() || "")).join("");
+  } else if (children !== null && children !== undefined) {
+    content = children.toString();
   }
+
+  content = content.trim();
 
   return (
     <MotionComponent

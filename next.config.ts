@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
+  // ✅ Trailing slash configuration to match Django URL patterns
+  trailingSlash: true,
+  
   // ✅ Image configuration
   typescript: { ignoreBuildErrors: true },
   images: {
@@ -20,6 +23,30 @@ const nextConfig: NextConfig = {
     };
     
     return config;
+  },
+
+  // ✅ Prevent cache on admin panel routes (both pages and APIs)
+  async headers() {
+    return [
+      {
+        source: "/quotation/admin/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+          },
+        ],
+      },
+      {
+        source: "/api/quotation/admin/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+          },
+        ],
+      },
+    ];
   },
 };
 

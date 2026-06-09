@@ -121,6 +121,51 @@ function writePurchasesDb(data: PurchaseRecord[]): void {
   }
 }
 
+function readJSONTable(name: string): any[] {
+  const p = path.join(fallbackDir, `${name}.json`);
+  if (!fs.existsSync(p)) {
+    if (name === "quotation_users") {
+      const crypto = require("crypto");
+      const defaultHash = crypto.createHash("sha256").update("admin123").digest("hex");
+      const initialUsers = [
+        { email: "lurnexaquotations@gmail.com", password_hash: defaultHash }
+      ];
+      try {
+        if (!fs.existsSync(fallbackDir)) {
+          fs.mkdirSync(fallbackDir, { recursive: true });
+        }
+        fs.writeFileSync(p, JSON.stringify(initialUsers, null, 2));
+      } catch (e) {}
+      return initialUsers;
+    }
+    try {
+      if (!fs.existsSync(fallbackDir)) {
+        fs.mkdirSync(fallbackDir, { recursive: true });
+      }
+      fs.writeFileSync(p, JSON.stringify([]));
+    } catch (e) {}
+    return [];
+  }
+  try {
+    const data = fs.readFileSync(p, "utf-8");
+    return JSON.parse(data || "[]");
+  } catch (err) {
+    return [];
+  }
+}
+
+function writeJSONTable(name: string, data: any[]): void {
+  try {
+    const p = path.join(fallbackDir, `${name}.json`);
+    if (!fs.existsSync(fallbackDir)) {
+      fs.mkdirSync(fallbackDir, { recursive: true });
+    }
+    fs.writeFileSync(p, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error(`❌ Error writing JSON table ${name}:`, err);
+  }
+}
+
 // Wrapper for query execution
 export const pool = {
   async query(sql: string, params: any[] = []): Promise<{ rows: any[] }> {
@@ -299,6 +344,320 @@ export const pool = {
       return { rows: [] };
     }
 
+    // === QUOTATION FALLBACKS ===
+
+    // COUNT SELECTS
+    if (cleanSql.includes("SELECT COUNT(*) FROM QUOTATION_BOOKS")) {
+      return { rows: [{ count: readJSONTable("quotation_books").length.toString() }] };
+    }
+    if (cleanSql.includes("SELECT COUNT(*) FROM QUOTATION_REQUESTS")) {
+      const requests = readJSONTable("quotation_requests");
+      if (cleanSql.includes("STATUS = $1")) {
+        const [status] = params;
+        return { rows: [{ count: requests.filter(r => r.status === status).length.toString() }] };
+      }
+      return { rows: [{ count: requests.length.toString() }] };
+    }
+    if (cleanSql.includes("SELECT COUNT(*) FROM QUOTATIONS")) {
+      const quotations = readJSONTable("quotations");
+      if (cleanSql.includes("IS_CONFIRMED = FALSE") || cleanSql.includes("IS_CONFIRMED = $1")) {
+        const filterVal = cleanSql.includes("IS_CONFIRMED = $1") ? params[0] : false;
+        return { rows: [{ count: quotations.filter(q => q.is_confirmed === filterVal || !q.is_confirmed).length.toString() }] };
+      }
+      return { rows: [{ count: quotations.length.toString() }] };
+    }
+    if (cleanSql.includes("SELECT COUNT(*) FROM QUOTATION_ORDERS")) {
+      return { rows: [{ count: readJSONTable("quotation_orders").length.toString() }] };
+    }
+    if (cleanSql.includes("SELECT COUNT(*) FROM QUOTATION_USERS")) {
+      return { rows: [{ count: readJSONTable("quotation_users").length.toString() }] };
+    }
+
+    // QUOTATION_USERS SELECT / INSERT / UPDATE
+    if (cleanSql.includes("SELECT * FROM QUOTATION_USERS WHERE EMAIL = $1 AND PASSWORD_HASH = $2")) {
+      const users = readJSONTable("quotation_users");
+      const filtered = users.filter(u => u.email === params[0].toLowerCase().trim() && u.password_hash === params[1]);
+      return { rows: filtered };
+    }
+    if (cleanSql.includes("SELECT * FROM QUOTATION_USERS WHERE EMAIL = $1")) {
+      const users = readJSONTable("quotation_users");
+      const filtered = users.filter(u => u.email === params[0].toLowerCase().trim());
+      return { rows: filtered };
+    }
+    if (cleanSql.includes("INSERT INTO QUOTATION_USERS")) {
+      const users = readJSONTable("quotation_users");
+      const newU = { email: params[0].toLowerCase().trim(), password_hash: params[1] };
+      if (!users.some(u => u.email === newU.email)) {
+        users.push(newU);
+        writeJSONTable("quotation_users", users);
+      }
+      return { rows: [newU] };
+    }
+    if (cleanSql.includes("UPDATE QUOTATION_USERS SET PASSWORD_HASH = $1 WHERE EMAIL = $2")) {
+      const users = readJSONTable("quotation_users");
+      const idx = users.findIndex(u => u.email === params[1].toLowerCase().trim());
+      if (idx !== -1) {
+        users[idx].password_hash = params[0];
+        writeJSONTable("quotation_users", users);
+      }
+      return { rows: [] };
+    }
+
+    // QUOTATION_OTPS SELECT / INSERT / UPDATE / DELETE
+    if (cleanSql.includes("SELECT * FROM QUOTATION_OTPS WHERE EMAIL = $1 AND OTP_CODE = $2")) {
+      const otps = readJSONTable("quotation_otps");
+      const filtered = otps.filter(o => o.email === params[0] && o.otp_code === params[1]);
+      return { rows: filtered };
+    }
+    if (cleanSql.includes("SELECT * FROM QUOTATION_OTPS WHERE EMAIL = $1")) {
+      const otps = readJSONTable("quotation_otps");
+      const filtered = otps.filter(o => o.email === params[0]);
+      return { rows: filtered };
+    }
+    if (cleanSql.includes("UPDATE QUOTATION_OTPS SET OTP_CODE = $1, EXPIRES_AT = $2, ATTEMPTS = 0 WHERE EMAIL = $3")) {
+      const otps = readJSONTable("quotation_otps");
+      const idx = otps.findIndex(o => o.email === params[2]);
+      if (idx !== -1) {
+        otps[idx].otp_code = params[0];
+        otps[idx].expires_at = params[1];
+        otps[idx].attempts = 0;
+      } else {
+        otps.push({ id: otps.length + 1, email: params[2], otp_code: params[0], expires_at: params[1], attempts: 0 });
+      }
+      writeJSONTable("quotation_otps", otps);
+      return { rows: [] };
+    }
+    if (cleanSql.includes("INSERT INTO QUOTATION_OTPS")) {
+      const otps = readJSONTable("quotation_otps");
+      otps.push({ id: otps.length + 1, email: params[0], otp_code: params[1], expires_at: params[2], attempts: 0 });
+      writeJSONTable("quotation_otps", otps);
+      return { rows: [] };
+    }
+    if (cleanSql.includes("UPDATE QUOTATION_OTPS SET ATTEMPTS = ATTEMPTS + 1 WHERE ID = $1")) {
+      const otps = readJSONTable("quotation_otps");
+      const idx = otps.findIndex(o => o.id === params[0]);
+      if (idx !== -1) {
+        otps[idx].attempts += 1;
+        writeJSONTable("quotation_otps", otps);
+      }
+      return { rows: [] };
+    }
+    if (cleanSql.includes("DELETE FROM QUOTATION_OTPS WHERE ID = $1")) {
+      const otps = readJSONTable("quotation_otps");
+      const updated = otps.filter(o => o.id !== params[0]);
+      writeJSONTable("quotation_otps", updated);
+      return { rows: [] };
+    }
+
+    // QUOTATION_BOOKS SELECT / INSERT / UPDATE / DELETE
+    if (cleanSql.includes("FROM QUOTATION_BOOKS")) {
+      const books = readJSONTable("quotation_books");
+      if (cleanSql.includes("ORDER BY BOOK_NAME")) {
+        books.sort((a, b) => a.book_name.localeCompare(b.book_name));
+      }
+      return { rows: books };
+    }
+    if (cleanSql.includes("INSERT INTO QUOTATION_BOOKS")) {
+      const books = readJSONTable("quotation_books");
+      books.push({ id: params[0], book_name: params[1], description: params[2] });
+      writeJSONTable("quotation_books", books);
+      return { rows: [], rowCount: 1 } as any;
+    }
+    if (cleanSql.includes("UPDATE QUOTATION_BOOKS SET")) {
+      const books = readJSONTable("quotation_books");
+      const [book_name, description, id] = params;
+      const idx = books.findIndex(b => b.id === id);
+      let rowCount = 0;
+      if (idx !== -1) {
+        books[idx].book_name = book_name;
+        books[idx].description = description || "";
+        writeJSONTable("quotation_books", books);
+        rowCount = 1;
+      }
+      return { rows: [], rowCount } as any;
+    }
+    if (cleanSql.includes("DELETE FROM QUOTATION_BOOKS WHERE ID = $1")) {
+      const books = readJSONTable("quotation_books");
+      const updated = books.filter(b => b.id !== params[0]);
+      const rowCount = books.length - updated.length;
+      writeJSONTable("quotation_books", updated);
+      return { rows: [], rowCount } as any;
+    }
+
+    // QUOTATION_REQUESTS SELECT / INSERT / UPDATE / DELETE
+    if (cleanSql.includes("SELECT * FROM QUOTATION_REQUESTS")) {
+      const requests = readJSONTable("quotation_requests");
+      if (cleanSql.includes("WHERE ID = $1")) {
+        return { rows: requests.filter(r => r.id === params[0]) };
+      }
+      if (cleanSql.includes("ORDER BY CREATED_AT DESC")) {
+        requests.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+      return { rows: requests };
+    }
+    if (cleanSql.includes("INSERT INTO QUOTATION_REQUESTS")) {
+      const requests = readJSONTable("quotation_requests");
+      requests.push({
+        id: params[0],
+        institution_name: params[1],
+        authorized_person: params[2],
+        contact_number: params[3],
+        email: params[4],
+        unique_token: params[5],
+        status: params[6] || 'Pending',
+        items: typeof params[8] === 'string' ? JSON.parse(params[8]) : params[8],
+        created_at: params[7] || new Date().toISOString()
+      });
+      writeJSONTable("quotation_requests", requests);
+      return { rows: [] };
+    }
+    if (cleanSql.includes("UPDATE QUOTATION_REQUESTS SET STATUS = 'SENT' WHERE ID = $1")) {
+      const requests = readJSONTable("quotation_requests");
+      const idx = requests.findIndex(r => r.id === params[0]);
+      if (idx !== -1) {
+        requests[idx].status = 'Sent';
+        writeJSONTable("quotation_requests", requests);
+      }
+      return { rows: [] };
+    }
+    if (cleanSql.includes("DELETE FROM QUOTATION_REQUESTS WHERE ID = $1")) {
+      const requests = readJSONTable("quotation_requests");
+      const updated = requests.filter(r => r.id !== params[0]);
+      writeJSONTable("quotation_requests", updated);
+      return { rows: [] };
+    }
+
+    // JOIN queries check first
+    if (cleanSql.includes("FROM QUOTATIONS") && cleanSql.includes("JOIN QUOTATION_REQUESTS")) {
+      const quotations = readJSONTable("quotations");
+      const requests = readJSONTable("quotation_requests");
+      const joined = quotations
+        .filter(q => q.is_confirmed === false || !q.is_confirmed)
+        .map(q => {
+          const req = requests.find(r => r.id === q.quotation_request_id);
+          return {
+            ...q,
+            institution_name: req?.institution_name || "",
+            authorized_person: req?.authorized_person || "",
+            email: req?.email || "",
+            contact_number: req?.contact_number || "",
+          };
+        });
+      joined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return { rows: joined };
+    }
+
+    if (cleanSql.includes("FROM QUOTATION_ORDERS") && cleanSql.includes("JOIN QUOTATIONS")) {
+      const orders = readJSONTable("quotation_orders");
+      const quotations = readJSONTable("quotations");
+      const joined = orders.map(o => {
+        const quote = quotations.find(q => q.id === o.quotation_id);
+        return {
+          ...o,
+          quotation_number: quote?.quotation_number || "",
+        };
+      });
+      joined.sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime());
+      return { rows: joined };
+    }
+
+    // QUOTATIONS SELECT / INSERT / UPDATE
+    if (cleanSql.includes("SELECT * FROM QUOTATIONS")) {
+      const quotations = readJSONTable("quotations");
+      if (cleanSql.includes("WHERE ID = $1")) {
+        return { rows: quotations.filter(q => q.id === params[0]) };
+      }
+      if (cleanSql.includes("ORDER BY CREATED_AT DESC")) {
+        quotations.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+      return { rows: quotations };
+    }
+    if (cleanSql.includes("INSERT INTO QUOTATIONS")) {
+      const quotations = readJSONTable("quotations");
+      quotations.push({
+        id: params[0],
+        quotation_request_id: params[1],
+        quotation_number: params[2],
+        total_amount: Number(params[3]),
+        pdf_file_path: "", // Not specified in INSERT columns, defaults to empty/null
+        sent_date: params[4],
+        created_at: params[5] || new Date().toISOString(),
+        items: typeof params[6] === 'string' ? JSON.parse(params[6]) : params[6],
+        is_confirmed: params[7] === true || params[7] === "true" || false
+      });
+      writeJSONTable("quotations", quotations);
+      return { rows: [] };
+    }
+    if (cleanSql.includes("UPDATE QUOTATIONS SET IS_CONFIRMED = TRUE")) {
+      const quotations = readJSONTable("quotations");
+      const idx = quotations.findIndex(q => q.id === params[2]);
+      if (idx !== -1) {
+        quotations[idx].is_confirmed = true;
+        quotations[idx].client_stamp = params[0];
+        quotations[idx].confirmed_date = params[1];
+        writeJSONTable("quotations", quotations);
+      }
+      return { rows: [] };
+    }
+
+    // QUOTATION_ORDERS SELECT / INSERT
+    if (cleanSql.includes("SELECT * FROM QUOTATION_ORDERS")) {
+      const orders = readJSONTable("quotation_orders");
+      if (cleanSql.includes("ORDER BY ORDER_DATE DESC")) {
+        orders.sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime());
+      }
+      return { rows: orders };
+    }
+    if (cleanSql.includes("INSERT INTO QUOTATION_ORDERS")) {
+      const orders = readJSONTable("quotation_orders");
+      orders.push({
+        id: params[0],
+        quotation_id: params[1],
+        institution_name: params[2],
+        authorized_person: params[3],
+        email: params[4],
+        contact_number: params[5],
+        stamp_file_path: params[6],
+        total_amount: Number(params[7]),
+        order_date: new Date().toISOString(),
+        status: 'Confirmed'
+      });
+      writeJSONTable("quotation_orders", orders);
+      return { rows: [] };
+    }
+
+    // QUOTATION_PASSWORD_RESETS SELECT / INSERT / DELETE
+    if (cleanSql.includes("SELECT * FROM QUOTATION_PASSWORD_RESETS")) {
+      const resets = readJSONTable("quotation_password_resets");
+      if (cleanSql.includes("TOKEN = $1")) {
+        return { rows: resets.filter(r => r.token === params[0]) };
+      }
+      return { rows: resets };
+    }
+    if (cleanSql.includes("INSERT INTO QUOTATION_PASSWORD_RESETS")) {
+      const resets = readJSONTable("quotation_password_resets");
+      resets.push({
+        email: params[0],
+        token: params[1],
+        expires_at: params[2],
+        created_at: new Date().toISOString()
+      });
+      writeJSONTable("quotation_password_resets", resets);
+      return { rows: [] };
+    }
+    if (cleanSql.includes("DELETE FROM QUOTATION_PASSWORD_RESETS WHERE EMAIL = $1")) {
+      const resets = readJSONTable("quotation_password_resets");
+      const updated = resets.filter(r => r.email !== params[0]);
+      writeJSONTable("quotation_password_resets", updated);
+      return { rows: [] };
+    }
+    if (cleanSql.includes("DELETE FROM QUOTATION_PASSWORD_RESETS WHERE TOKEN = $1")) {
+      const resets = readJSONTable("quotation_password_resets");
+      const updated = resets.filter(r => r.token !== params[0]);
+      writeJSONTable("quotation_password_resets", updated);
+      return { rows: [] };
+    }
+
     // Catch-all empty rows
     return { rows: [] };
   }
@@ -353,6 +712,110 @@ export async function initDbTables() {
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS cashfree_payment_id VARCHAR(255);");
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'PENDING_PAYMENT';");
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS order_status VARCHAR(50) DEFAULT 'PENDING_PAYMENT';");
+
+    // Book Quotation Tables
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotation_books (
+          id UUID PRIMARY KEY,
+          book_name VARCHAR(255) NOT NULL,
+          description TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotation_requests (
+          id UUID PRIMARY KEY,
+          institution_name VARCHAR(255) NOT NULL,
+          authorized_person VARCHAR(255) NOT NULL,
+          contact_number VARCHAR(50) NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          unique_token VARCHAR(255) NOT NULL,
+          status VARCHAR(50) DEFAULT 'Pending',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          items JSONB DEFAULT '[]'::jsonb
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotations (
+          id UUID PRIMARY KEY,
+          quotation_request_id VARCHAR(255) NOT NULL,
+          quotation_number VARCHAR(100) NOT NULL,
+          total_amount DECIMAL(12, 2) DEFAULT 0.00,
+          pdf_file_path VARCHAR(500),
+          sent_date TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          items JSONB DEFAULT '[]'::jsonb,
+          is_confirmed BOOLEAN DEFAULT FALSE,
+          client_stamp VARCHAR(500),
+          confirmed_date TIMESTAMP WITH TIME ZONE
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotation_orders (
+          id UUID PRIMARY KEY,
+          quotation_id VARCHAR(255) NOT NULL,
+          institution_name VARCHAR(255) NOT NULL,
+          authorized_person VARCHAR(255) NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          contact_number VARCHAR(50) NOT NULL,
+          stamp_file_path VARCHAR(500) NOT NULL,
+          total_amount DECIMAL(12, 2) NOT NULL,
+          order_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          status VARCHAR(50) DEFAULT 'Confirmed'
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotation_otps (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) NOT NULL,
+          otp_code VARCHAR(10) NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          attempts INT DEFAULT 0
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotation_users (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotation_password_resets (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) NOT NULL,
+          token VARCHAR(255) NOT NULL UNIQUE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+      );
+    `);
+
+
+    const crypto = require("crypto");
+    const defaultHash = crypto.createHash("sha256").update("admin123").digest("hex");
+    const adminCheck = await pool.query("SELECT * FROM quotation_users WHERE email = $1", ["lurnexaquotations@gmail.com"]);
+    if (adminCheck.rows.length === 0) {
+      await pool.query(
+        "INSERT INTO quotation_users (email, password_hash) VALUES ($1, $2)",
+        ["lurnexaquotations@gmail.com", defaultHash]
+      );
+    } else {
+      await pool.query(
+        "UPDATE quotation_users SET password_hash = $1 WHERE email = $2",
+        [defaultHash, "lurnexaquotations@gmail.com"]
+      );
+    }
+    // Delete any other users so that only lurnexaquotations@gmail.com remains
+    await pool.query("DELETE FROM quotation_users WHERE email != $1", ["lurnexaquotations@gmail.com"]);
+
   } catch (err) {
     console.error("❌ Error initializing database tables in PostgreSQL:", err);
   }
