@@ -4,6 +4,22 @@ frontend:
     preBuild:
       commands:
         - npm install
+        - echo "CASHFREE_APP_ID=$CASHFREE_APP_ID" >> .env.production
+        - echo "CASHFREE_SECRET_KEY=$CASHFREE_SECRET_KEY" >> .env.production
+        - echo "CASHFREE_ENV=$CASHFREE_ENV" >> .env.production
+        - echo "NEXT_PUBLIC_CASHFREE_ENV=$NEXT_PUBLIC_CASHFREE_ENV" >> .env.production
+        - echo "DATABASE_URL=$DATABASE_URL" >> .env.production
+        - echo "JWT_SECRET=$JWT_SECRET" >> .env.production
+        - echo "SMTP_HOST=$SMTP_HOST" >> .env.production
+        - echo "SMTP_PORT=$SMTP_PORT" >> .env.production
+        - echo "SMTP_USER=$SMTP_USER" >> .env.production
+        - echo "SMTP_PASS=$SMTP_PASS" >> .env.production
+        - echo "SMTP_FROM=$SMTP_FROM" >> .env.production
+        - echo "QUOTATION_SMTP_HOST=$QUOTATION_SMTP_HOST" >> .env.production
+        - echo "QUOTATION_SMTP_PORT=$QUOTATION_SMTP_PORT" >> .env.production
+        - echo "QUOTATION_SMTP_USER=$QUOTATION_SMTP_USER" >> .env.production
+        - echo "QUOTATION_SMTP_PASS=$QUOTATION_SMTP_PASS" >> .env.production
+        - echo "QUOTATION_SMTP_FROM=$QUOTATION_SMTP_FROM" >> .env.production
     build:
       commands:
         - npm run build
