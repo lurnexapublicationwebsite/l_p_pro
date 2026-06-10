@@ -36,6 +36,24 @@ export const getQuotationTransporter = () => {
   });
 };
 
+export const getTextbookTransporter = () => {
+  const host = process.env.TEXTBOOK_SMTP_HOST || process.env.SMTP_HOST;
+  const port = parseInt(process.env.TEXTBOOK_SMTP_PORT || process.env.SMTP_PORT || "587", 10);
+  const user = process.env.TEXTBOOK_SMTP_USER || process.env.SMTP_USER;
+  const pass = process.env.TEXTBOOK_SMTP_PASS || process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) {
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+};
+
 
 export async function sendOrderConfirmationEmails(order: {
   order_id: string;
@@ -52,8 +70,8 @@ export async function sendOrderConfirmationEmails(order: {
   book_id: string;
   cashfree_payment_id?: string;
 }) {
-  const transporter = getTransporter();
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@lurnexa.in";
+  const transporter = getTextbookTransporter();
+  const from = process.env.TEXTBOOK_SMTP_FROM || process.env.TEXTBOOK_SMTP_USER || process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@lurnexa.in";
 
   // Map book_id to book titles
   const bookTitles: Record<string, string> = {
@@ -115,7 +133,7 @@ export async function sendOrderConfirmationEmails(order: {
 
   const adminMailOptions = {
     from,
-    to: "lurnexapublication@gmail.com",
+    to: process.env.TEXTBOOK_ADMIN_EMAIL || "lurnexatextbooks@gmail.com",
     subject: `New Paid Order Received`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 650px; margin: auto; padding: 20px; border: 1px solid #cbd5e1; border-radius: 12px; background-color: #f8fafc;">
@@ -201,7 +219,7 @@ export async function sendOrderConfirmationEmails(order: {
 
   try {
     await transporter.sendMail(adminMailOptions);
-    console.log("✅ Order notification email sent to admin: lurnexapublication@gmail.com");
+    console.log(`✅ Order notification email sent to admin: ${adminMailOptions.to}`);
   } catch (err) {
     console.error("❌ Error sending admin notification email:", err);
   }
@@ -215,8 +233,8 @@ export async function sendFailedPaymentEmail(order: {
   book_title: string;
   error_message?: string;
 }) {
-  const transporter = getTransporter();
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@lurnexa.in";
+  const transporter = getTextbookTransporter();
+  const from = process.env.TEXTBOOK_SMTP_FROM || process.env.TEXTBOOK_SMTP_USER || process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@lurnexa.in";
 
   const mailOptions = {
     from,

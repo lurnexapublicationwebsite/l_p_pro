@@ -167,7 +167,12 @@ export async function POST(request: Request) {
     // 7. Send Emails
     const transporter = getQuotationTransporter();
     const smtpFrom = process.env.QUOTATION_SMTP_FROM || process.env.QUOTATION_SMTP_USER || "noreply@lurnexa.in";
-    const adminEmail = "lurnexapublication@gmail.com";
+    const adminEmail = "lurnexaquotations@gmail.com";
+
+    const hostHeader = request.headers.get("host") || "localhost:3000";
+    const protocol = hostHeader.includes("localhost") || hostHeader.includes("127.0.0.1") ? "http" : "https";
+    const appUrl = `${protocol}://${hostHeader}`;
+    const loginUrl = `${appUrl}/quotation/admin/login`;
 
     const subject = `Confirmed Book Quotation Order – ${quote.quotation_number}`;
     const emailHtml = `
@@ -205,15 +210,50 @@ export async function POST(request: Request) {
       </div>
     `;
 
+    const adminSubject = `Confirmed Order Notification – ${quote.quotation_number}`;
+    const adminHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #10B981; border-radius: 12px; background-color: #f8fafc;">
+        <h2 style="color: #065f46; border-bottom: 2px solid #10B981; padding-bottom: 10px; margin-top: 0;">New Confirmed Quotation Order!</h2>
+        <p>Quotation <strong>${quote.quotation_number}</strong> for <strong>${reqDetails.institution_name}</strong> has been successfully confirmed and signed by the client.</p>
+        
+        <table style="width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; font-size: 14px; margin-bottom: 20px;">
+          <tr style="background-color: #f1f5f9;">
+            <th colspan="2" style="padding: 10px; text-align: left; font-weight: bold; color: #1e293b; border-bottom: 1px solid #e2e8f0;">Order Information</th>
+          </tr>
+          <tr>
+            <td style="padding: 10px; font-weight: bold; color: #64748b; width: 150px; border-bottom: 1px solid #f1f5f9;">Order ID</td>
+            <td style="padding: 10px; color: #0f172a; border-bottom: 1px solid #f1f5f9;">${orderId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; font-weight: bold; color: #64748b; border-bottom: 1px solid #f1f5f9;">Quote Number</td>
+            <td style="padding: 10px; color: #0f172a; border-bottom: 1px solid #f1f5f9;">${quote.quotation_number}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; font-weight: bold; color: #64748b; border-bottom: 1px solid #f1f5f9;">Institution</td>
+            <td style="padding: 10px; color: #0f172a; border-bottom: 1px solid #f1f5f9;">${reqDetails.institution_name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; font-weight: bold; color: #64748b; border-bottom: 1px solid #f1f5f9;">Total Value</td>
+            <td style="padding: 10px; color: #10B981; font-weight: bold; border-bottom: 1px solid #f1f5f9;">Rs. ${parseFloat(quote.total_amount).toFixed(2)}</td>
+          </tr>
+        </table>
+
+        <div style="margin: 25px 0; text-align: center;">
+          <a href="${loginUrl}" style="background-color: #065f46; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; display: inline-block;">Go to Quotations Admin Login</a>
+        </div>
+
+        <p>The officially signed Confirmed Quotation PDF is attached.</p>
+      </div>
+    `;
+
     if (!transporter) {
       console.warn("⚠️ SMTP Transporter not configured. Outputting confirmation email locally:");
-      console.log(`[CONFIRMED ORDER] Client: ${reqDetails.email}, Admin BCC: ${adminEmail}`);
+      console.log(`[CONFIRMED ORDER] Client: ${reqDetails.email}, Admin: ${adminEmail}`);
     } else {
       try {
         await transporter.sendMail({
           from: smtpFrom,
           to: reqDetails.email,
-          bcc: adminEmail,
           subject,
           html: emailHtml,
           attachments: [
@@ -223,9 +263,27 @@ export async function POST(request: Request) {
             },
           ],
         });
-        console.log(`✅ Order confirmation emails sent to client ${reqDetails.email} and admin.`);
+        console.log(`✅ Order confirmation email sent to client ${reqDetails.email}`);
       } catch (mailError) {
-        console.error("❌ Error sending order confirmation email:", mailError);
+        console.error("❌ Error sending client order confirmation email:", mailError);
+      }
+
+      try {
+        await transporter.sendMail({
+          from: smtpFrom,
+          to: adminEmail,
+          subject: adminSubject,
+          html: adminHtml,
+          attachments: [
+            {
+              filename: `Confirmed_Quotation_${quote.quotation_number}.pdf`,
+              content: pdfBuffer,
+            },
+          ],
+        });
+        console.log(`✅ Order confirmation email sent to admin: ${adminEmail}`);
+      } catch (mailError) {
+        console.error("❌ Error sending admin order confirmation email:", mailError);
       }
     }
 

@@ -285,8 +285,9 @@ export async function generateClientQuotationPdf(data: ClientQuotationData): Pro
         .text(`Date: ${data.created_at}`, 350, rightAlignY + 14, { align: "right", width: 195 })
         .text(`Valid Until: ${data.valid_until}`, 350, rightAlignY + 28, { align: "right", width: 195 });
 
-      // Address blocks (To/From depending on is_confirmed_letter)
-      doc.text("", 50, rightAlignY); // reset x
+      // Address blocks (To/From depending on is_confirmed_letter) - starts below "Valid Until" line
+      const addressesStartY = rightAlignY + 48;
+      doc.text("", 50, addressesStartY); // reset x
       
       const companyDetails = [
         "Lurnexa Publications Private Limited",
@@ -305,38 +306,40 @@ export async function generateClientQuotationPdf(data: ClientQuotationData): Pro
 
       if (data.is_confirmed_letter) {
         // From Client
-        doc.fontSize(11).font("Helvetica-Bold").text("FROM:", 50, rightAlignY);
+        doc.fontSize(11).font("Helvetica-Bold").text("FROM:", 50, addressesStartY);
         doc.fontSize(9).font("Helvetica");
         clientDetails.forEach((line, i) => {
-          doc.text(line, 50, rightAlignY + 15 + i * 13);
+          doc.text(line, 50, addressesStartY + 15 + i * 13);
         });
 
         // To Company
-        const toY = rightAlignY + 80;
+        const toY = addressesStartY + 80;
         doc.fontSize(11).font("Helvetica-Bold").text("TO:", 50, toY);
         doc.fontSize(9).font("Helvetica");
         companyDetails.forEach((line, i) => {
           doc.text(line, 50, toY + 15 + i * 13);
         });
 
+        doc.y = toY + 15 + companyDetails.length * 13;
         doc.moveDown(1.5);
       } else {
         // From Company
-        doc.fontSize(11).font("Helvetica-Bold").text("FROM:", 50, rightAlignY);
+        doc.fontSize(11).font("Helvetica-Bold").text("FROM:", 50, addressesStartY);
         doc.fontSize(9).font("Helvetica");
         companyDetails.forEach((line, i) => {
-          doc.text(line, 50, rightAlignY + 15 + i * 13);
+          doc.text(line, 50, addressesStartY + 15 + i * 13);
         });
 
         // To Client
-        const toY = rightAlignY + 95;
+        const toY = addressesStartY + 95;
         doc.fontSize(11).font("Helvetica-Bold").text("TO:", 50, toY);
         doc.fontSize(9).font("Helvetica");
         clientDetails.forEach((line, i) => {
           doc.text(line, 50, toY + 15 + i * 13);
         });
 
-        doc.moveDown(2);
+        doc.y = toY + 15 + clientDetails.length * 13;
+        doc.moveDown(1.5);
       }
 
       // 2. Items Table
@@ -424,7 +427,7 @@ export async function generateClientQuotationPdf(data: ClientQuotationData): Pro
         });
 
       // Signatures Area
-      const sigsY = Math.max(doc.y + 45, 620);
+      const sigsY = Math.max(doc.y + 60, 670);
       
       // Draw signature labels/lines
       doc

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 interface Order {
   id: string;
   quotation_id: string;
+  quotation_number: string;
   institution_name: string;
   authorized_person: string;
   email: string;
@@ -20,6 +21,14 @@ export default function ConfirmedOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   useEffect(() => {
     document.title = "Confirmed Orders - Book Quotation System";
@@ -43,12 +52,17 @@ export default function ConfirmedOrdersPage() {
   const filteredOrders = orders.filter((order) => {
     const query = searchQuery.toLowerCase();
     return (
-      order.quotation_id.toLowerCase().includes(query) ||
+      (order.quotation_number || "").toLowerCase().includes(query) ||
       order.institution_name.toLowerCase().includes(query) ||
       order.authorized_person.toLowerCase().includes(query) ||
       order.email.toLowerCase().includes(query)
     );
   });
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(currentPage * itemsPerPage, filteredOrders.length);
+  const currentOrders = filteredOrders.slice(startIndex, endIndex);
 
   if (loading) {
     return <div className="text-[#6b7280] text-sm">Loading confirmed orders...</div>;
@@ -98,17 +112,17 @@ export default function ConfirmedOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e7eb] text-[#111827]">
-              {filteredOrders.length === 0 ? (
+              {currentOrders.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-[#6b7280]">
                     No confirmed orders found.
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
+                currentOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 font-bold align-middle text-[#111827]">
-                      {order.quotation_id}
+                      {order.quotation_number || "N/A"}
                     </td>
                     <td className="px-6 py-4 align-middle">
                       <div className="font-semibold">{order.institution_name}</div>
@@ -171,6 +185,41 @@ export default function ConfirmedOrdersPage() {
           </table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {filteredOrders.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white border border-[#e5e7eb] rounded-xl p-4 shadow-sm">
+          <div className="text-sm text-[#4b5563] font-medium">
+            Showing <span className="font-semibold text-[#111827]">{filteredOrders.length === 0 ? 0 : startIndex + 1}</span> to{" "}
+            <span className="font-semibold text-[#111827]">
+              {endIndex}
+            </span>{" "}
+            of <span className="font-semibold text-[#111827]">{filteredOrders.length}</span> entries
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border border-[#e5e7eb] rounded-lg text-sm font-semibold text-[#374151] bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              <span>Previous</span>
+            </button>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-4 py-2 border border-[#e5e7eb] rounded-lg text-sm font-semibold text-[#374151] bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>Next</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -163,7 +163,7 @@ export default function ConfirmQuotationPage() {
                       required
                       accept="image/*"
                       onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      className="w-full bg-[#f9fafb] border border-[#e5e7eb] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#4f46e5] transition file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#e0e7ff] file:text-[#4f46e5] hover:file:bg-[#c7d2fe]"
+                      className="w-full bg-[#f9fafb] border border-[#e5e7eb] rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#4f46e5] transition file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[#e0e7ff] file:text-[#4f46e5] hover:file:bg-[#c7d2fe] cursor-pointer file:cursor-pointer"
                     />
                     <p className="text-xs text-gray-500 mt-2 leading-relaxed">
                       Please upload a clear image (PNG, JPG) of your institution&apos;s official stamp or authorized signature to confirm the order.
@@ -173,7 +173,7 @@ export default function ConfirmQuotationPage() {
                   <button
                     type="submit"
                     disabled={confirming}
-                    className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-semibold rounded-lg py-3 text-sm transition shadow-md disabled:bg-opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-semibold rounded-lg py-3 text-sm transition shadow-md disabled:bg-opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {confirming ? "Confirming..." : "Confirm Quotation"}
                   </button>

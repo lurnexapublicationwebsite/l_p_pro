@@ -59,7 +59,12 @@ export async function POST(request: Request) {
     // 3. Send emails
     const transporter = getQuotationTransporter();
     const smtpFrom = process.env.QUOTATION_SMTP_FROM || process.env.QUOTATION_SMTP_USER || "noreply@lurnexa.in";
-    const adminEmail = "lurnexapublication@gmail.com";
+    const adminEmail = "lurnexaquotations@gmail.com";
+
+    const hostHeader = request.headers.get("host") || "localhost:3000";
+    const protocol = hostHeader.includes("localhost") || hostHeader.includes("127.0.0.1") ? "http" : "https";
+    const appUrl = `${protocol}://${hostHeader}`;
+    const loginUrl = `${appUrl}/quotation/admin/login`;
 
     const emailSubjectClient = `Quotation Request Received – Lurnexa Publications`;
     const emailHtmlClient = `
@@ -128,6 +133,10 @@ export async function POST(request: Request) {
             <td style="padding: 10px; color: #0f172a; border-bottom: 1px solid #f1f5f9;"><a href="mailto:${email}">${email}</a></td>
           </tr>
         </table>
+
+        <div style="margin: 25px 0; text-align: center;">
+          <a href="${loginUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; display: inline-block;">Go to Quotations Admin Login</a>
+        </div>
 
         <p>The generated PDF request summary is attached to this email.</p>
       </div>

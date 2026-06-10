@@ -22,6 +22,24 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+const getShippingCost = (pincode: string): number => {
+  const cleanPin = (pincode || "").trim();
+  if (cleanPin.length !== 6 || /\D/.test(cleanPin)) {
+    return 0; // Don't charge until a valid 6-digit pincode is typed
+  }
+  if (cleanPin.startsWith("522")) {
+    return 40; // Guntur local (e.g. Gorantla)
+  }
+  const prefix2 = parseInt(cleanPin.substring(0, 2), 10);
+  if (prefix2 >= 50 && prefix2 <= 53) {
+    return 60; // Andhra Pradesh & Telangana
+  }
+  if (cleanPin.startsWith("5") || cleanPin.startsWith("6")) {
+    return 80; // Rest of South India (Karnataka, TN, Kerala)
+  }
+  return 120; // Rest of India (North, East, West)
+};
+
 interface TextbookDetails {
   id: string;
   title: string;
@@ -43,7 +61,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     description: "This study presents a comprehensive and data-driven examination of India's mineral import landscape, offering a distinctive economy-wide perspective. By integrating long-term trade trends with advanced simulation and modelling techniques, it evaluates the real economic implications of mineral import decisions on output, employment, prices, and trade dynamics. Covering a wide spectrum of critical minerals and situating India within the global resource ecosystem, the study provides a balanced and policy-relevant framework for understanding the interplay between domestic production and strategic imports.",
     price: 999,
     authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
-    pages: 320,
+    pages: 88,
     isbn: "978-81-685077-7-7",
     coverColor: "from-blue-600 to-indigo-900",
     pdfFileName: "minerals.pdf"
@@ -55,7 +73,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     description: "This book offers a systematic and in-depth exploration of machine learning, designed to help readers build a strong foundation while progressing toward advanced applications. It begins by introducing the core principles of machine learning, including data representation, statistical thinking, and the fundamental paradigms of supervised, unsupervised, and reinforcement learning.",
     price: 700,
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
-    pages: 380,
+    pages: 231,
     isbn: "978-81-685077-3-9",
     coverColor: "from-purple-600 to-indigo-950",
     pdfFileName: "ml.pdf"
@@ -67,7 +85,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     description: "This textbook provides a comprehensive and structured introduction to the fundamental concepts, design principles, and implementation techniques of Database Management Systems (DBMS). It is designed to guide learners from foundational topics such as data models and relational theory to advanced areas including SQL, schema refinement (normalization), and transaction management.",
     price: 750,
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
-    pages: 420,
+    pages: 248,
     isbn: "978-81-685077-5-3",
     coverColor: "from-sky-700 to-slate-900",
     pdfFileName: "dbms.pdf"
@@ -276,14 +294,42 @@ function CheckoutContent() {
       return;
     }
 
-    if (code === "LURNEXA10" || code === "WELCOME20" || code === "FREE50") {
+    const hasMinerals = checkoutItems.some(item => item.id === "1");
+    if (hasMinerals) {
+      setCouponError("Coupons cannot be applied to orders containing the Minerals book.");
+      return;
+    }
+
+    const isMLCoupon = [
+      "LURNEXA-ML-BL26-PALLAVI",
+      "LURNEXA-ML-BL26-BALAJI",
+      "LURNEXA-ML-BL26-SARITHA"
+    ].includes(code);
+
+    const isDBMSCoupon = [
+      "LURNEXA-DBMS-BL26-PALLAVI",
+      "LURNEXA-DBMS-BL26-BALAJI",
+      "LURNEXA-DBMS-BL26-SARITHA"
+    ].includes(code);
+
+    if (isMLCoupon) {
+      const hasMLBook = checkoutItems.some(item => item.id === "2");
+      if (!hasMLBook) {
+        setCouponError("This coupon is only valid for the Machine Learning textbook.");
+        return;
+      }
       setAppliedCoupon(code);
-      let pct = 10;
-      if (code === "WELCOME20") pct = 20;
-      if (code === "FREE50") pct = 50;
-      setCouponSuccess(`Coupon applied! ${pct}% discount has been added.`);
+      setCouponSuccess("Coupon applied! 10% discount on Machine Learning textbook.");
+    } else if (isDBMSCoupon) {
+      const hasDBMSBook = checkoutItems.some(item => item.id === "3");
+      if (!hasDBMSBook) {
+        setCouponError("This coupon is only valid for the Database Management Systems textbook.");
+        return;
+      }
+      setAppliedCoupon(code);
+      setCouponSuccess("Coupon applied! 10% discount on Database Management Systems textbook.");
     } else {
-      setCouponError("Invalid coupon code. Try WELCOME20 or LURNEXA10.");
+      setCouponError("Invalid coupon code.");
     }
   };
 
@@ -310,13 +356,36 @@ function CheckoutContent() {
 
     const itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
     let discount = 0;
-    if (appliedCoupon === "LURNEXA10") discount = Math.round(itemSubtotal * 0.10);
-    else if (appliedCoupon === "WELCOME20") discount = Math.round(itemSubtotal * 0.20);
-    else if (appliedCoupon === "FREE50") discount = Math.round(itemSubtotal * 0.50);
+    const isMLCoupon = [
+      "LURNEXA-ML-BL26-PALLAVI",
+      "LURNEXA-ML-BL26-BALAJI",
+      "LURNEXA-ML-BL26-SARITHA"
+    ].includes((appliedCoupon || "").toUpperCase());
+
+    const isDBMSCoupon = [
+      "LURNEXA-DBMS-BL26-PALLAVI",
+      "LURNEXA-DBMS-BL26-BALAJI",
+      "LURNEXA-DBMS-BL26-SARITHA"
+    ].includes((appliedCoupon || "").toUpperCase());
+
+    const hasMinerals = checkoutItems.some(item => item.id === "1");
+    if (!hasMinerals) {
+      if (isMLCoupon) {
+        const mlItem = checkoutItems.find(item => item.id === "2");
+        if (mlItem) {
+          discount = Math.round((mlItem.price * mlItem.quantity) * 0.10);
+        }
+      } else if (isDBMSCoupon) {
+        const dbmsItem = checkoutItems.find(item => item.id === "3");
+        if (dbmsItem) {
+          discount = Math.round((dbmsItem.price * dbmsItem.quantity) * 0.10);
+        }
+      }
+    }
 
     const bookCostAfterDiscount = itemSubtotal - discount;
     const gstVal = 0;
-    const shippingVal = 0;
+    const shippingVal = getShippingCost(formPostalCode);
     const totalAmount = bookCostAfterDiscount + gstVal + shippingVal;
 
     try {
@@ -496,17 +565,40 @@ function CheckoutContent() {
   // Checkout price Calculations
   const itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   let discount = 0;
-  if (appliedCoupon === "LURNEXA10") discount = Math.round(itemSubtotal * 0.10);
-  else if (appliedCoupon === "WELCOME20") discount = Math.round(itemSubtotal * 0.20);
-  else if (appliedCoupon === "FREE50") discount = Math.round(itemSubtotal * 0.50);
+  const isMLCoupon = [
+    "LURNEXA-ML-BL26-PALLAVI",
+    "LURNEXA-ML-BL26-BALAJI",
+    "LURNEXA-ML-BL26-SARITHA"
+  ].includes((appliedCoupon || "").toUpperCase());
+
+  const isDBMSCoupon = [
+    "LURNEXA-DBMS-BL26-PALLAVI",
+    "LURNEXA-DBMS-BL26-BALAJI",
+    "LURNEXA-DBMS-BL26-SARITHA"
+  ].includes((appliedCoupon || "").toUpperCase());
+
+  const hasMinerals = checkoutItems.some(item => item.id === "1");
+  if (!hasMinerals) {
+    if (isMLCoupon) {
+      const mlItem = checkoutItems.find(item => item.id === "2");
+      if (mlItem) {
+        discount = Math.round((mlItem.price * mlItem.quantity) * 0.10);
+      }
+    } else if (isDBMSCoupon) {
+      const dbmsItem = checkoutItems.find(item => item.id === "3");
+      if (dbmsItem) {
+        discount = Math.round((dbmsItem.price * dbmsItem.quantity) * 0.10);
+      }
+    }
+  }
 
   const bookCostAfterDiscount = itemSubtotal - discount;
   const gstVal = 0;
-  const shippingVal = 0;
+  const shippingVal = getShippingCost(formPostalCode);
   const totalAmount = bookCostAfterDiscount + gstVal + shippingVal;
 
   return (
-    <div className="max-w-6xl mx-auto mt-8 px-6 pb-20">
+    <div className="max-w-6xl mx-auto mt-4 sm:mt-8 px-4 sm:px-6 pb-20">
       {showGatewayUpdatePopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 border border-slate-100 shadow-2xl text-center space-y-6 animate-in zoom-in-95 duration-300">
@@ -546,17 +638,17 @@ function CheckoutContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         
         {/* Left Side: Steps Form */}
-        <div className="lg:col-span-7 bg-white border border-[#E2E8F0] rounded-2xl p-8 shadow-sm space-y-6">
-          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-4">
+        <div className="lg:col-span-7 bg-white border border-[#E2E8F0] rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2E8F0] pb-4 gap-4">
             <h2 className="text-xl font-bold text-[#0F172A] tracking-tight">Checkout</h2>
-            <div className="flex gap-2">
-              <span className={`text-xs font-bold px-3 py-1.5 rounded-md ${step === 1 ? 'bg-fuchsia-600 text-white shadow-sm' : 'bg-slate-100 text-[#64748B]'}`}>
+            <div className="flex flex-wrap gap-2">
+              <span className={`text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-md ${step === 1 ? 'bg-fuchsia-600 text-white shadow-sm' : 'bg-slate-100 text-[#64748B]'}`}>
                 1. Information
               </span>
-              <span className={`text-xs font-bold px-3 py-1.5 rounded-md ${step === 2 ? 'bg-fuchsia-600 text-white shadow-sm' : 'bg-slate-100 text-[#64748B]'}`}>
+              <span className={`text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-md ${step === 2 ? 'bg-fuchsia-600 text-white shadow-sm' : 'bg-slate-100 text-[#64748B]'}`}>
                 2. Review
               </span>
-              <span className={`text-xs font-bold px-3 py-1.5 rounded-md ${step === 3 ? 'bg-fuchsia-600 text-white shadow-sm' : 'bg-slate-100 text-[#64748B]'}`}>
+              <span className={`text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1.5 rounded-md ${step === 3 ? 'bg-fuchsia-600 text-white shadow-sm' : 'bg-slate-100 text-[#64748B]'}`}>
                 3. Secure Payment
               </span>
             </div>
@@ -728,8 +820,8 @@ function CheckoutContent() {
                   <input
                     type="text"
                     value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
-                    placeholder="Enter Code (e.g. WELCOME20, LURNEXA10)"
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    placeholder="Enter Coupon Code"
                     disabled={!!appliedCoupon}
                     className="flex-grow bg-slate-50 border border-[#E2E8F0] text-[#0F172A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-fuchsia-500"
                   />
@@ -738,6 +830,7 @@ function CheckoutContent() {
                       onClick={() => {
                         setAppliedCoupon("");
                         setCouponSuccess("");
+                        setCouponInput("");
                       }}
                       className="bg-red-50 hover:bg-red-100 text-red-700 font-bold text-sm px-5 rounded-xl border border-red-200"
                     >
@@ -810,7 +903,7 @@ function CheckoutContent() {
                 </div>
 
                 {/* Security badges block */}
-                <div className="grid grid-cols-3 gap-3 pt-2 max-w-md mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 max-w-md mx-auto">
                   <div className="bg-slate-50 p-3 rounded-lg border border-[#E2E8F0] text-xs font-bold text-[#64748B] flex flex-col items-center gap-1">
                     <ShieldCheck size={16} className="text-[#10B981]" />
                     <span>SSL Secured</span>
@@ -851,7 +944,7 @@ function CheckoutContent() {
 
         {/* Right Side: Order summary preview details */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm space-y-6">
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 sm:p-6 shadow-sm space-y-6">
             <h3 className="text-base font-bold text-[#0F172A] tracking-tight border-b border-[#E2E8F0] pb-3 uppercase">Order Summary</h3>
             
             {/* Textbooks list preview block */}
@@ -926,12 +1019,10 @@ function CheckoutContent() {
                 </div>
               )}
               <div className="flex justify-between">
-                <span>GST Tax (18%)</span>
-                <span className="text-[#0F172A] font-bold">₹{gstVal}</span>
-              </div>
-              <div className="flex justify-between">
                 <span>Shipping Charges</span>
-                <span className="text-[#0F172A] font-bold">₹{shippingVal}</span>
+                <span className="text-[#0F172A] font-bold">
+                  {shippingVal > 0 ? `₹${shippingVal}` : "Enter Pincode"}
+                </span>
               </div>
               <div className="border-t border-[#E2E8F0] pt-4 flex justify-between text-sm font-extrabold text-[#0F172A]">
                 <span>Total Amount</span>

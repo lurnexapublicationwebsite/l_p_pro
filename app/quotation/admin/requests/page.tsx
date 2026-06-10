@@ -26,6 +26,15 @@ export default function PendingRequestsPage() {
   const [deleteTarget, setDeleteTarget] = useState<RequestItem | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const totalPages = Math.ceil(requests.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(currentPage * itemsPerPage, requests.length);
+  const currentRequests = requests.slice(startIndex, endIndex);
+
   useEffect(() => {
     document.title = "Pending Quotation Requests - Book Quotation System";
     
@@ -135,14 +144,14 @@ export default function PendingRequestsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e7eb] text-[#111827]">
-              {requests.length === 0 ? (
+              {currentRequests.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-8 text-center text-[#6b7280]">
                     No pending requests found.
                   </td>
                 </tr>
               ) : (
-                requests.map((req) => (
+                currentRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 font-bold align-middle">{req.institution_name}</td>
                     <td className="px-6 py-4 align-middle">
@@ -191,6 +200,41 @@ export default function PendingRequestsPage() {
           </table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {requests.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white border border-[#e5e7eb] rounded-xl p-4 shadow-sm">
+          <div className="text-sm text-[#4b5563] font-medium">
+            Showing <span className="font-semibold text-[#111827]">{requests.length === 0 ? 0 : startIndex + 1}</span> to{" "}
+            <span className="font-semibold text-[#111827]">
+              {endIndex}
+            </span>{" "}
+            of <span className="font-semibold text-[#111827]">{requests.length}</span> entries
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border border-[#e5e7eb] rounded-lg text-sm font-semibold text-[#374151] bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+              <span>Previous</span>
+            </button>
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-4 py-2 border border-[#e5e7eb] rounded-lg text-sm font-semibold text-[#374151] bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>Next</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (

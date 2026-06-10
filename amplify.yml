@@ -20,6 +20,12 @@ frontend:
         - echo "QUOTATION_SMTP_USER=$QUOTATION_SMTP_USER" >> .env.production
         - echo "QUOTATION_SMTP_PASS=$QUOTATION_SMTP_PASS" >> .env.production
         - echo "QUOTATION_SMTP_FROM=$QUOTATION_SMTP_FROM" >> .env.production
+        - echo "TEXTBOOK_SMTP_HOST=$TEXTBOOK_SMTP_HOST" >> .env.production
+        - echo "TEXTBOOK_SMTP_PORT=$TEXTBOOK_SMTP_PORT" >> .env.production
+        - echo "TEXTBOOK_SMTP_USER=$TEXTBOOK_SMTP_USER" >> .env.production
+        - echo "TEXTBOOK_SMTP_PASS=$TEXTBOOK_SMTP_PASS" >> .env.production
+        - echo "TEXTBOOK_SMTP_FROM=$TEXTBOOK_SMTP_FROM" >> .env.production
+        - echo "TEXTBOOK_ADMIN_EMAIL=$TEXTBOOK_ADMIN_EMAIL" >> .env.production
     build:
       commands:
         - npm run build

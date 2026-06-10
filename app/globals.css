@@ -110,6 +110,23 @@ html, body {
   body {
     @apply bg-background text-foreground;
   }
+  button,
+  a,
+  select,
+  input[type="button"],
+  input[type="submit"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="file"]::file-selector-button,
+  label {
+    cursor: pointer;
+  }
+  button:disabled,
+  input:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
 }
 
 @theme inline {

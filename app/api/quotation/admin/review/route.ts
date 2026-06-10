@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     });
 
     const quotationId = crypto.randomUUID();
-    const quotationNumber = `QT-${Math.floor(10000 + Math.random() * 90000)}`;
+    const quotationNumber = `QT-${Math.floor(10000000 + Math.random() * 90000000)}`;
     const now = new Date();
     const validUntil = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days valid
 
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     // 4. Send email
     const transporter = getQuotationTransporter();
     const smtpFrom = process.env.QUOTATION_SMTP_FROM || process.env.QUOTATION_SMTP_USER || "noreply@lurnexa.in";
-    const adminEmail = "lurnexapublication@gmail.com";
+    const adminEmail = "lurnexaquotations@gmail.com";
     
     // Construct confirmation URL
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

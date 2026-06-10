@@ -13,7 +13,13 @@ const pgPool = new Pool({
 });
 
 // A flag to indicate whether we should fall back to JSON storage
-let useLocalFallback = !connectionString;
+const isPlaceholderUrl = connectionString && (
+  connectionString.includes("db_user") || 
+  connectionString.includes("db_host") || 
+  connectionString.includes("db_password") ||
+  connectionString.includes("your_")
+);
+let useLocalFallback = !connectionString || isPlaceholderUrl;
 
 // Local JSON File Database Path (inside workspace scratch directory or AWS Lambda /tmp)
 const fallbackDir = typeof process !== 'undefined' && process.env.AWS_LAMBDA_FUNCTION_NAME 
@@ -356,6 +362,9 @@ export const pool = {
         const [status] = params;
         return { rows: [{ count: requests.filter(r => r.status === status).length.toString() }] };
       }
+      if (cleanSql.includes("STATUS = 'PENDING'")) {
+        return { rows: [{ count: requests.filter(r => r.status === "Pending").length.toString() }] };
+      }
       return { rows: [{ count: requests.length.toString() }] };
     }
     if (cleanSql.includes("SELECT COUNT(*) FROM QUOTATIONS")) {
@@ -486,9 +495,12 @@ export const pool = {
 
     // QUOTATION_REQUESTS SELECT / INSERT / UPDATE / DELETE
     if (cleanSql.includes("SELECT * FROM QUOTATION_REQUESTS")) {
-      const requests = readJSONTable("quotation_requests");
+      let requests = readJSONTable("quotation_requests");
       if (cleanSql.includes("WHERE ID = $1")) {
         return { rows: requests.filter(r => r.id === params[0]) };
+      }
+      if (cleanSql.includes("STATUS = 'PENDING'")) {
+        requests = requests.filter(r => r.status === "Pending");
       }
       if (cleanSql.includes("ORDER BY CREATED_AT DESC")) {
         requests.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -586,6 +598,18 @@ export const pool = {
         is_confirmed: params[7] === true || params[7] === "true" || false
       });
       writeJSONTable("quotations", quotations);
+      return { rows: [] };
+    }
+    if (cleanSql.includes("UPDATE QUOTATIONS") && cleanSql.includes("SET TOTAL_AMOUNT = $1")) {
+      const quotations = readJSONTable("quotations");
+      const [total_amount, items, sent_date, id] = params;
+      const idx = quotations.findIndex(q => q.id === id);
+      if (idx !== -1) {
+        quotations[idx].total_amount = Number(total_amount);
+        quotations[idx].items = typeof items === "string" ? JSON.parse(items) : items;
+        quotations[idx].sent_date = sent_date;
+        writeJSONTable("quotations", quotations);
+      }
       return { rows: [] };
     }
     if (cleanSql.includes("UPDATE QUOTATIONS SET IS_CONFIRMED = TRUE")) {

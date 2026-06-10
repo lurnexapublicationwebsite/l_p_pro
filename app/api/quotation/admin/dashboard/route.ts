@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
 import { getAuthenticatedAdmin } from "@/lib/quotationAuth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const admin = await getAuthenticatedAdmin();

@@ -18,7 +18,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch("/api/quotation/admin/dashboard");
+        const res = await fetch(`/api/quotation/admin/dashboard?t=${Date.now()}`, {
+          cache: "no-store",
+        });
         if (res.status === 401) {
           return; // Let parent layout handle redirect
         }

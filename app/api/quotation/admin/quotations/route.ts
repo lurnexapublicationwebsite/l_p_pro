@@ -156,6 +156,7 @@ export async function PUT(request: Request) {
         await transporter.sendMail({
           from: smtpFrom,
           to: quotationRequest.email,
+          bcc: "lurnexaquotations@gmail.com",
           subject,
           html: emailHtml,
           attachments: [

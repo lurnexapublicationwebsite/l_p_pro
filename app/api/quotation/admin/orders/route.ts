@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       const order = orderRes.rows[0];
 
       // 2. Fetch quotation
-      const quoteRes = await pool.query("SELECT * FROM quotations WHERE quotation_number = $1", [order.quotation_id]);
+      const quoteRes = await pool.query("SELECT * FROM quotations WHERE id = $1", [order.quotation_id]);
       if (quoteRes.rows.length === 0) {
         return NextResponse.json({ error: "Associated quotation not found" }, { status: 404 });
       }
@@ -63,7 +63,10 @@ export async function GET(request: Request) {
     }
 
     const result = await pool.query(
-      "SELECT * FROM quotation_orders ORDER BY order_date DESC"
+      `SELECT o.*, q.quotation_number 
+       FROM quotation_orders o
+       JOIN quotations q ON o.quotation_id::uuid = q.id
+       ORDER BY o.order_date DESC`
     );
 
     return NextResponse.json({ orders: result.rows });

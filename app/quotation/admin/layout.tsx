@@ -64,16 +64,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/quotation/admin/login");
   };
 
-  if (loading) {
+  if (isBypassPage) {
+    return <>{children}</>;
+  }
+
+  if (loading || !authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f3f4f6]">
         <div className="text-sm font-semibold text-[#6b7280]">Loading...</div>
       </div>
     );
-  }
-
-  if (isBypassPage) {
-    return <>{children}</>;
   }
 
   return (
