@@ -47,6 +47,19 @@ async function getFontBuffer(name: string, url: string): Promise<Buffer> {
     }
   }
 
+  // Check committed lib/fonts folder
+  const committedPath = path.join(process.cwd(), "lib", "fonts", name);
+  if (fs.existsSync(committedPath)) {
+    try {
+      const buffer = fs.readFileSync(committedPath);
+      if (name === "Roboto-Regular.ttf") cachedRegularBuffer = buffer;
+      if (name === "Roboto-Bold.ttf") cachedBoldBuffer = buffer;
+      return buffer;
+    } catch (err) {
+      console.error(`Failed to read committed font ${name}:`, err);
+    }
+  }
+
   // Fallback to fetch
   console.log(`Downloading font ${name} from ${url}...`);
   const response = await fetch(url);
@@ -71,11 +84,11 @@ async function registerCustomFonts(doc: any) {
   try {
     const regularBuffer = await getFontBuffer(
       "Roboto-Regular.ttf",
-      "https://github.com/google/fonts/raw/main/ofl/roboto/hinted/Roboto-Regular.ttf"
+      "https://raw.githubusercontent.com/googlefonts/roboto-2/main/src/hinted/Roboto-Regular.ttf"
     );
     const boldBuffer = await getFontBuffer(
       "Roboto-Bold.ttf",
-      "https://github.com/google/fonts/raw/main/ofl/roboto/hinted/Roboto-Bold.ttf"
+      "https://raw.githubusercontent.com/googlefonts/roboto-2/main/src/hinted/Roboto-Bold.ttf"
     );
 
     doc.registerFont("Roboto-Regular", regularBuffer);
