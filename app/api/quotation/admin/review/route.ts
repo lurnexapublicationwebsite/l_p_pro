@@ -92,12 +92,14 @@ export async function POST(request: Request) {
     const smtpFrom = process.env.QUOTATION_SMTP_FROM || process.env.QUOTATION_SMTP_USER || "noreply@lurnexa.in";
     const adminEmail = "lurnexaquotations@gmail.com";
     
-    // Construct confirmation URL
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // Construct confirmation URL dynamically based on headers
+    const hostHeader = request.headers.get("host") || "localhost:3000";
+    const protocol = hostHeader.includes("localhost") || hostHeader.includes("127.0.0.1") ? "http" : "https";
+    const appUrl = `${protocol}://${hostHeader}`;
     const confirmUrl = `${appUrl}/quotation/confirm/${quotationId}`;
 
     const subject = `Formal Book Quotation – ${quotationNumber}`;
-    const emailHtml = `
+    const clientEmailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
         <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-top: 0;">Formal Book Quotation</h2>
         <p>Dear ${quotationRequest.authorized_person},</p>
@@ -119,17 +121,51 @@ export async function POST(request: Request) {
       </div>
     `;
 
+    const adminEmailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-top: 0;">Formal Book Quotation (Admin Copy)</h2>
+        <p>A formal quotation has been sent to the client.</p>
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 20px;">
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569; width: 150px;">Quotation Number:</td>
+            <td style="padding: 6px 0; color: #0f172a;"><strong>${quotationNumber}</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569;">Institution Name:</td>
+            <td style="padding: 6px 0; color: #0f172a;">${quotationRequest.institution_name}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569;">Authorized Person:</td>
+            <td style="padding: 6px 0; color: #0f172a;">${quotationRequest.authorized_person}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569;">Email Address:</td>
+            <td style="padding: 6px 0; color: #0f172a;">${quotationRequest.email}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569;">Total Amount:</td>
+            <td style="padding: 6px 0; color: #0f172a; font-weight: bold;">Rs. ${totalAmount.toFixed(2)}</td>
+          </tr>
+        </table>
+
+        <p style="font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 30px; text-align: center;">
+          Lurnexa Publications &copy; 2026. All rights reserved.
+        </p>
+      </div>
+    `;
+
     if (!transporter) {
       console.warn("⚠️ SMTP Transporter not configured. Outputting quotation review locally:");
       console.log(`[QUOTE REVIEW] Client Email: ${quotationRequest.email}, Confirm Link: ${confirmUrl}`);
     } else {
       try {
+        // Send to client
         await transporter.sendMail({
           from: smtpFrom,
           to: quotationRequest.email,
-          bcc: adminEmail,
           subject,
-          html: emailHtml,
+          html: clientEmailHtml,
           attachments: [
             {
               filename: `Quotation_${quotationNumber}.pdf`,
@@ -137,7 +173,21 @@ export async function POST(request: Request) {
             },
           ],
         });
-        console.log(`✅ Quotation email sent successfully to ${quotationRequest.email} (BCC admin)`);
+
+        // Send copy to admin (no review button)
+        await transporter.sendMail({
+          from: smtpFrom,
+          to: adminEmail,
+          subject: `[Admin Copy] ${subject}`,
+          html: adminEmailHtml,
+          attachments: [
+            {
+              filename: `Quotation_${quotationNumber}.pdf`,
+              content: pdfBuffer,
+            },
+          ],
+        });
+        console.log(`✅ Quotation emails sent successfully to client ${quotationRequest.email} and admin ${adminEmail}`);
       } catch (mailError) {
         console.error("❌ Error sending quotation email:", mailError);
         return NextResponse.json({ error: "Failed to send email to client" }, { status: 500 });
