@@ -34,6 +34,25 @@ async function getFontBuffer(name: string, url: string): Promise<Buffer> {
     }
   }
 
+  // Explicit static file references to force Next.js build-time asset tracing
+  const regularStaticPath = path.join(process.cwd(), "lib/fonts/Roboto-Regular.ttf");
+  const boldStaticPath = path.join(process.cwd(), "lib/fonts/Roboto-Bold.ttf");
+
+  if (name === "Roboto-Regular.ttf" && fs.existsSync(regularStaticPath)) {
+    try {
+      const buffer = fs.readFileSync(regularStaticPath);
+      cachedRegularBuffer = buffer;
+      return buffer;
+    } catch (e) {}
+  }
+  if (name === "Roboto-Bold.ttf" && fs.existsSync(boldStaticPath)) {
+    try {
+      const buffer = fs.readFileSync(boldStaticPath);
+      cachedBoldBuffer = buffer;
+      return buffer;
+    } catch (e) {}
+  }
+
   // Also check public/fonts or root folder
   const localPath = path.join(process.cwd(), "public", "fonts", name);
   if (fs.existsSync(localPath)) {
@@ -44,19 +63,6 @@ async function getFontBuffer(name: string, url: string): Promise<Buffer> {
       return buffer;
     } catch (err) {
       console.error(`Failed to read local font ${name}:`, err);
-    }
-  }
-
-  // Check committed lib/fonts folder
-  const committedPath = path.join(process.cwd(), "lib", "fonts", name);
-  if (fs.existsSync(committedPath)) {
-    try {
-      const buffer = fs.readFileSync(committedPath);
-      if (name === "Roboto-Regular.ttf") cachedRegularBuffer = buffer;
-      if (name === "Roboto-Bold.ttf") cachedBoldBuffer = buffer;
-      return buffer;
-    } catch (err) {
-      console.error(`Failed to read committed font ${name}:`, err);
     }
   }
 

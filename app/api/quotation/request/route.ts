@@ -51,9 +51,9 @@ export async function POST(request: Request) {
         }),
         items,
       });
-    } catch (pdfError) {
+    } catch (pdfError: any) {
       console.error("❌ PDF Generation Error:", pdfError);
-      return NextResponse.json({ error: "Failed to generate request PDF" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to generate request PDF", details: pdfError.message }, { status: 500 });
     }
 
     // 3. Send emails
