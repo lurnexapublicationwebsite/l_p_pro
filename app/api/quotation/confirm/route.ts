@@ -90,9 +90,16 @@ export async function POST(request: Request) {
     let clientStampUrl: string;
     try {
       clientStampUrl = await uploadFileToS3(tempFilePath, quoteId, "client_stamps");
-    } catch (s3Error) {
-      console.warn("⚠️ S3 Upload failed, copying to local directory:", s3Error);
-      // Fallback
+    } catch (s3Error: any) {
+      console.warn("⚠️ S3 Upload failed:", s3Error);
+      
+      // If we are in serverless environment, fail fast by throwing S3 error.
+      // Do not attempt local copy as it will crash due to EROFS.
+      if (typeof process !== 'undefined' && process.env.AWS_LAMBDA_FUNCTION_NAME) {
+        throw new Error(`S3 Upload failed: ${s3Error.message || s3Error}`);
+      }
+
+      // Fallback (only for local development)
       const localMediaDir = path.join(process.cwd(), "public", "media", "client_stamps");
       if (!fs.existsSync(localMediaDir)) {
         fs.mkdirSync(localMediaDir, { recursive: true });
