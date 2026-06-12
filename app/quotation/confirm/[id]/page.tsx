@@ -56,6 +56,54 @@ export default function ConfirmQuotationPage() {
     fetchDetails();
   }, [quoteId]);
 
+  const compressImage = async (imgFile: File): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(imgFile);
+      reader.onload = (event) => {
+        const img = new window.Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 1000;
+          const MAX_HEIGHT = 1000;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(imgFile);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              resolve(blob || imgFile);
+            },
+            "image/jpeg",
+            0.75
+          );
+        };
+        img.onerror = () => resolve(imgFile);
+      };
+      reader.onerror = () => resolve(imgFile);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
@@ -67,9 +115,16 @@ export default function ConfirmQuotationPage() {
     setError(null);
 
     try {
+      let uploadBlob: Blob = file;
+      try {
+        uploadBlob = await compressImage(file);
+      } catch (compressErr) {
+        console.error("Image compression failed, using original file:", compressErr);
+      }
+
       const formData = new FormData();
       formData.append("quote_id", quoteId);
-      formData.append("stamp", file);
+      formData.append("stamp", uploadBlob, file.name);
 
       const res = await fetch("/api/quotation/confirm", {
         method: "POST",
