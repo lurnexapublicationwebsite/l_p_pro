@@ -161,8 +161,13 @@ export async function generateQuotationRequestPdf(data: QuotationRequestData): P
   // Ensure standard fonts are copied into the bundle folder (legacy fallback)
   ensureStandardFonts();
 
+  const defaultFontPath = path.join(process.cwd(), "lib/fonts/Roboto-Regular.ttf");
   // @ts-ignore
-  const doc = new PDFDocument({ margin: 50, size: "A4" });
+  const doc = new PDFDocument({ 
+    margin: 50, 
+    size: "A4",
+    font: fs.existsSync(defaultFontPath) ? defaultFontPath : undefined
+  });
   await registerCustomFonts(doc);
 
   return new Promise((resolve, reject) => {
@@ -349,11 +354,13 @@ export async function generateClientQuotationPdf(data: ClientQuotationData): Pro
     }
   }
 
-  // Ensure standard fonts are copied (legacy fallback)
-  ensureStandardFonts();
-
+  const defaultFontPath = path.join(process.cwd(), "lib/fonts/Roboto-Regular.ttf");
   // @ts-ignore
-  const doc = new PDFDocument({ margin: 50, size: "A4" });
+  const doc = new PDFDocument({ 
+    margin: 50, 
+    size: "A4",
+    font: fs.existsSync(defaultFontPath) ? defaultFontPath : undefined
+  });
   await registerCustomFonts(doc);
 
   return new Promise((resolve, reject) => {
