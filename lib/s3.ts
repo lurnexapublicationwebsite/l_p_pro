@@ -8,21 +8,21 @@ import path from "path";
 import mime from "mime-types";
 import { pipeline } from "stream/promises";
 
-const REGION = process.env.LURNEXA_AWS_REGION || "ap-south-1";
-const BUCKET_NAME = process.env.LURNEXA_AWS_BUCKET_NAME || "lurnexa";
+const REGION = "ap-south-1";
+const BUCKET_NAME = "lurnexa";
 
 const s3Config: any = {
   region: REGION,
 };
 
-const accessKey = process.env.LURNEXA_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
-const secretKey = process.env.LURNEXA_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
-const sessionToken = process.env.LURNEXA_AWS_SESSION_TOKEN || process.env.AWS_SESSION_TOKEN;
+const accessKeyId = process.env.AWS_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY_ID || process.env.MY_AWS_ACCESS_KEY_ID;
+const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || process.env.S3_SECRET_ACCESS_KEY || process.env.MY_AWS_SECRET_ACCESS_KEY;
+const sessionToken = process.env.AWS_SESSION_TOKEN || process.env.S3_SESSION_TOKEN || process.env.MY_AWS_SESSION_TOKEN;
 
-if (accessKey && secretKey) {
+if (accessKeyId && secretAccessKey) {
   s3Config.credentials = {
-    accessKeyId: accessKey,
-    secretAccessKey: secretKey,
+    accessKeyId,
+    secretAccessKey,
     ...(sessionToken ? { sessionToken } : {}),
   };
 }
