@@ -209,7 +209,7 @@ export function initDb(): void {
 
   // Initialize Access IDs Registry as empty (no default seeded IDs)
   if (!IN_MEMORY_DB['lurnexa_allowed_access_ids']) {
-    setStorageItem('lurnexa_allowed_access_ids', []);
+    IN_MEMORY_DB['lurnexa_allowed_access_ids'] = [];
   }
 
   // Initialize Users (Seed Admin user)
@@ -233,50 +233,50 @@ export function initDb(): void {
       collegeEmail: "lurnexapublication@gmail.com",
       accessId: "LURNEXA"
     });
-    setStorageItem('lurnexa_users', users);
+    IN_MEMORY_DB['lurnexa_users'] = users;
   } else {
     // If multiple duplicate admins of the correct credentials exist, keep exactly one
     const admins = users.filter(u => u.role === 'admin');
     if (admins.length > 1) {
       users = users.filter(u => u.role !== 'admin' || u.mobileNumber === '9347834904');
-      setStorageItem('lurnexa_users', users);
+      IN_MEMORY_DB['lurnexa_users'] = users;
     }
   }
 
   // Initialize Question Bank (Seed Default practice questions)
   const qBank = getStorageItem<Question[]>('lurnexa_question_bank', []);
   if (qBank.length === 0) {
-    setStorageItem('lurnexa_question_bank', SEED_QUESTIONS);
+    IN_MEMORY_DB['lurnexa_question_bank'] = SEED_QUESTIONS;
   }
 
   // Initialize Quizzes
   if (!IN_MEMORY_DB['lurnexa_quizzes']) {
-    setStorageItem('lurnexa_quizzes', []);
+    IN_MEMORY_DB['lurnexa_quizzes'] = [];
   }
 
   // Initialize Attempts
   if (!IN_MEMORY_DB['lurnexa_attempts']) {
-    setStorageItem('lurnexa_attempts', []);
+    IN_MEMORY_DB['lurnexa_attempts'] = [];
   }
 
   // Initialize Chapters count mapping
   if (!IN_MEMORY_DB['lurnexa_book_chapters']) {
-    setStorageItem('lurnexa_book_chapters', {
+    IN_MEMORY_DB['lurnexa_book_chapters'] = {
       "1": 5,
       "2": 5,
       "3": 5,
       "4": 5
-    });
+    };
   }
 
   // Initialize Practice Test Configurations
   if (!IN_MEMORY_DB['lurnexa_practice_configs']) {
-    setStorageItem('lurnexa_practice_configs', {
+    IN_MEMORY_DB['lurnexa_practice_configs'] = {
       "1": { duration: 10, questionLimit: 5 },
       "2": { duration: 15, questionLimit: 5 },
       "3": { duration: 12, questionLimit: 5 },
       "4": { duration: 10, questionLimit: 5 }
-    });
+    };
   }
 
   // Initialize Textbooks
@@ -287,7 +287,7 @@ export function initDb(): void {
       { id: "3", title: "Database Management Systems: Concepts & Design", code: "DB" },
       { id: "4", title: "Entrepreneurship Development: Concepts to Creation", code: "ED" }
     ];
-    setStorageItem('lurnexa_textbooks', defaultBooks);
+    IN_MEMORY_DB['lurnexa_textbooks'] = defaultBooks;
   }
 
   // Initialize Colleges
@@ -295,7 +295,7 @@ export function initDb(): void {
     const defaultColleges: College[] = [
       { code: "NC", name: "Narayana College" }
     ];
-    setStorageItem('lurnexa_colleges', defaultColleges);
+    IN_MEMORY_DB['lurnexa_colleges'] = defaultColleges;
   }
 }
 

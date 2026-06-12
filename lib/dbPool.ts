@@ -19,7 +19,7 @@ const isPlaceholderUrl = connectionString && (
   connectionString.includes("db_password") ||
   connectionString.includes("your_")
 );
-let useLocalFallback = !connectionString || isPlaceholderUrl;
+const useLocalFallback = !connectionString || isPlaceholderUrl;
 
 // Local JSON File Database Path (inside workspace scratch directory or AWS Lambda /tmp)
 const fallbackDir = typeof process !== 'undefined' && process.env.AWS_LAMBDA_FUNCTION_NAME 
@@ -180,8 +180,8 @@ export const pool = {
         // Attempt real PG query
         return await pgPool.query(sql, params);
       } catch (err: any) {
-        console.warn("⚠️ PostgreSQL connection failed, switching to local file database fallback:", err.message || err);
-        useLocalFallback = true;
+        console.error("❌ PostgreSQL query failed:", err.message || err);
+        throw err;
       }
     }
 

@@ -2669,6 +2669,15 @@ export default function TextbookPortal({
 
   return (
     <div className={inter.className}>
+      <style dangerouslySetInnerHTML={{__html: `
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none !important;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none !important;
+          scrollbar-width: none !important;
+        }
+      `}} />
       <NavigationPage />
 
       <main className="min-h-screen bg-slate-50 text-slate-800 pt-28 pb-16 px-4 md:px-8">
@@ -3189,10 +3198,10 @@ export default function TextbookPortal({
             <div className="space-y-6">
               {/* Admin Tabs */}
               <div className="flex flex-wrap items-center justify-between border-b border-slate-200 gap-4">
-                <div className="flex flex-wrap">
+                <div className="flex overflow-x-auto whitespace-nowrap scrollbar-hide w-full sm:w-auto pb-1 sm:pb-0 gap-1">
                   <button
                     onClick={() => { setActiveTab("users"); setErrorMessage(""); setSuccessMessage(""); }}
-                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "users" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -3201,7 +3210,7 @@ export default function TextbookPortal({
                   </button>
                   <button
                     onClick={() => { setActiveTab("accessIds"); setErrorMessage(""); setSuccessMessage(""); }}
-                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "accessIds" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -3210,7 +3219,7 @@ export default function TextbookPortal({
                   </button>
                   <button
                     onClick={() => { setActiveTab("qbank"); setErrorMessage(""); setSuccessMessage(""); }}
-                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "qbank" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -3219,7 +3228,7 @@ export default function TextbookPortal({
                   </button>
                   <button
                     onClick={() => { setActiveTab("textbooks"); setErrorMessage(""); setSuccessMessage(""); }}
-                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "textbooks" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -3228,7 +3237,7 @@ export default function TextbookPortal({
                   </button>
                   <button
                     onClick={() => { setActiveTab("colleges"); setErrorMessage(""); setSuccessMessage(""); }}
-                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "colleges" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -3237,7 +3246,7 @@ export default function TextbookPortal({
                   </button>
                    <button
                     onClick={() => { setActiveTab("practiceResults"); setErrorMessage(""); setSuccessMessage(""); }}
-                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "practiceResults" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -3246,7 +3255,7 @@ export default function TextbookPortal({
                   </button>
                   <button
                     onClick={() => { setActiveTab("adminProfile"); setErrorMessage(""); setSuccessMessage(""); setIsEditingProfile(false); setProfileOtpSent(false); }}
-                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "adminProfile" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -4987,10 +4996,10 @@ export default function TextbookPortal({
           {user?.role === "faculty" && (
             <div className="space-y-6">
               {/* Faculty Tabs */}
-              <div className="flex border-b border-slate-200">
+               <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap scrollbar-hide w-full gap-1">
                 <button
                   onClick={() => { setActiveTab("create"); setErrorMessage(""); setSuccessMessage(""); setSelectedFacultyQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                     activeTab === "create" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -4999,7 +5008,7 @@ export default function TextbookPortal({
                 </button>
                 <button
                   onClick={() => { setActiveTab("results"); setErrorMessage(""); setSuccessMessage(""); setSelectedFacultyQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                     activeTab === "results" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -5008,7 +5017,7 @@ export default function TextbookPortal({
                 </button>
                 <button
                   onClick={() => { setActiveTab("students"); setErrorMessage(""); setSuccessMessage(""); setSelectedFacultyQuiz(null); setSelectedStudentDetails(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                     activeTab === "students" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -5017,7 +5026,7 @@ export default function TextbookPortal({
                 </button>
                 <button
                   onClick={() => { setActiveTab("profile"); setErrorMessage(""); setSuccessMessage(""); setSelectedFacultyQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                     activeTab === "profile" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -6141,10 +6150,10 @@ export default function TextbookPortal({
           {user?.role === "student" && (
             <div className="space-y-6">
               {/* Student Tabs */}
-              <div className="flex border-b border-slate-200">
+              <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap scrollbar-hide w-full gap-1">
                 <button
                   onClick={() => { setActiveTab("join"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                     activeTab === "join" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -6153,7 +6162,7 @@ export default function TextbookPortal({
                 </button>
                 <button
                   onClick={() => { setActiveTab("practice"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                     activeTab === "practice" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -6162,7 +6171,7 @@ export default function TextbookPortal({
                 </button>
                 <button
                   onClick={() => { setActiveTab("history"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                     activeTab === "history" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -6171,7 +6180,7 @@ export default function TextbookPortal({
                 </button>
                 <button
                   onClick={() => { setActiveTab("studentProfile"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                     activeTab === "studentProfile" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                   }`}
                 >

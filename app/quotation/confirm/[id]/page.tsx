@@ -119,7 +119,7 @@ export default function ConfirmQuotationPage() {
     <div className="min-h-screen bg-[#f3f4f6] pt-12 pb-16 font-sans antialiased text-[#111827]">
       <div className="max-w-[650px] mx-auto px-4">
         <div className="bg-white rounded-2xl border border-t-[8px] border-t-[#4f46e5] border-[#e5e7eb] shadow-lg overflow-hidden">
-          <div className="p-8">
+          <div className="p-5 sm:p-8">
             <div className="text-center mb-8 border-b border-[#f1f3f4] pb-6">
               <h1 className="text-2xl font-extrabold text-[#111827] mb-1">Confirm Your Quotation</h1>
               <p className="text-sm text-gray-500 font-medium">Quote Reference: {quote.quotation_number}</p>
@@ -140,11 +140,11 @@ export default function ConfirmQuotationPage() {
               </div>
             ) : (
               <>
-                <div className="text-sm space-y-3 mb-8 bg-[#f8fafc] border border-[#e2e8f0] p-6 rounded-xl">
-                  <p className="flex"><span className="text-[#6b7280] w-32 shrink-0">Authorized Person:</span> <strong className="text-[#111827]">{reqDetails.authorized_person}</strong></p>
-                  <p className="flex"><span className="text-[#6b7280] w-32 shrink-0">Institution:</span> <strong className="text-[#111827]">{reqDetails.institution_name}</strong></p>
-                  <p className="flex"><span className="text-[#6b7280] w-32 shrink-0">Quote Number:</span> <span className="font-mono text-[#4F46E5] font-semibold">{quote.quotation_number}</span></p>
-                  <p className="flex"><span className="text-[#6b7280] w-32 shrink-0">Total Amount:</span> <strong className="text-[#10B981]">Rs. {parseFloat(quote.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></p>
+                <div className="text-sm space-y-3 mb-8 bg-[#f8fafc] border border-[#e2e8f0] p-5 sm:p-6 rounded-xl">
+                  <p className="flex flex-col sm:flex-row gap-1 sm:gap-2"><span className="text-[#6b7280] sm:w-32 shrink-0">Authorized Person:</span> <strong className="text-[#111827]">{reqDetails.authorized_person}</strong></p>
+                  <p className="flex flex-col sm:flex-row gap-1 sm:gap-2"><span className="text-[#6b7280] sm:w-32 shrink-0">Institution:</span> <strong className="text-[#111827]">{reqDetails.institution_name}</strong></p>
+                  <p className="flex flex-col sm:flex-row gap-1 sm:gap-2"><span className="text-[#6b7280] sm:w-32 shrink-0">Quote Number:</span> <span className="font-mono text-[#4F46E5] font-semibold">{quote.quotation_number}</span></p>
+                  <p className="flex flex-col sm:flex-row gap-1 sm:gap-2"><span className="text-[#6b7280] sm:w-32 shrink-0">Total Amount:</span> <strong className="text-[#10B981]">Rs. {parseFloat(quote.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">

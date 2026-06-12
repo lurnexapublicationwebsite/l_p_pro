@@ -11,14 +11,18 @@ import { pipeline } from "stream/promises";
 const REGION = "ap-south-1";
 const BUCKET_NAME = "lurnexa";
 
-// ✅ CORRECT WAY (ENV VARIABLES)
-export const s3 = new S3Client({
+const s3Config: any = {
   region: REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-});
+};
+
+if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+  s3Config.credentials = {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  };
+}
+
+export const s3 = new S3Client(s3Config);
 
 /* =========================
    UPLOAD FILE

@@ -129,7 +129,7 @@ export default function QuotationRequestPage() {
       <div className="mx-auto max-w-[700px] px-4">
         <form onSubmit={handleSubmit}>
           {/* Header Card */}
-          <div className="mb-5 rounded-[12px] bg-white p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border-t-[8px] border-t-[#4f46e5]">
+          <div className="mb-5 rounded-[12px] bg-white p-5 sm:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)] border-t-[8px] border-t-[#4f46e5]">
             <h1 className="text-[32px] font-bold tracking-tight text-[#111827] mb-3 leading-tight">
               Book Quotation Request
             </h1>
@@ -147,7 +147,7 @@ export default function QuotationRequestPage() {
           )}
 
           {/* Institution Name */}
-          <div className="mb-5 rounded-[12px] bg-white p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
+          <div className="mb-5 rounded-[12px] bg-white p-5 sm:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
             <label className="block text-[16px] font-semibold text-[#374151] mb-4">
               Institution Name <span className="text-[#d93025]">*</span>
             </label>
@@ -164,7 +164,7 @@ export default function QuotationRequestPage() {
           </div>
 
           {/* Authorized Person */}
-          <div className="mb-5 rounded-[12px] bg-white p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
+          <div className="mb-5 rounded-[12px] bg-white p-5 sm:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
             <label className="block text-[16px] font-semibold text-[#374151] mb-4">
               Authorized Person <span className="text-[#d93025]">*</span>
             </label>
@@ -181,7 +181,7 @@ export default function QuotationRequestPage() {
           </div>
 
           {/* Contact Number */}
-          <div className="mb-5 rounded-[12px] bg-white p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
+          <div className="mb-5 rounded-[12px] bg-white p-5 sm:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
             <label className="block text-[16px] font-semibold text-[#374151] mb-4">
               Contact Number <span className="text-[#d93025]">*</span>
             </label>
@@ -202,7 +202,7 @@ export default function QuotationRequestPage() {
           </div>
 
           {/* Email Address */}
-          <div className="mb-5 rounded-[12px] bg-white p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
+          <div className="mb-5 rounded-[12px] bg-white p-5 sm:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
             <label className="block text-[16px] font-semibold text-[#374151] mb-4">
               Email Address <span className="text-[#d93025]">*</span>
             </label>
@@ -221,7 +221,7 @@ export default function QuotationRequestPage() {
           </div>
 
           {/* Select Books */}
-          <div className="mb-5 rounded-[12px] bg-white p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
+          <div className="mb-5 rounded-[12px] bg-white p-5 sm:p-8 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05),0_2px_4px_-1px_rgba(0,0,0,0.03)]">
             <label className="block text-[16px] font-semibold text-[#374151] mb-4">
               Select Books <span className="text-[#d93025]">*</span>
             </label>
@@ -306,10 +306,10 @@ export default function QuotationRequestPage() {
                 {selectedBooks.map((sb) => (
                   <div
                     key={sb.book_name}
-                    className="flex items-center justify-between py-2 border-b border-[#f1f3f4] last:border-b-0"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 border-b border-[#f1f3f4] last:border-b-0"
                   >
-                    <div className="text-[14px] text-[#202124] pr-4">{sb.book_name}</div>
-                    <div className="flex items-center gap-2.5 min-w-[150px] justify-end">
+                    <div className="text-[14px] text-[#202124] pr-4 leading-snug">{sb.book_name}</div>
+                    <div className="flex items-center gap-2.5 sm:min-w-[150px] justify-start sm:justify-end shrink-0">
                       <label className="text-[14px] text-[#5f6368]">Qty:</label>
                       <input
                         type="number"
