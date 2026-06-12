@@ -75,7 +75,9 @@ export async function POST(request: Request) {
     const bytes = await stampFile.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const scratchDir = path.join(process.cwd(), "scratch");
+    const scratchDir = typeof process !== 'undefined' && process.env.AWS_LAMBDA_FUNCTION_NAME
+      ? "/tmp"
+      : path.join(process.cwd(), "scratch");
     if (!fs.existsSync(scratchDir)) {
       fs.mkdirSync(scratchDir, { recursive: true });
     }
@@ -169,9 +171,11 @@ export async function POST(request: Request) {
     const smtpFrom = process.env.QUOTATION_SMTP_FROM || process.env.QUOTATION_SMTP_USER || "noreply@lurnexa.in";
     const adminEmail = "lurnexaquotations@gmail.com";
 
-    const hostHeader = request.headers.get("host") || "localhost:3000";
-    const protocol = hostHeader.includes("localhost") || hostHeader.includes("127.0.0.1") ? "http" : "https";
-    const appUrl = `${protocol}://${hostHeader}`;
+    let appUrl = "https://www.lurnexa.in";
+    const hostHeader = request.headers.get("host");
+    if (hostHeader && (hostHeader.includes("localhost") || hostHeader.includes("127.0.0.1") || hostHeader.includes("3000"))) {
+      appUrl = `http://${hostHeader}`;
+    }
     const loginUrl = `${appUrl}/quotation/admin/login`;
 
     const subject = `Confirmed Book Quotation Order – ${quote.quotation_number}`;
