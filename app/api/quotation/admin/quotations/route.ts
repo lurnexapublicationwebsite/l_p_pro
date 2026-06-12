@@ -127,10 +127,12 @@ export async function PUT(request: Request) {
     const transporter = getQuotationTransporter();
     const smtpFrom = process.env.QUOTATION_SMTP_FROM || process.env.QUOTATION_SMTP_USER || "noreply@lurnexa.in";
     
-    // Construct confirmation URL dynamically based on headers
-    const hostHeader = request.headers.get("host") || "localhost:3000";
-    const protocol = hostHeader.includes("localhost") || hostHeader.includes("127.0.0.1") ? "http" : "https";
-    const appUrl = `${protocol}://${hostHeader}`;
+    // Construct confirmation URL dynamically based on headers (fallback to live URL in production)
+    let appUrl = "https://www.lurnexa.in";
+    const hostHeader = request.headers.get("host");
+    if (hostHeader && (hostHeader.includes("localhost") || hostHeader.includes("127.0.0.1") || hostHeader.includes("3000"))) {
+      appUrl = `http://${hostHeader}`;
+    }
     const confirmUrl = `${appUrl}/quotation/confirm/${id}`;
 
     const subject = `Updated Book Quotation – ${quote.quotation_number}`;
