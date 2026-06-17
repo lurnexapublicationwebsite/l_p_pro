@@ -10,6 +10,7 @@ import { LeadershipSection } from "@/components/Home/LeadershipSection";
 import NavigationPage from "@/components/Home/nav/page";
 import LurnexaAim from "@/components/Home/LurnexaAim";
 import WelcomeIntro from "@/components/Home/WelcomeIntro";
+import RollingGallery from "@/components/Home/RollingGallery";
 
 export default function Home() {
   // ✅ Section tracking
@@ -92,6 +93,8 @@ export default function Home() {
         <section id="leadership">
           <LeadershipSection />
         </section>
+        
+        <RollingGallery />
       
 
 
