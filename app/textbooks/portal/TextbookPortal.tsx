@@ -17,6 +17,7 @@ import {
   getAllUsers,
   updateUserStatus,
   updateUser,
+  deleteUser,
   getQuestionsByBook,
   addQuestionToBank,
   deleteQuestionFromBank,
@@ -388,6 +389,7 @@ export default function TextbookPortal({
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingStudentProfile, setIsEditingStudentProfile] = useState(false);
   const [studentProfileName, setStudentProfileName] = useState("");
+  const [studentTeachingFacultyEdit, setStudentTeachingFacultyEdit] = useState("");
   const [profileForm, setProfileForm] = useState({
     name: "",
     collegeName: "",
@@ -1631,48 +1633,12 @@ export default function TextbookPortal({
       setErrorMessage("Please fill in your College ID, Department, and College Email.");
       return;
     }
-    if (detectedRole === "student" && !teachingFacultyAccessId) {
-      setErrorMessage("Please select or enter your Teaching Faculty's Access ID/Mobile Number.");
-      return;
-    }
     if (detectedRole === "faculty" && (!facultyRole || !subjectTeaching || !facultyId || !collegeEmail)) {
       setErrorMessage("Please fill in all faculty registration details (Faculty ID, College Email, Designation, Subject).");
       return;
     }
 
     let verifiedFacultyAccessId = "";
-    if (detectedRole === "student") {
-      const input = teachingFacultyAccessId.trim();
-      const allUsers = getAllUsers();
-      const matchedFaculty = allUsers.find(
-        u => u.role === "faculty" && 
-        (u.accessId.toUpperCase() === input.toUpperCase() || 
-         u.mobileNumber === input || 
-         u.collegeEmail?.toLowerCase() === input.toLowerCase())
-      );
-      if (matchedFaculty) {
-        if (matchedFaculty.bookId !== detectedBookId) {
-          setErrorMessage(`Access Denied: The selected faculty teaches a different textbook than the one assigned to your Access ID. Both student and faculty must be assigned to the same book code prefix (e.g. LFML to LSML).`);
-          return;
-        }
-        verifiedFacultyAccessId = matchedFaculty.accessId;
-      } else {
-        const allowedIds = getAllAccessIds();
-        const preApprovedFaculty = allowedIds.find(
-          item => item.role === "faculty" && item.accessId.toUpperCase() === input.toUpperCase()
-        );
-        if (preApprovedFaculty) {
-          if (preApprovedFaculty.bookId !== detectedBookId) {
-            setErrorMessage(`Access Denied: The selected faculty Access ID is pre-approved for a different textbook than yours. Both student and faculty must be assigned to the same book code prefix.`);
-            return;
-          }
-          verifiedFacultyAccessId = preApprovedFaculty.accessId;
-        } else {
-          setErrorMessage("Teaching Faculty not found. Please enter a valid pre-approved Faculty Access ID (starts with LF) or registered Faculty Mobile Number.");
-          return;
-        }
-      }
-    }
 
     // Instead of creating the user directly, dispatch OTP for verification
     const targetCoordinate = (detectedRole === "faculty" || detectedRole === "student") ? collegeEmail : mobileNumber;
@@ -1727,30 +1693,6 @@ export default function TextbookPortal({
         return;
       }
 
-      // Successful OTP Verification -> Create User
-      let verifiedFacultyAccessId = "";
-      if (detectedRole === "student") {
-        const input = teachingFacultyAccessId.trim();
-        const allUsers = getAllUsers();
-        const matchedFaculty = allUsers.find(
-          u => u.role === "faculty" && 
-          (u.accessId.toUpperCase() === input.toUpperCase() || 
-           u.mobileNumber === input || 
-           u.collegeEmail?.toLowerCase() === input.toLowerCase())
-        );
-        if (matchedFaculty) {
-          verifiedFacultyAccessId = matchedFaculty.accessId;
-        } else {
-          const allowedIds = getAllAccessIds();
-          const preApprovedFaculty = allowedIds.find(
-            item => item.role === "faculty" && item.accessId.toUpperCase() === input.toUpperCase()
-          );
-          if (preApprovedFaculty) {
-            verifiedFacultyAccessId = preApprovedFaculty.accessId;
-          }
-        }
-      }
-
       const newUser: TextbookUser = {
         name,
         bookId: detectedBookId,
@@ -1761,7 +1703,7 @@ export default function TextbookPortal({
         accessId: signupAccessId,
         plan: (detectedPlan as any) || 'complete',
         ...(detectedRole === "student" 
-          ? { collegeId, department, teachingFacultyAccessId: verifiedFacultyAccessId, collegeEmail } 
+          ? { collegeId, department, teachingFacultyAccessId: "", collegeEmail } 
           : { facultyRole, subjectTeaching, facultyId, collegeEmail })
       };
 
@@ -1849,12 +1791,20 @@ export default function TextbookPortal({
   };
 
   const handleDeleteInterviewQuestion = (id: string) => {
-    if (confirm("Are you sure you want to delete this interview question?")) {
-      deleteInterviewQuestion(id);
-      setSuccessMessage("Interview Question deleted successfully.");
-      setErrorMessage("");
-      setInterviewQuestions(getInterviewQuestions());
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Confirm Deletion",
+      message: "Are you sure you want to permanently delete this interview question?",
+      confirmText: "Yes, Delete",
+      cancelText: "Cancel",
+      isDanger: true,
+      onConfirm: () => {
+        deleteInterviewQuestion(id);
+        showToast("Interview Question deleted successfully.", "success");
+        setInterviewQuestions(getInterviewQuestions());
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleSaveCompanyUpdate = (e: React.FormEvent) => {
@@ -1891,12 +1841,20 @@ export default function TextbookPortal({
   };
 
   const handleDeleteCompanyUpdate = (id: string) => {
-    if (confirm("Are you sure you want to delete this company update?")) {
-      deleteCompanyUpdate(id);
-      setSuccessMessage("Company update deleted successfully.");
-      setErrorMessage("");
-      setCompanyUpdates(getCompanyUpdates());
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Confirm Deletion",
+      message: "Are you sure you want to permanently delete this company update?",
+      confirmText: "Yes, Delete",
+      cancelText: "Cancel",
+      isDanger: true,
+      onConfirm: () => {
+        deleteCompanyUpdate(id);
+        showToast("Company update deleted successfully.", "success");
+        setCompanyUpdates(getCompanyUpdates());
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   // Handle Logout
@@ -1948,6 +1906,28 @@ export default function TextbookPortal({
         showToast("Cannot modify admin account status.", "error");
       }
     }
+  };
+
+  const handleAdminDeleteUser = (mobile: string) => {
+    const targetUser = adminUsers.find(u => u.mobileNumber === mobile);
+    setConfirmModal({
+      isOpen: true,
+      title: "Confirm Deletion",
+      message: `Are you sure you want to permanently delete ${targetUser ? targetUser.name : "this user"}'s profile? All data and their access ID registration will be reset.`,
+      confirmText: "Yes, Delete",
+      cancelText: "Cancel",
+      isDanger: true,
+      onConfirm: () => {
+        const success = deleteUser(mobile);
+        if (success) {
+          setAdminUsers(getAllUsers());
+          showToast("User deleted successfully.", "success");
+        } else {
+          showToast("Cannot delete admin account.", "error");
+        }
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const handleAdminAddQuestion = (e: React.FormEvent) => {
@@ -2753,20 +2733,69 @@ export default function TextbookPortal({
       return;
     }
     
-    if (studentProfileName.trim() === user!.name) {
+    // Validate faculty assignment changes if any
+    let targetFaculty = user!.teachingFacultyAccessId || "";
+    if (studentTeachingFacultyEdit !== (user!.teachingFacultyAccessId || "")) {
+      // Check if user already had a faculty assigned (limit editing to once / only set once)
+      if (user!.teachingFacultyAccessId) {
+        showToast("Access Denied: You can only edit or select your teaching faculty once inside the portal.", "error");
+        return;
+      }
+
+      const input = studentTeachingFacultyEdit.trim();
+      if (input) {
+        const allUsers = getAllUsers();
+        const matchedFaculty = allUsers.find(
+          u => u.role === "faculty" && 
+          (u.accessId.toUpperCase() === input.toUpperCase() || 
+           u.mobileNumber === input || 
+           u.collegeEmail?.toLowerCase() === input.toLowerCase())
+        );
+
+        if (matchedFaculty) {
+          if (matchedFaculty.bookId !== user!.bookId) {
+            showToast(`Access Denied: The selected faculty teaches a different textbook than yours. Both must be assigned to the same book code prefix.`, "error");
+            return;
+          }
+          targetFaculty = matchedFaculty.accessId;
+        } else {
+          const allowedIds = getAllAccessIds();
+          const preApprovedFaculty = allowedIds.find(
+            item => item.role === "faculty" && item.accessId.toUpperCase() === input.toUpperCase()
+          );
+          if (preApprovedFaculty) {
+            if (preApprovedFaculty.bookId !== user!.bookId) {
+              showToast(`Access Denied: The selected faculty teaches a different textbook.`, "error");
+              return;
+            }
+            targetFaculty = preApprovedFaculty.accessId;
+          } else {
+            showToast("Teaching Faculty not found. Please enter a valid pre-approved Faculty Access ID or registered Faculty details.", "error");
+            return;
+          }
+        }
+      }
+    }
+
+    if (studentProfileName.trim() === user!.name && targetFaculty === (user!.teachingFacultyAccessId || "")) {
       setIsEditingStudentProfile(false);
       return;
     }
     
-    const updatedUser = { ...user!, name: studentProfileName.trim() };
-    const success = updateUser(user!.mobileNumber, { name: studentProfileName.trim() });
+    const updatedFields: Partial<TextbookUser> = { 
+      name: studentProfileName.trim(),
+      teachingFacultyAccessId: targetFaculty 
+    };
+
+    const success = updateUser(user!.mobileNumber, updatedFields);
     if (success) {
+      const updatedUser = { ...user!, ...updatedFields };
       sessionStorage.setItem("lurnexa_current_user", JSON.stringify(updatedUser));
       setUser(updatedUser);
       setIsEditingStudentProfile(false);
-      showToast("Profile name updated successfully!", "success");
+      showToast("Profile details updated successfully!", "success");
     } else {
-      showToast("Failed to update name.", "error");
+      showToast("Failed to update profile details.", "error");
     }
   };
 
@@ -3922,35 +3951,6 @@ export default function TextbookPortal({
                                 )}
                               </div>
                             </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Teaching Faculty (Teacher Book ID / Access ID)</label>
-                              <div className="space-y-2">
-                                <select
-                                  value={signupForm.teachingFacultyAccessId}
-                                  onChange={(e) => {
-                                    setSignupForm({ ...signupForm, teachingFacultyAccessId: e.target.value });
-                                  }}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
-                                >
-                                  <option value="">-- Choose Your Faculty --</option>
-                                  {getAllUsers()
-                                    .filter(u => 
-                                      u.role === "faculty" && 
-                                      u.bookId === detectedBookId &&
-                                      u.collegeName &&
-                                      signupForm.collegeName &&
-                                      u.collegeName.trim().toLowerCase() === signupForm.collegeName.trim().toLowerCase()
-                                    )
-                                    .map(f => (
-                                      <option key={f.accessId} value={f.accessId}>
-                                        {f.name} ({f.collegeEmail || f.mobileNumber})
-                                      </option>
-                                    ))
-                                  }
-                                </select>
-                              </div>
-                              <p className="text-[10px] text-slate-500 mt-1">Select your teacher from the dropdown list matching your textbook.</p>
-                            </div>
                           </div>
                         )}
 
@@ -4207,20 +4207,30 @@ export default function TextbookPortal({
                                 </span>
                               </td>
                               <td className="p-4 text-right">
-                                {u.role !== "admin" ? (
-                                  <button
-                                    onClick={() => handleToggleUserStatus(u.mobileNumber, u.isActive)}
-                                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
-                                      u.isActive 
-                                        ? "bg-slate-100 hover:bg-red-950/40 text-red-400 border border-red-500/20" 
-                                        : "bg-green-600 hover:bg-green-500 text-white"
-                                    }`}
-                                  >
-                                    {u.isActive ? "Deactivate" : "Activate"}
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-slate-500 font-medium">Protected</span>
-                                )}
+                                <div className="flex justify-end items-center gap-2">
+                                  {u.role !== "admin" ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleToggleUserStatus(u.mobileNumber, u.isActive)}
+                                        className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                                          u.isActive 
+                                            ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200" 
+                                            : "bg-green-600 hover:bg-green-500 text-white"
+                                        }`}
+                                      >
+                                        {u.isActive ? "Deactivate" : "Activate"}
+                                      </button>
+                                      <button
+                                        onClick={() => handleAdminDeleteUser(u.mobileNumber)}
+                                        className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-xl font-bold text-xs transition-all"
+                                      >
+                                        Delete
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-slate-500 font-medium">Protected</span>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ));
@@ -7630,12 +7640,63 @@ export default function TextbookPortal({
               {/* Tab 1: Join & Attempt Quiz */}
               {activeTab === "join" && (
                 <div className="max-w-2xl mx-auto">
-                  {/* Assigned Teacher Widget */}
+                   {/* Assigned Teacher Widget */}
                   {(() => {
                     const teacher = getAllUsers().find(
                       u => u.role === "faculty" && u.accessId?.toUpperCase() === user?.teachingFacultyAccessId?.toUpperCase()
                     );
-                    if (!teacher) return null;
+                    if (!teacher) return (
+                      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl mb-6 space-y-4 animate-fadeIn">
+                        <div>
+                          <h4 className="text-lg font-black text-slate-900">Assigned Faculty (Required to join quizzes)</h4>
+                          <p className="text-xs text-slate-500">You need to select your teaching faculty to join active quizzes. This can only be set once.</p>
+                        </div>
+                        <div className="flex gap-3">
+                          <select
+                            value={studentTeachingFacultyEdit}
+                            onChange={(e) => setStudentTeachingFacultyEdit(e.target.value)}
+                            className="flex-1 bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium text-xs shadow-inner"
+                          >
+                            <option value="">-- Choose Your Faculty --</option>
+                            {getAllUsers()
+                              .filter(u => 
+                                u.role === "faculty" && 
+                                u.bookId === user?.bookId &&
+                                u.collegeName &&
+                                user?.collegeName &&
+                                u.collegeName.trim().toLowerCase() === user.collegeName.trim().toLowerCase()
+                              )
+                              .map(f => (
+                                <option key={f.accessId} value={f.accessId}>
+                                  {f.name} ({f.collegeEmail || f.mobileNumber})
+                                </option>
+                              ))
+                            }
+                          </select>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (!studentTeachingFacultyEdit) {
+                                showToast("Please select a teaching faculty.", "warning");
+                                return;
+                              }
+                              const success = updateUser(user!.mobileNumber, { teachingFacultyAccessId: studentTeachingFacultyEdit });
+                              if (success) {
+                                const updated = { ...user!, teachingFacultyAccessId: studentTeachingFacultyEdit };
+                                sessionStorage.setItem("lurnexa_current_user", JSON.stringify(updated));
+                                setUser(updated);
+                                showToast("Teaching faculty assigned successfully!", "success");
+                              } else {
+                                showToast("Failed to assign teaching faculty.", "error");
+                              }
+                            }}
+                            className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-md shrink-0"
+                          >
+                            Save Faculty
+                          </button>
+                        </div>
+                      </div>
+                    );
                     return (
                       <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl flex items-center gap-4 mb-6 animate-fadeIn">
                         <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-fuchsia-500/20 shadow-sm flex items-center justify-center bg-gradient-to-tr from-fuchsia-600 to-pink-500 text-white text-lg font-black shrink-0">
@@ -8642,6 +8703,7 @@ export default function TextbookPortal({
                         <button
                           onClick={() => {
                             setStudentProfileName(user?.name || "");
+                            setStudentTeachingFacultyEdit(user?.teachingFacultyAccessId || "");
                             setIsEditingStudentProfile(true);
                           }}
                           className="bg-slate-950 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-xs font-bold transition"
@@ -8676,7 +8738,7 @@ export default function TextbookPortal({
                               {user?.collegeEmail || "N/A"}
                             </div>
                           </div>
-                          <div>
+                           <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">College Name (Read-only)</label>
                             <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium cursor-not-allowed">
                               {user?.collegeName || "N/A"}
@@ -8691,10 +8753,37 @@ export default function TextbookPortal({
                             </div>
                           )}
                           <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">Assigned Teacher Access ID (Read-only)</label>
-                            <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium font-mono cursor-not-allowed">
-                              {user?.teachingFacultyAccessId || "N/A"}
-                            </div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">Assigned Teacher (Only Editable Once)</label>
+                            {user?.teachingFacultyAccessId ? (
+                              <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium font-mono cursor-not-allowed">
+                                {(() => {
+                                  const found = getAllUsers().find(u => u.role === "faculty" && u.accessId.toUpperCase() === user.teachingFacultyAccessId!.toUpperCase());
+                                  return found ? `${found.name} (${user.teachingFacultyAccessId})` : user.teachingFacultyAccessId;
+                                })()}
+                              </div>
+                            ) : (
+                              <select
+                                value={studentTeachingFacultyEdit}
+                                onChange={(e) => setStudentTeachingFacultyEdit(e.target.value)}
+                                className="w-full bg-slate-50 border border-slate-200 text-slate-850 rounded-xl px-4 py-2.5 font-medium focus:outline-none focus:border-fuchsia-500"
+                              >
+                                <option value="">-- Choose Your Faculty --</option>
+                                {getAllUsers()
+                                  .filter(u => 
+                                    u.role === "faculty" && 
+                                    u.bookId === user?.bookId &&
+                                    u.collegeName &&
+                                    user?.collegeName &&
+                                    u.collegeName.trim().toLowerCase() === user.collegeName.trim().toLowerCase()
+                                  )
+                                  .map(f => (
+                                    <option key={f.accessId} value={f.accessId}>
+                                      {f.name} ({f.collegeEmail || f.mobileNumber})
+                                    </option>
+                                  ))
+                                }
+                              </select>
+                            )}
                           </div>
                         </div>
 

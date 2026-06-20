@@ -14,7 +14,7 @@ export default function RefundPolicyPage() {
           </h1>
           <div className="space-y-6 text-slate-700 leading-8">
             <p>
-              This policy governs the cancellation and refund of products and services purchased through LURNEXA PUBLICATIONS PRIVATE LIMITED.
+              This policy governs the cancellation and refund of products and services purchased through LURNEXA PUBLICATIONS.
             </p>
             <ul className="list-disc ml-6 space-y-4">
               <li>Cancellation requests are accepted within twenty-four hours of order placement. Once dispatched or customized, cancellation is not permitted.</li>

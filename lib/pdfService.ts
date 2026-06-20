@@ -376,7 +376,7 @@ export async function generateClientQuotationPdf(data: ClientQuotationData): Pro
         .fillColor("#000000")
         .fontSize(16)
         .font(getFont(true))
-        .text("LURNEXA PUBLICATIONS PRIVATE LIMITED", { align: "center" });
+        .text("LURNEXA PUBLICATIONS", { align: "center" });
 
       doc
         .fontSize(13)
@@ -411,7 +411,7 @@ export async function generateClientQuotationPdf(data: ClientQuotationData): Pro
       doc.text("", 50, addressesStartY); // reset x
       
       const companyDetails = [
-        "Lurnexa Publications Private Limited",
+        "Lurnexa Publications",
         "Door No. 8-135, Ramulavari Gudi Center,",
         "Near Panchayati Office Gorantla, Gorantla, Guntur",
         "522034 Andhra Pradesh, India",

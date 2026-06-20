@@ -297,68 +297,10 @@ export function initDb(): void {
     IN_MEMORY_DB['lurnexa_allowed_access_ids'] = [];
   }
   let allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
-  let allowedModified = false;
-  if (!allowedIds.some(item => item.accessId === "LSMLNC26001")) {
-    allowedIds.push({
-      accessId: "LSMLNC26001",
-      bookId: "2",
-      role: "student",
-      collegeCode: "NC",
-      assignedTo: "9999900001"
-    });
-    allowedModified = true;
-  }
-  if (!allowedIds.some(item => item.accessId === "LFMLNC26001")) {
-    allowedIds.push({
-      accessId: "LFMLNC26001",
-      bookId: "2",
-      role: "faculty",
-      collegeCode: "NC",
-      assignedTo: "9999900002"
-    });
-    allowedModified = true;
-  }
-  if (allowedModified) {
-    IN_MEMORY_DB['lurnexa_allowed_access_ids'] = allowedIds;
-    try { localStorage.setItem('lurnexa_allowed_access_ids', JSON.stringify(allowedIds)); } catch (e) {}
-  }
 
   // Initialize Users (Seed Admin user)
   let users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
-  
-  // Seed ML test student
   let usersModified = false;
-  if (!users.some(u => u.accessId === "LSMLNC26001")) {
-    users.push({
-      name: "Test ML Student",
-      bookId: "2",
-      mobileNumber: "9999900001",
-      role: "student",
-      collegeName: "Narayana College",
-      isActive: true,
-      collegeEmail: "student@lurnexa.in",
-      accessId: "LSMLNC26001",
-      plan: "book_caselet_portal",
-      purchasedBooks: ["2"]
-    });
-    usersModified = true;
-  }
-  
-  // Seed ML test faculty
-  if (!users.some(u => u.accessId === "LFMLNC26001")) {
-    users.push({
-      name: "Test ML Faculty",
-      bookId: "2",
-      mobileNumber: "9999900002",
-      role: "faculty",
-      collegeName: "Narayana College",
-      isActive: true,
-      collegeEmail: "faculty@lurnexa.in",
-      accessId: "LFMLNC26001",
-      purchasedBooks: ["2"]
-    });
-    usersModified = true;
-  }
   
   // Enforce exactly 1 admin user matching the new required credentials
   const otherAdmins = users.filter(u => u.role === 'admin' && (u.mobileNumber !== '9347834904' || u.accessId.toUpperCase() !== 'LURNEXA'));
@@ -729,6 +671,32 @@ export function updateUser(mobileNumber: string, updatedFields: Partial<Textbook
     return true;
   }
   return false;
+}
+
+export function deleteUser(mobileNumber: string): boolean {
+  initDb();
+  const users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
+  const userToDelete = users.find(u => u.mobileNumber === mobileNumber);
+  if (!userToDelete) return false;
+
+  // Protect Admin from deletion
+  if (mobileNumber === '9347834904') return false;
+
+  // Remove the user from the list
+  const updatedUsers = users.filter(u => u.mobileNumber !== mobileNumber);
+  setStorageItem('lurnexa_users', updatedUsers);
+
+  // Free their accessId mapping so it can be reused
+  if (userToDelete.accessId) {
+    const allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
+    const idx = allowedIds.findIndex(item => item.accessId.toUpperCase() === userToDelete.accessId.toUpperCase());
+    if (idx !== -1) {
+      delete allowedIds[idx].assignedTo;
+      setStorageItem('lurnexa_allowed_access_ids', allowedIds);
+    }
+  }
+
+  return true;
 }
 
 // ==========================================

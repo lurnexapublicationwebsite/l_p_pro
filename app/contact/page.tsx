@@ -216,7 +216,7 @@ export default function ContactPage() {
                     <Navigation size={24} />
                   </div>
                   <h3 className="text-xl font-semibold text-slate-900">Registered Office</h3>
-                  <p className="mt-2 text-xs text-slate-500 font-bold uppercase">LURNEXA PUBLICATIONS PRIVATE LIMITED</p>
+                  <p className="mt-2 text-xs text-slate-500 font-bold uppercase">LURNEXA PUBLICATIONS</p>
                   <p className="mt-3 text-sm text-slate-600 leading-relaxed font-medium">
                     130–187, Ramulavari Gudi Centre, <br />
                     Gorantla, Guntur – 522034, <br />

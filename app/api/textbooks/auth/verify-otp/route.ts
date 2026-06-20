@@ -61,25 +61,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ML Faculty bypass check
-    if (cleanAccessId === "LFMLNC26001" && (cleanTarget === "9999900002" || cleanTarget.toLowerCase() === "faculty@lurnexa.in") && cleanCode === "783490") {
-      const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
-      const sessionToken = jwt.sign(
-        {
-          accessId: cleanAccessId,
-          target: cleanTarget,
-          verifiedAt: new Date().toISOString()
-        },
-        jwtSecret,
-        { expiresIn: "8h" }
-      );
 
-      return NextResponse.json({
-        success: true,
-        token: sessionToken,
-        message: "Verification successful (Bypass)."
-      });
-    }
 
     // Retrieve latest OTP record
     const otpResult = await pool.query(

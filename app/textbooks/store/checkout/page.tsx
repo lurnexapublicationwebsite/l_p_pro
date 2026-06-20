@@ -1076,7 +1076,7 @@ function CheckoutContent() {
             <div className="space-y-2">
               <h3 className="text-2xl font-bold text-slate-900">System Update</h3>
               <p className="text-sm text-slate-600 leading-relaxed font-semibold">
-                Our payment gateway is currently undergoing scheduled updates to support the LURNEXA PUBLICATIONS PRIVATE LIMITED entity.
+                Our payment gateway is currently undergoing scheduled updates to support the LURNEXA PUBLICATIONS entity.
               </p>
               <p className="text-xs text-slate-400 font-bold italic">
                 Please try again later. We apologize for the inconvenience.

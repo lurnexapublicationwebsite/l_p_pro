@@ -14,7 +14,7 @@ export default function ShippingPolicyPage() {
           </h1>
           <div className="space-y-6 text-slate-700 leading-8">
             <p>
-              This policy outlines the shipping and delivery terms for physical products (such as textbooks or printed journals) ordered from LURNEXA PUBLICATIONS PRIVATE LIMITED.
+              This policy outlines the shipping and delivery terms for physical products (such as textbooks or printed journals) ordered from LURNEXA PUBLICATIONS.
             </p>
             <ul className="list-disc ml-6 space-y-4">
               <li>Orders are shipped through registered courier services, India Post, and authorized logistics partners.</li>
