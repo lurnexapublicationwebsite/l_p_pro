@@ -923,7 +923,8 @@ export default function TextbookPortal({
           if (savedUserStr) {
             try {
               const currentUserObj = JSON.parse(savedUserStr);
-              const updatedUser: TextbookUser = { ...currentUserObj, plan: "complete" };
+              const targetPlan = data.order?.purchase_plan || "complete";
+              const updatedUser: TextbookUser = { ...currentUserObj, plan: targetPlan };
               sessionStorage.setItem("lurnexa_current_user", JSON.stringify(updatedUser));
               setUser(updatedUser);
               
@@ -931,7 +932,7 @@ export default function TextbookPortal({
               const users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
               const index = users.findIndex(u => u.mobileNumber === currentUserObj.mobileNumber);
               if (index !== -1) {
-                users[index].plan = "complete";
+                users[index].plan = targetPlan;
                 setStorageItem('lurnexa_users', users);
               }
             } catch (jsonErr) {
@@ -2772,6 +2773,13 @@ export default function TextbookPortal({
   const handleUpgradePlan = async (target: 'complete', cost: number) => {
     if (!user) return;
     setIsUpgrading(true);
+    
+    // Resolve dynamic target plan based on current plan
+    const targetPlan = 
+      user.plan === "book_only" ? "book_portal" :
+      user.plan === "book_caselet" ? "book_caselet_portal" :
+      "complete";
+
     try {
       const res = await fetch("/api/payments/cashfree/create-order", {
         method: "POST",
@@ -2786,7 +2794,7 @@ export default function TextbookPortal({
           shippingAddress: "Soft Copy Access",
           postalCode: "000000",
           format: "upgrade",
-          plan: "complete",
+          plan: targetPlan,
           collegeCode: "others"
         })
       });

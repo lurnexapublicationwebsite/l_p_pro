@@ -154,9 +154,10 @@ export async function POST(req: Request) {
       );
 
       if (tags.purchase_format === "upgrade" || tags.purchase_plan === "complete") {
+        const targetPlan = tags.purchase_plan || "complete";
         await pool.query(
-          `UPDATE textbooks_users SET plan = 'complete' WHERE mobile_number = $1`,
-          [customerPhone]
+          `UPDATE textbooks_users SET plan = $1 WHERE mobile_number = $2`,
+          [targetPlan, customerPhone]
         );
       }
 
