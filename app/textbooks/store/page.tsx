@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { 
   BookOpen, 
   Lock, 
@@ -84,12 +85,41 @@ interface CartItem {
   price: number;
   coverImg: string;
   quantity: number;
+  format?: 'physical' | 'soft';
+  plan?: string;
 }
 
+const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  let price = 399;
+  switch (plan) {
+    case "book_only": price = 230; break;
+    case "caselet": price = 60; break;
+    case "book_caselet": price = 265; break;
+    case "book_portal": price = 399; break;
+    case "book_caselet_portal": price = 449; break;
+    case "complete": price = 200; break;
+    case "placements": price = 150; break;
+    case "practice": price = 80; break;
+    default: price = 399;
+  }
+  if (bookId === "2" || bookId === "3") {
+    if (bookId === "3") {
+      if (plan === "book_only") return 300;
+      if (plan === "book_caselet") return 335;
+      if (plan === "book_portal") return 469;
+      if (plan === "book_caselet_portal") return 519;
+    }
+    return price + 20;
+  }
+  return price;
+};
+
 export default function BookstorePage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [publishedPdfs, setPublishedPdfs] = useState<string[]>([]);
   const [selectedBookForPreview, setSelectedBookForPreview] = useState<TextbookDetails | null>(null);
+  const [mounted, setMounted] = useState(false);
   
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,7 +130,15 @@ export default function BookstorePage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
+  // Plan Selection States
+  const [selectedBookForPurchase, setSelectedBookForPurchase] = useState<TextbookDetails | null>(null);
+  const [purchaseFormat, setPurchaseFormat] = useState<"physical" | "soft" | null>(null);
+  const [selectedSoftOption, setSelectedSoftOption] = useState<string>("book_portal"); // default
+  const [selectedPortalOnlyOption, setSelectedPortalOnlyOption] = useState<string>("complete");
+  const [modalMode, setModalMode] = useState<'buy' | 'cart'>('buy');
+
   useEffect(() => {
+    setMounted(true);
     fetchPublishedBooks();
     // Load Cart from localStorage
     const savedCart = localStorage.getItem("lurnexa_store_cart");
@@ -112,6 +150,12 @@ export default function BookstorePage() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (selectedBookForPurchase?.id === "1") {
+      setPurchaseFormat("physical");
+    }
+  }, [selectedBookForPurchase]);
 
   const saveCartToStorage = (updatedCart: CartItem[]) => {
     setCart(updatedCart);
@@ -140,12 +184,16 @@ export default function BookstorePage() {
   };
 
   // Cart Handlers
-  const handleAddToCart = (book: TextbookDetails) => {
-    let coverImg = "/published_books/covers/minerals.jpg";
-    if (book.id === "2") coverImg = "/published_books/covers/ml.png";
-    if (book.id === "3") coverImg = "/published_books/covers/dbms.jpeg";
+  const handleAddToCart = (book: TextbookDetails, format: 'physical' | 'soft' = 'physical', plan: string = 'physical', price?: number) => {
+    let coverImg = "/portal_coverpages/minerals.jpg";
+    if (book.id === "2") coverImg = "/portal_coverpages/ml.png";
+    if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
 
-    const existingIdx = cart.findIndex(item => item.id === book.id);
+    const finalPrice = price !== undefined ? price : book.price;
+    const planLabel = format === "physical" ? "Physical Copy" : `Soft Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
+    const displayTitle = `${book.title} (${planLabel})`;
+
+    const existingIdx = cart.findIndex(item => item.id === book.id && (item as any).format === format && (item as any).plan === plan);
     if (existingIdx !== -1) {
       const updated = [...cart];
       updated[existingIdx].quantity += 1;
@@ -153,11 +201,13 @@ export default function BookstorePage() {
     } else {
       const newItem: CartItem = {
         id: book.id,
-        title: book.title,
-        price: book.price,
+        title: displayTitle,
+        price: finalPrice,
         coverImg,
-        quantity: 1
-      };
+        quantity: 1,
+        format,
+        plan
+      } as any;
       saveCartToStorage([...cart, newItem]);
     }
     showToast(`"${book.title.slice(0, 30)}..." added to cart!`);
@@ -184,9 +234,11 @@ export default function BookstorePage() {
 
   // Cart Calculations
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const cartGst = 0;
-  const cartShipping = 0;
-  const cartTotal = cartSubtotal + cartGst + cartShipping;
+  const isSoftCart = cart.some(item => (item as any).format === "soft");
+  const cartGst = isSoftCart ? Math.round(cartSubtotal * 0.18) : 0;
+  const cartOnlineFee = isSoftCart ? Math.round((cartSubtotal + cartGst) * 0.02) : 0;
+  const cartShipping = isSoftCart ? 0 : 50;
+  const cartTotal = cartSubtotal + cartGst + cartOnlineFee + cartShipping;
   const totalCartQty = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   // Filter books list
@@ -205,8 +257,12 @@ export default function BookstorePage() {
 
   const isSynchronized = publishedPdfs.includes("minerals.pdf");
 
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#F8FAFC]" />;
+  }
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans pb-24 antialiased selection:bg-fuchsia-500/10 selection:text-fuchsia-600">
+    <div suppressHydrationWarning className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans pb-24 antialiased selection:bg-fuchsia-500/10 selection:text-fuchsia-600">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -323,9 +379,9 @@ export default function BookstorePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredBooks.map((bookItem) => {
-              let coverImg = "/published_books/covers/minerals.jpg";
-              if (bookItem.id === "2") coverImg = "/published_books/covers/ml.png";
-              if (bookItem.id === "3") coverImg = "/published_books/covers/dbms.jpeg";
+              let coverImg = "/portal_coverpages/minerals.jpg";
+              if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
+              if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
 
               return (
                 <div 
@@ -406,19 +462,27 @@ export default function BookstorePage() {
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => handleAddToCart(bookItem)}
+                        onClick={() => {
+                          setSelectedBookForPurchase(bookItem);
+                          setPurchaseFormat(null);
+                          setModalMode("cart");
+                        }}
                         className="bg-slate-50 hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] font-bold py-2 rounded-xl text-[10px] text-center flex items-center justify-center gap-1 transition-all"
                       >
                         <ShoppingCart size={12} className="text-[#64748B]" />
                         <span>Add to Cart</span>
                       </button>
-                      <Link
-                        href={`/textbooks/store/checkout?bookId=${bookItem.id}`}
+                      <button
+                        onClick={() => {
+                          setSelectedBookForPurchase(bookItem);
+                          setPurchaseFormat(null);
+                          setModalMode("buy");
+                        }}
                         className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2 rounded-xl text-[10px] text-center flex items-center justify-center gap-1 transition-all active:scale-98"
                       >
                         <ShoppingBag size={12} />
                         <span>Buy Now</span>
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -500,21 +564,27 @@ export default function BookstorePage() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => {
-                        handleAddToCart(selectedBookForPreview);
+                        setSelectedBookForPurchase(selectedBookForPreview);
                         setSelectedBookForPreview(null);
+                        setPurchaseFormat(null);
+                        setModalMode("cart");
                       }}
                       className="bg-slate-50 hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1 transition-all"
                     >
                       <ShoppingCart size={14} className="text-[#64748B]" />
                       <span>Add to Cart</span>
                     </button>
-                    <Link
-                      href={`/textbooks/store/checkout?bookId=${selectedBookForPreview.id}`}
-                      onClick={() => setSelectedBookForPreview(null)}
+                    <button
+                      onClick={() => {
+                        setSelectedBookForPurchase(selectedBookForPreview);
+                        setSelectedBookForPreview(null);
+                        setPurchaseFormat(null);
+                        setModalMode("buy");
+                      }}
                       className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-extrabold text-xs py-2.5 rounded-xl shadow transition-all block text-center"
                     >
-                      Buy Printed Book
-                    </Link>
+                      Buy Book Options
+                    </button>
                   </div>
                 </div>
               </div>
@@ -641,6 +711,12 @@ export default function BookstorePage() {
                       <span>GST Tax (18%)</span>
                       <span className="text-[#0F172A] font-bold">₹{cartGst}</span>
                     </div>
+                    {isSoftCart && (
+                      <div className="flex justify-between">
+                        <span>Online Processing Fee (2%)</span>
+                        <span className="text-[#0F172A] font-bold">₹{cartOnlineFee}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span>Shipping Charge</span>
                       <span className="text-[#0F172A] font-bold">₹{cartShipping}</span>
@@ -652,7 +728,7 @@ export default function BookstorePage() {
                   </div>
 
                   <Link
-                    href="/textbooks/store/checkout"
+                    href={`/textbooks/store/checkout?format=${cart[0]?.format || 'physical'}&plan=${cart[0]?.plan || 'physical'}`}
                     className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-extrabold text-xs py-3 rounded-xl shadow transition-all block text-center mt-2"
                   >
                     Proceed to Checkout
@@ -661,6 +737,239 @@ export default function BookstorePage() {
               )}
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. BUY OPTIONS SELECTION MODAL */}
+      {selectedBookForPurchase && (
+        <div className="fixed inset-0 z-50 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-[#E2E8F0] rounded-3xl w-full max-w-xl shadow-2xl p-6 relative animate-scaleIn space-y-6">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Choose Purchase Option</h3>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">{selectedBookForPurchase.title}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedBookForPurchase(null);
+                  setPurchaseFormat(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Selector Card Choice */}
+            <div className={`grid gap-4 ${selectedBookForPurchase?.id === "1" ? "grid-cols-1 max-w-xs mx-auto" : "grid-cols-2"}`}>
+              <div
+                onClick={() => setPurchaseFormat("physical")}
+                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
+                  purchaseFormat === "physical"
+                    ? "border-fuchsia-600 bg-fuchsia-50/20"
+                    : "border-slate-200"
+                }`}
+              >
+                <ShoppingBag size={24} className={purchaseFormat === "physical" ? "text-fuchsia-600" : "text-slate-400"} />
+                <span className="text-xs font-bold text-slate-900">Physical Copy</span>
+                <span className="text-[10px] text-slate-500 font-medium text-center">Printed textbook delivered by parcel. Shipping charges apply.</span>
+              </div>
+
+              {selectedBookForPurchase?.id !== "1" && (
+                <div
+                  onClick={() => setPurchaseFormat("soft")}
+                  className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
+                    purchaseFormat === "soft"
+                      ? "border-fuchsia-600 bg-fuchsia-50/20"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <BookOpen size={24} className={purchaseFormat === "soft" ? "text-fuchsia-600" : "text-slate-400"} />
+                  <span className="text-xs font-bold text-slate-900">Soft Copy & Portal</span>
+                  <span className="text-[10px] text-slate-500 font-medium text-center">Read online in student portal with screenshot blocking. GST & online fees apply.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Soft Copy Sub-plans */}
+            {purchaseFormat === "soft" && (
+              <div className="space-y-4 bg-slate-50/70 p-4 border border-slate-100 rounded-2xl animate-fadeIn">
+                <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Plan Package</span>
+                
+                <div className="space-y-2.5">
+                  <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
+                    <input
+                      type="radio"
+                      name="softPlan"
+                      checked={selectedSoftOption === "book_only"}
+                      onChange={() => setSelectedSoftOption("book_only")}
+                      className="accent-fuchsia-600"
+                    />
+                    <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
+                      <span>Book Only</span>
+                      <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_only", selectedBookForPurchase?.id)}</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
+                    <input
+                      type="radio"
+                      name="softPlan"
+                      checked={selectedSoftOption === "caselet"}
+                      onChange={() => setSelectedSoftOption("caselet")}
+                      className="accent-fuchsia-600"
+                    />
+                    <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
+                      <span>Caselet Only</span>
+                      <span className="text-fuchsia-600">₹{getSoftCopyPrice("caselet", selectedBookForPurchase?.id)}</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
+                    <input
+                      type="radio"
+                      name="softPlan"
+                      checked={selectedSoftOption === "book_caselet"}
+                      onChange={() => setSelectedSoftOption("book_caselet")}
+                      className="accent-fuchsia-600"
+                    />
+                    <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
+                      <span>Book + Caselet</span>
+                      <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_caselet", selectedBookForPurchase?.id)}</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
+                    <input
+                      type="radio"
+                      name="softPlan"
+                      checked={selectedSoftOption === "book_portal"}
+                      onChange={() => setSelectedSoftOption("book_portal")}
+                      className="accent-fuchsia-600"
+                    />
+                    <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
+                      <span>Book + Portal Access</span>
+                      <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_portal", selectedBookForPurchase?.id)}</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
+                    <input
+                      type="radio"
+                      name="softPlan"
+                      checked={selectedSoftOption === "book_caselet_portal"}
+                      onChange={() => setSelectedSoftOption("book_caselet_portal")}
+                      className="accent-fuchsia-600"
+                    />
+                    <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
+                      <span>Book + Caselet + Portal</span>
+                      <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_caselet_portal", selectedBookForPurchase?.id)}</span>
+                    </div>
+                  </label>
+
+                  <div className="border-t border-slate-200 pt-2.5">
+                    <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
+                      <input
+                        type="radio"
+                        name="softPlan"
+                        checked={selectedSoftOption === "only_portal"}
+                        onChange={() => setSelectedSoftOption("only_portal")}
+                        className="accent-fuchsia-600"
+                      />
+                      <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
+                        <span>Only Portal Access</span>
+                        <span className="text-fuchsia-500/40 text-[10px] font-medium">Customize features below</span>
+                      </div>
+                    </label>
+
+                    {selectedSoftOption === "only_portal" && (
+                      <div className="mt-2 pl-6 space-y-2 animate-fadeIn bg-white/70 p-3 rounded-2xl border border-slate-100/80">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                          <input
+                            type="radio"
+                            name="portalOnlyType"
+                            checked={selectedPortalOnlyOption === "complete"}
+                            onChange={() => setSelectedPortalOnlyOption("complete")}
+                            className="accent-fuchsia-600"
+                          />
+                          <div className="flex-1 flex justify-between">
+                            <span>Complete Portal</span>
+                            <span className="text-fuchsia-600">₹{getSoftCopyPrice("complete", selectedBookForPurchase?.id)}</span>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                          <input
+                            type="radio"
+                            name="portalOnlyType"
+                            checked={selectedPortalOnlyOption === "placements"}
+                            onChange={() => setSelectedPortalOnlyOption("placements")}
+                            className="accent-fuchsia-600"
+                          />
+                          <div className="flex-1 flex justify-between">
+                            <span>Placements Feature Only</span>
+                            <span className="text-fuchsia-600">₹{getSoftCopyPrice("placements", selectedBookForPurchase?.id)}</span>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                          <input
+                            type="radio"
+                            name="portalOnlyType"
+                            checked={selectedPortalOnlyOption === "practice"}
+                            onChange={() => setSelectedPortalOnlyOption("practice")}
+                            className="accent-fuchsia-600"
+                          />
+                          <div className="flex-1 flex justify-between">
+                            <span>Coding Practice Questions Only</span>
+                            <span className="text-fuchsia-600">₹{getSoftCopyPrice("practice", selectedBookForPurchase?.id)}</span>
+                          </div>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Button */}
+            <div className="pt-3 border-t border-slate-100 flex gap-2">
+              <button
+                onClick={() => {
+                  setSelectedBookForPurchase(null);
+                  setPurchaseFormat(null);
+                }}
+                className="flex-1 py-2.5 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold transition-all text-center"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!purchaseFormat}
+                onClick={() => {
+                  if (!selectedBookForPurchase) return;
+                  const finalPlan = purchaseFormat === "physical" 
+                    ? "physical" 
+                    : (selectedSoftOption === "only_portal" ? selectedPortalOnlyOption : selectedSoftOption);
+                  
+                  if (modalMode === "cart") {
+                    let finalPrice = selectedBookForPurchase.price;
+                    if (purchaseFormat === "soft") {
+                      finalPrice = getSoftCopyPrice(finalPlan, selectedBookForPurchase.id);
+                    }
+                    handleAddToCart(selectedBookForPurchase, purchaseFormat || "physical", finalPlan, finalPrice);
+                    setSelectedBookForPurchase(null);
+                    setPurchaseFormat(null);
+                  } else {
+                    router.push(`/textbooks/store/checkout?bookId=${selectedBookForPurchase.id}&format=${purchaseFormat}&plan=${finalPlan}`);
+                  }
+                }}
+                className="flex-grow py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg transition-all text-center"
+              >
+                {modalMode === "cart" ? "Add to Cart" : "Proceed to Checkout"}
+              </button>
+            </div>
+
           </div>
         </div>
       )}

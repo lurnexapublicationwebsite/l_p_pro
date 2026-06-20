@@ -92,7 +92,10 @@ export async function POST(req: Request) {
         cashfree_order_id: orderId,
         cashfree_payment_id: transactionId,
         payment_status: "PAID",
-        order_status: "CONFIRMED"
+        order_status: "CONFIRMED",
+        purchase_format: tags.purchase_format || (shippingAddress === "Soft Copy Access" ? "soft" : "physical"),
+        purchase_plan: tags.purchase_plan || "physical",
+        access_id: tags.access_id || ""
       };
 
       // Insert order details
@@ -130,6 +133,25 @@ export async function POST(req: Request) {
           orderObj.order_status
         ]
       );
+
+      if (tags.purchase_format === "upgrade" || tags.purchase_plan === "complete") {
+        await pool.query(
+          `UPDATE textbooks_users SET plan = 'complete' WHERE mobile_number = $1`,
+          [customerPhone]
+        );
+      }
+
+      const accessId = tags.access_id || "";
+      const plan = tags.purchase_plan || "physical";
+      if (accessId) {
+        // Pre-approve the access ID (unassigned)
+        await pool.query(
+          `INSERT INTO textbooks_allowed_access_ids (access_id, book_id, role, assigned_to, plan)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (access_id) DO UPDATE SET plan = EXCLUDED.plan`,
+          [accessId, bookId, 'student', null, plan]
+        );
+      }
 
       // Send emails
       sendOrderConfirmationEmails(orderObj).catch(err => {

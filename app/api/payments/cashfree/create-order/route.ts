@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { pool } from "@/lib/dbPool";
+import { getBookCode } from "@/lib/dbClient";
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +22,10 @@ export async function POST(req: Request) {
       gstAmount,
       shippingAmount,
       quantity = 1,
-      subtotal
+      subtotal,
+      format,
+      plan,
+      collegeCode
     } = body;
 
     // Validate billing details
@@ -29,6 +34,30 @@ export async function POST(req: Request) {
     }
 
     const orderId = `LURN_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+    // Generate sequential Access ID on the server
+    let finalAccessId = "";
+    if (format === "soft" || plan !== "physical") {
+      const subjectCode = getBookCode(bookId) || "GEN";
+      const cleanCollegeCode = (collegeCode && collegeCode !== "others") ? collegeCode.toUpperCase() : "OT";
+      const prefix = `LS${subjectCode}${cleanCollegeCode}`;
+
+      // Query database for matching IDs to get next sequence number
+      const existingRes = await pool.query(
+        `SELECT access_id FROM textbooks_allowed_access_ids 
+         WHERE UPPER(access_id) LIKE $1`,
+        [`${prefix}%`]
+      );
+
+      const matches = existingRes.rows.map(row => {
+        const numPart = row.access_id.slice(prefix.length);
+        const parsed = parseInt(numPart, 10);
+        return isNaN(parsed) ? 0 : parsed;
+      });
+
+      const nextNum = matches.length > 0 ? Math.max(...matches) + 1 : 26001;
+      finalAccessId = `${prefix}${nextNum}`;
+    }
 
     const appId = process.env.CASHFREE_APP_ID;
     const secretKey = process.env.CASHFREE_SECRET_KEY;
@@ -43,7 +72,10 @@ export async function POST(req: Request) {
     const host = headers.get("host") || "localhost:3000";
     // Cashfree Production environment strictly requires HTTPS for return_url
     const protocol = env.toUpperCase() === "PRODUCTION" ? "https" : (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
-    const returnUrl = `${protocol}://${host}/textbooks/store/checkout?order_id={order_id}&bookId=${bookId}`;
+    let returnUrl = `${protocol}://${host}/textbooks/store/checkout?order_id={order_id}&bookId=${bookId}`;
+    if (format === "upgrade") {
+      returnUrl = `${protocol}://${host}/textbooks/portal/login?order_id={order_id}`;
+    }
 
     // Call Cashfree API directly to create the order
     const cashfreeUrl = env.toUpperCase() === "PRODUCTION"
@@ -73,18 +105,19 @@ export async function POST(req: Request) {
         },
         order_tags: {
           book_id: bookId,
-          book_title: bookTitle,
           quantity: String(quantity),
           shipping_address: shippingAddress,
           city: city || "",
           state: state || "",
-          country: country || "India",
           postal_code: postalCode,
           subtotal: String(subtotal || price),
           discount_amount: String(discountAmount || 0),
           gst_amount: String(gstAmount || 0),
           shipping_amount: String(shippingAmount || 0),
-          coupon_code: couponCode || ""
+          coupon_code: couponCode || "",
+          purchase_format: format || "physical",
+          purchase_plan: plan || "physical",
+          access_id: finalAccessId || ""
         }
       })
     });

@@ -18,9 +18,16 @@ import {
   Globe,
   Tag,
   Minus,
-  Plus
+  Plus,
+  Copy,
+  Check,
+  Sparkles,
+  Compass,
+  Truck,
+  Receipt
 } from "lucide-react";
 import Link from "next/link";
+import { getColleges, createUser, getAllUsers, getBookCode, TextbookUser, College, getAllAccessIds, setStorageItem, AllowedAccessId, getCoupons, initDb, Coupon } from "@/lib/dbClient";
 
 const getShippingCost = (pincode: string): number => {
   const cleanPin = (pincode || "").trim();
@@ -38,6 +45,31 @@ const getShippingCost = (pincode: string): number => {
     return 80; // Rest of South India (Karnataka, TN, Kerala)
   }
   return 120; // Rest of India (North, East, West)
+};
+
+const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  let price = 399;
+  switch (plan) {
+    case "book_only": price = 230; break;
+    case "caselet": price = 60; break;
+    case "book_caselet": price = 265; break;
+    case "book_portal": price = 399; break;
+    case "book_caselet_portal": price = 449; break;
+    case "complete": price = 200; break;
+    case "placements": price = 150; break;
+    case "practice": price = 80; break;
+    default: price = 399;
+  }
+  if (bookId === "2" || bookId === "3") {
+    if (bookId === "3") {
+      if (plan === "book_only") return 300;
+      if (plan === "book_caselet") return 335;
+      if (plan === "book_portal") return 469;
+      if (plan === "book_caselet_portal") return 519;
+    }
+    return price + 20;
+  }
+  return price;
 };
 
 interface TextbookDetails {
@@ -120,6 +152,7 @@ function CheckoutContent() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [quantity, setQuantity] = useState(1);
   const [quantityInput, setQuantityInput] = useState("1");
+  const [copied, setCopied] = useState(false);
 
   // Multi-item cart checkout configurations
   const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>([]);
@@ -136,11 +169,37 @@ function CheckoutContent() {
   const [formPostalCode, setFormPostalCode] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // College list & custom entry
+  const [collegesList, setCollegesList] = useState<College[]>([]);
+  const [selectedCollegeCode, setSelectedCollegeCode] = useState("");
+  const [customCollegeName, setCustomCollegeName] = useState("");
+  const [generatedAccessId, setGeneratedAccessId] = useState("");
+
+  const format = searchParams.get("format") || "physical";
+  const plan = searchParams.get("plan") || "physical";
+
   // Coupon state
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState("");
   const [couponSuccess, setCouponSuccess] = useState("");
   const [couponError, setCouponError] = useState("");
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
+
+  useEffect(() => {
+    initDb();
+    fetch("/api/textbooks/db/sync")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.coupons) {
+          setAvailableCoupons(data.coupons);
+        } else {
+          setAvailableCoupons(getCoupons());
+        }
+      })
+      .catch(() => {
+        setAvailableCoupons(getCoupons());
+      });
+  }, []);
 
   const [confirmAddressChecked, setConfirmAddressChecked] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -181,14 +240,15 @@ function CheckoutContent() {
     if (orderIdFromUrl) {
       verifyOrderPayment(orderIdFromUrl);
     }
+    setCollegesList(getColleges());
 
     const hasBookId = !!bookId;
     if (hasBookId) {
       const selected = PUBLISHED_BOOKS.find((b) => b.id === bookId) || PUBLISHED_BOOKS[0];
       setBook(selected);
-      let coverImg = "/published_books/covers/minerals.jpg";
-      if (selected.id === "2") coverImg = "/published_books/covers/ml.png";
-      if (selected.id === "3") coverImg = "/published_books/covers/dbms.jpeg";
+      let coverImg = "/portal_coverpages/minerals.jpg";
+      if (selected.id === "2") coverImg = "/portal_coverpages/ml.png";
+      if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
 
       setCheckoutItems([{
         id: selected.id,
@@ -232,6 +292,56 @@ function CheckoutContent() {
     }
   }, [formPostalCode]);
 
+  const registerPurchasedPortalUser = (
+    name: string,
+    email: string,
+    phone: string,
+    collegeName: string,
+    collegeCode: string,
+    bookId: string,
+    planStr: string,
+    existingAccessId?: string
+  ) => {
+    // Generate Access ID
+    let generatedId = existingAccessId;
+    if (!generatedId) {
+      const subjectCode = getBookCode(bookId) || "GEN";
+      const cleanCollegeCode = (collegeCode && collegeCode !== "others") ? collegeCode.toUpperCase() : "OT";
+      const randomDigits = Math.floor(10000 + Math.random() * 90000);
+      generatedId = `LS${subjectCode}${cleanCollegeCode}${randomDigits}`;
+    }
+
+    // Create textbook user mapping
+    const newUser: TextbookUser = {
+      name: name,
+      mobileNumber: phone,
+      bookId: bookId,
+      role: 'student',
+      collegeName: collegeName,
+      collegeEmail: email,
+      isActive: true,
+      accessId: generatedId,
+      plan: planStr as any,
+      purchasedBooks: [bookId]
+    };
+
+    // Pre-approve Access ID in allowed_access_ids first so createUser validation passes
+    const allowedIds = getAllAccessIds();
+    if (!allowedIds.some((item: AllowedAccessId) => item.accessId.toUpperCase() === generatedId!.toUpperCase())) {
+      allowedIds.push({
+        accessId: generatedId!,
+        bookId: bookId,
+        role: 'student',
+        collegeCode: (collegeCode && collegeCode !== "others") ? collegeCode.toUpperCase() : "OT"
+      });
+      setStorageItem('lurnexa_allowed_access_ids', allowedIds);
+    }
+
+    // Save to database
+    createUser(newUser);
+    return generatedId;
+  };
+
   const verifyOrderPayment = async (orderId: string) => {
     setVerifyingOrder(true);
     setErrorMsg("");
@@ -250,6 +360,10 @@ function CheckoutContent() {
         setStep(3);
         // Clean cart on success
         localStorage.removeItem("lurnexa_store_cart");
+
+        if (data.order?.access_id) {
+          setGeneratedAccessId(data.order.access_id);
+        }
       } else {
         setVerificationFailed(true);
         setErrorMsg(data.message || "Payment transaction was declined or not completed.");
@@ -268,10 +382,22 @@ function CheckoutContent() {
     if (!formName.trim()) errors.name = "Full name is required.";
     if (!formEmail.trim() || !/\S+@\S+\.\S+/.test(formEmail)) errors.email = "A valid email address is required.";
     if (!formPhone.trim() || !/^\d{10}$/.test(formPhone.replace(/\D/g, ""))) errors.phone = "A valid 10-digit mobile number is required.";
+    
+    // College validation
+    if (!selectedCollegeCode) {
+      errors.college = "College Name is required.";
+    } else if (selectedCollegeCode === "others" && !customCollegeName.trim()) {
+      errors.college = "Custom College Name is required.";
+    }
+
+    // Address validation for all checkouts
     if (!formAddress.trim()) errors.address = "Complete shipping address is required.";
     if (!formCity.trim()) errors.city = "City is required.";
     if (!formState.trim()) errors.state = "State is required.";
     if (!formCountry.trim()) errors.country = "Country is required.";
+    if (formCountry.trim().toLowerCase() !== "india") {
+      errors.country = "Shipping is only available within India.";
+    }
     if (!formPostalCode.trim() || !/^\d{6}$/.test(formPostalCode.trim())) {
       errors.postalCode = "Please enter a valid 6-digit Postal/Pincode.";
     }
@@ -282,6 +408,9 @@ function CheckoutContent() {
     }
 
     setFormErrors({});
+
+
+
     setStep(2);
   };
 
@@ -294,7 +423,44 @@ function CheckoutContent() {
       return;
     }
 
+    // Dynamic Coupon Check
+    const matchedCoupon = availableCoupons.find(c => c.code.toUpperCase() === code);
+    if (matchedCoupon) {
+      const targetBookId = matchedCoupon.bookId;
+      const hasMatchedBook = checkoutItems.some(item => item.id === targetBookId);
+      if (!hasMatchedBook) {
+        setCouponError(`This coupon is only valid for a specific textbook in the store.`);
+        return;
+      }
+
+      const applicableFormat = matchedCoupon.applicableFormat || 'both';
+      if (applicableFormat === 'soft' && format !== 'soft') {
+        setCouponError("This coupon code is only applicable for the Soft Copy format.");
+        return;
+      }
+      if (applicableFormat === 'physical' && format !== 'physical') {
+        setCouponError("This coupon code is only applicable for the Hard Copy format.");
+        return;
+      }
+
+      setAppliedCoupon(code);
+      setCouponSuccess(`Coupon applied! ${matchedCoupon.discountPercentage}% discount on the applicable textbook.`);
+      return;
+    }
+
     const hasMinerals = checkoutItems.some(item => item.id === "1");
+    const isMineralsCoupon = code === "LP_BVK_MINERAL_26";
+
+    if (isMineralsCoupon) {
+      if (!hasMinerals) {
+        setCouponError("This coupon is only valid for the Minerals book.");
+        return;
+      }
+      setAppliedCoupon(code);
+      setCouponSuccess("Coupon applied! 10% discount on Minerals book.");
+      return;
+    }
+
     if (hasMinerals) {
       setCouponError("Coupons cannot be applied to orders containing the Minerals book.");
       return;
@@ -319,7 +485,7 @@ function CheckoutContent() {
         return;
       }
       setAppliedCoupon(code);
-      setCouponSuccess("Coupon applied! 10% discount on Machine Learning textbook.");
+      setCouponSuccess(`Coupon applied! ${format === "soft" ? "4%" : "10%"} discount on Machine Learning textbook.`);
     } else if (isDBMSCoupon) {
       const hasDBMSBook = checkoutItems.some(item => item.id === "3");
       if (!hasDBMSBook) {
@@ -327,7 +493,7 @@ function CheckoutContent() {
         return;
       }
       setAppliedCoupon(code);
-      setCouponSuccess("Coupon applied! 10% discount on Database Management Systems textbook.");
+      setCouponSuccess(`Coupon applied! ${format === "soft" ? "4%" : "10%"} discount on Database Management Systems textbook.`);
     } else {
       setCouponError("Invalid coupon code.");
     }
@@ -354,39 +520,108 @@ function CheckoutContent() {
     setIsProcessingPayment(true);
     setErrorMsg("");
 
-    const itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    let itemSubtotal = 0;
     let discount = 0;
-    const isMLCoupon = [
-      "LURNEXA-ML-BL26-PALLAVI",
-      "LURNEXA-ML-BL26-BALAJI",
-      "LURNEXA-ML-BL26-SARITHA"
-    ].includes((appliedCoupon || "").toUpperCase());
+    let gstVal = 0;
+    let shippingVal = 0;
+    let onlineFeeVal = 0;
+    let totalAmount = 0;
 
-    const isDBMSCoupon = [
-      "LURNEXA-DBMS-BL26-PALLAVI",
-      "LURNEXA-DBMS-BL26-BALAJI",
-      "LURNEXA-DBMS-BL26-SARITHA"
-    ].includes((appliedCoupon || "").toUpperCase());
+    if (format === "soft") {
+      const qty = isCartCheckout ? checkoutItems.reduce((acc, i) => acc + i.quantity, 0) : quantity;
+      itemSubtotal = getSoftCopyPrice(plan, isCartCheckout ? checkoutItems[0]?.id : bookId) * qty;
 
-    const hasMinerals = checkoutItems.some(item => item.id === "1");
-    if (!hasMinerals) {
-      if (isMLCoupon) {
-        const mlItem = checkoutItems.find(item => item.id === "2");
-        if (mlItem) {
-          discount = Math.round((mlItem.price * mlItem.quantity) * 0.10);
+      // Check dynamic coupon first
+      const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
+      if (dynamicCoupon && (dynamicCoupon.applicableFormat === 'both' || dynamicCoupon.applicableFormat === 'soft')) {
+        const targetBookId = dynamicCoupon.bookId;
+        const targetItem = checkoutItems.find(item => item.id === targetBookId) || (isCartCheckout ? undefined : { id: bookId, quantity });
+        if (targetItem) {
+          discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (dynamicCoupon.discountPercentage / 100));
         }
-      } else if (isDBMSCoupon) {
-        const dbmsItem = checkoutItems.find(item => item.id === "3");
-        if (dbmsItem) {
-          discount = Math.round((dbmsItem.price * dbmsItem.quantity) * 0.10);
+      } else {
+        const isMLCoupon = [
+          "LURNEXA-ML-BL26-PALLAVI",
+          "LURNEXA-ML-BL26-BALAJI",
+          "LURNEXA-ML-BL26-SARITHA"
+        ].includes((appliedCoupon || "").toUpperCase());
+
+        const isDBMSCoupon = [
+          "LURNEXA-DBMS-BL26-PALLAVI",
+          "LURNEXA-DBMS-BL26-BALAJI",
+          "LURNEXA-DBMS-BL26-SARITHA"
+        ].includes((appliedCoupon || "").toUpperCase());
+
+        if (isMLCoupon) {
+          const mlItem = checkoutItems.find(item => item.id === "2");
+          if (mlItem) {
+            discount = Math.round((getSoftCopyPrice(plan, mlItem.id) * mlItem.quantity) * 0.04);
+          }
+        } else if (isDBMSCoupon) {
+          const dbmsItem = checkoutItems.find(item => item.id === "3");
+          if (dbmsItem) {
+            discount = Math.round((getSoftCopyPrice(plan, dbmsItem.id) * dbmsItem.quantity) * 0.04);
+          }
         }
       }
-    }
 
-    const bookCostAfterDiscount = itemSubtotal - discount;
-    const gstVal = 0;
-    const shippingVal = getShippingCost(formPostalCode);
-    const totalAmount = bookCostAfterDiscount + gstVal + shippingVal;
+      const itemCostAfterDiscount = itemSubtotal - discount;
+      gstVal = Math.round(itemCostAfterDiscount * 0.18);
+      onlineFeeVal = Math.round((itemCostAfterDiscount + gstVal) * 0.02);
+      totalAmount = itemCostAfterDiscount + gstVal + onlineFeeVal;
+      itemSubtotal = itemCostAfterDiscount;
+    } else {
+      itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+      // Check dynamic coupon first
+      const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
+      if (dynamicCoupon && (dynamicCoupon.applicableFormat === 'both' || dynamicCoupon.applicableFormat === 'physical')) {
+        const targetBookId = dynamicCoupon.bookId;
+        const targetItem = checkoutItems.find(item => item.id === targetBookId);
+        if (targetItem) {
+          discount = Math.round((targetItem.price * targetItem.quantity) * (dynamicCoupon.discountPercentage / 100));
+        }
+      } else {
+        const isMLCoupon = [
+          "LURNEXA-ML-BL26-PALLAVI",
+          "LURNEXA-ML-BL26-BALAJI",
+          "LURNEXA-ML-BL26-SARITHA"
+        ].includes((appliedCoupon || "").toUpperCase());
+
+        const isDBMSCoupon = [
+          "LURNEXA-DBMS-BL26-PALLAVI",
+          "LURNEXA-DBMS-BL26-BALAJI",
+          "LURNEXA-DBMS-BL26-SARITHA"
+        ].includes((appliedCoupon || "").toUpperCase());
+
+        const isMineralsCoupon = (appliedCoupon || "").toUpperCase() === "LP_BVK_MINERAL_26";
+
+        const hasMinerals = checkoutItems.some(item => item.id === "1");
+        if (isMineralsCoupon && hasMinerals) {
+          const minItem = checkoutItems.find(item => item.id === "1");
+          if (minItem) {
+            discount = Math.round((minItem.price * minItem.quantity) * 0.10);
+          }
+        } else if (!hasMinerals) {
+          if (isMLCoupon) {
+            const mlItem = checkoutItems.find(item => item.id === "2");
+            if (mlItem) {
+              discount = Math.round((mlItem.price * mlItem.quantity) * 0.10);
+            }
+          } else if (isDBMSCoupon) {
+            const dbmsItem = checkoutItems.find(item => item.id === "3");
+            if (dbmsItem) {
+              discount = Math.round((dbmsItem.price * dbmsItem.quantity) * 0.10);
+            }
+          }
+        }
+      }
+
+      const bookCostAfterDiscount = itemSubtotal - discount;
+      shippingVal = getShippingCost(formPostalCode) || 50;
+      totalAmount = bookCostAfterDiscount + shippingVal;
+      itemSubtotal = bookCostAfterDiscount;
+    }
 
     try {
       const res = await fetch("/api/payments/cashfree/create-order", {
@@ -401,17 +636,20 @@ function CheckoutContent() {
           customerName: formName,
           customerEmail: formEmail,
           customerPhone: formPhone,
-          shippingAddress: formAddress,
-          city: formCity,
-          state: formState,
-          country: formCountry,
-          postalCode: formPostalCode,
+          shippingAddress: format === "soft" ? "Soft Copy Access" : formAddress,
+          city: format === "soft" ? "Online" : formCity,
+          state: format === "soft" ? "Online" : formState,
+          country: format === "soft" ? "India" : formCountry,
+          postalCode: format === "soft" ? "000000" : formPostalCode,
           couponCode: appliedCoupon,
           discountAmount: discount,
           gstAmount: gstVal,
           shippingAmount: shippingVal,
-          subtotal: bookCostAfterDiscount,
-          quantity: isCartCheckout ? checkoutItems.reduce((acc, i) => acc + i.quantity, 0) : quantity
+          subtotal: itemSubtotal,
+          quantity: isCartCheckout ? checkoutItems.reduce((acc, i) => acc + i.quantity, 0) : quantity,
+          format: format,
+          plan: plan,
+          collegeCode: selectedCollegeCode
         })
       });
 
@@ -448,64 +686,224 @@ function CheckoutContent() {
 
   // 1. ORDER CONFIRMATION SCREEN
   if (verificationSuccess && verifiedOrderDetails) {
+    const isSoftCopy = format === "soft" || verifiedOrderDetails.shipping_address === "Soft Copy Access";
+
+    const copyToClipboard = () => {
+      if (generatedAccessId) {
+        navigator.clipboard.writeText(generatedAccessId);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    };
+
     return (
-      <div className="max-w-xl mx-auto bg-white border border-[#E2E8F0] rounded-2xl p-8 shadow-md text-center space-y-6 mt-10">
-        <div className="h-16 w-16 bg-[#E6F4EA] text-[#10B981] rounded-full flex items-center justify-center mx-auto border border-[#10B981]/25 shadow-sm">
-          <CheckCircle2 size={32} />
-        </div>
-        <div className="space-y-2">
-          <span className="text-[10px] text-[#10B981] font-extrabold uppercase tracking-widest bg-[#E6F4EA] px-2.5 py-1 rounded-md border border-[#10B981]/25">
-            Payment Successful
-          </span>
-          <h2 className="text-2xl font-extrabold text-[#0F172A] tracking-tight">Order Confirmed</h2>
-          <p className="text-xs text-[#64748B] max-w-sm mx-auto leading-relaxed">
-            Thank you for your purchase. Your printed copy is now being prepared for shipment.
-          </p>
-        </div>
+      <div className="max-w-2xl mx-auto my-8 sm:my-12 px-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
+        <div className="relative overflow-hidden bg-white border border-slate-100 rounded-3xl shadow-2xl p-6 sm:p-10 text-center space-y-8">
+          
+          {/* Subtle Decorative Background Glows */}
+          <div className={`absolute -top-24 -left-24 w-48 h-48 rounded-full blur-3xl opacity-20 ${isSoftCopy ? 'bg-fuchsia-500' : 'bg-emerald-500'}`} />
+          <div className={`absolute -bottom-24 -right-24 w-48 h-48 rounded-full blur-3xl opacity-20 ${isSoftCopy ? 'bg-indigo-500' : 'bg-teal-500'}`} />
 
-        <div className="bg-slate-50 p-5 rounded-xl border border-[#E2E8F0] text-left text-xs space-y-3 font-semibold text-slate-700">
-          <div className="flex justify-between border-b border-slate-200 pb-2">
-            <span>Order Number</span>
-            <span className="text-[#0F172A] font-bold">{verifiedOrderDetails.order_id}</span>
+          {/* Icon Badge */}
+          <div className="relative">
+            <div className={`h-20 w-20 mx-auto rounded-2xl flex items-center justify-center shadow-lg border transform hover:scale-105 transition-all duration-300 ${
+              isSoftCopy 
+                ? 'bg-fuchsia-50 border-fuchsia-100 text-fuchsia-600 shadow-fuchsia-100/50' 
+                : 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-emerald-100/50'
+            }`}>
+              {isSoftCopy ? <Sparkles size={38} className="animate-pulse" /> : <Truck size={38} />}
+            </div>
+            <span className={`absolute bottom-0 right-[42%] translate-x-1.5 translate-y-1 h-6 w-6 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold ${
+              isSoftCopy ? 'bg-fuchsia-600' : 'bg-emerald-600'
+            }`}>
+              ✓
+            </span>
           </div>
-          <div className="flex justify-between border-b border-slate-200 pb-2">
-            <span>Transaction ID</span>
-            <span className="text-[#0F172A] font-mono font-bold text-right truncate pl-4">{verifiedOrderDetails.cashfree_payment_id || 'CF_MOCK_TXN'}</span>
-          </div>
-          <div className="flex justify-between border-b border-slate-200 pb-2">
-            <span>Book Purchased</span>
-            <span className="text-[#0F172A] font-bold text-right truncate pl-4">{book?.title || "Multiple Items"}</span>
-          </div>
-          <div className="flex justify-between border-b border-slate-200 pb-2">
-            <span>Quantity</span>
-            <span className="text-[#0F172A] font-bold">{verifiedOrderDetails.quantity || 1}</span>
-          </div>
-          <div className="flex justify-between border-b border-slate-200 pb-2">
-            <span>Total Paid</span>
-            <span className="text-fuchsia-600 font-bold">₹{verifiedOrderDetails.amount}</span>
-          </div>
-          <div className="flex justify-between pb-1">
-            <span>Tracking Status</span>
-            <span className="text-[#10B981] font-bold bg-[#E6F4EA] px-2 py-0.5 rounded">PREPARING FOR SHIPMENT</span>
-          </div>
-        </div>
 
-        <div className="bg-slate-50 p-5 rounded-xl border border-[#E2E8F0] text-left text-xs space-y-1.5 text-slate-700 font-semibold">
-          <p className="text-[#0F172A] font-bold mb-1 uppercase tracking-wider text-[10px]">Shipping Address</p>
-          <p className="text-[#64748B] leading-relaxed">
-            {verifiedOrderDetails.customer_name}<br/>
-            {verifiedOrderDetails.shipping_address}<br/>
-            {verifiedOrderDetails.city}, {verifiedOrderDetails.state}, {verifiedOrderDetails.country} - {verifiedOrderDetails.shipping_pincode}
-          </p>
-        </div>
+          {/* Header */}
+          <div className="space-y-3">
+            <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-full border ${
+              isSoftCopy 
+                ? 'bg-fuchsia-50/70 text-fuchsia-700 border-fuchsia-200/50' 
+                : 'bg-emerald-50/70 text-emerald-700 border-emerald-200/50'
+            }`}>
+              Payment Successful
+            </span>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              {isSoftCopy ? "Portal Access Activated!" : "Your Textbook Order is Placed!"}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+              {isSoftCopy 
+                ? "Your digital textbook access plan has been successfully activated. Grab your Access ID below to start learning immediately."
+                : "Thank you for supporting Lurnexa Publications! Your printed book is being prepared and will ship to your address shortly."}
+            </p>
+          </div>
 
-        <div className="pt-2">
-          <Link
-            href="/textbooks/store"
-            className="w-full inline-block bg-[#0F172A] hover:bg-slate-850 text-white font-bold text-sm py-3 rounded-xl shadow-sm transition-all text-center"
-          >
-            Return to Bookstore
-          </Link>
+          {/* Soft Copy Special Action Box */}
+          {isSoftCopy && generatedAccessId && (
+            <div className="bg-gradient-to-br from-indigo-50/80 via-fuchsia-50/50 to-white p-6 rounded-2xl border border-indigo-100/60 text-left space-y-4 shadow-sm relative overflow-hidden">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-indigo-600 font-extrabold uppercase tracking-widest">Digital Entry Ticket</span>
+                  <h4 className="text-sm font-bold text-slate-800">Your Student Access ID</h4>
+                </div>
+                <button
+                  onClick={copyToClipboard}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm ${
+                    copied 
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+                      : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50/50'
+                  }`}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? "Copied" : "Copy ID"}
+                </button>
+              </div>
+
+              {/* Huge Access ID Display */}
+              <div className="bg-white/80 backdrop-blur-sm border border-indigo-100 rounded-xl px-5 py-4 flex items-center justify-between shadow-inner">
+                <span className="font-mono text-2xl font-black text-indigo-600 tracking-wider select-all">{generatedAccessId}</span>
+                <span className="bg-indigo-650 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-bounce">Active</span>
+              </div>
+
+              <div className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+                💡 <strong>Important Note:</strong> Keep this Access ID safe! You will need to use this Access ID to create your student account in the portal.
+              </div>
+            </div>
+          )}
+
+          {/* Hard Copy Delivery Timeline Progress Tracker */}
+          {!isSoftCopy && (
+            <div className="bg-slate-50/70 p-6 rounded-2xl border border-slate-200/50 text-left space-y-4">
+              <span className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-widest block">Delivery Timeline</span>
+              
+              {/* Tracker visual */}
+              <div className="grid grid-cols-4 gap-2 relative mt-2">
+                <div className="absolute top-[18px] left-[12%] right-[12%] h-0.5 bg-slate-200 z-0" />
+                <div className="absolute top-[18px] left-[12%] w-[25%] h-0.5 bg-emerald-500 z-0" />
+                
+                <div className="flex flex-col items-center text-center z-10">
+                  <div className="h-9 w-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-md shadow-emerald-200">
+                    ✓
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-900 mt-2">Confirmed</span>
+                </div>
+                <div className="flex flex-col items-center text-center z-10">
+                  <div className="h-9 w-9 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center font-bold text-xs shadow-sm">
+                    📦
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-800 mt-2">Preparing</span>
+                </div>
+                <div className="flex flex-col items-center text-center z-10">
+                  <div className="h-9 w-9 rounded-full bg-slate-105 text-slate-400 flex items-center justify-center font-bold text-xs">
+                    🚚
+                  </div>
+                  <span className="text-[10px] font-medium text-slate-400 mt-2">Shipped</span>
+                </div>
+                <div className="flex flex-col items-center text-center z-10">
+                  <div className="h-9 w-9 rounded-full bg-slate-105 text-slate-400 flex items-center justify-center font-bold text-xs">
+                    🏠
+                  </div>
+                  <span className="text-[10px] font-medium text-slate-400 mt-2">Delivered</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Receipt Info Panel */}
+          <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 text-left space-y-3.5">
+            <div className="flex items-center gap-1.5 border-b border-slate-200/60 pb-2.5">
+              <Receipt size={16} className="text-slate-400" />
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Order Summary</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-slate-600">
+              <div className="space-y-3">
+                <div className="flex justify-between border-b border-slate-100/60 pb-1.5">
+                  <span>Order Number</span>
+                  <span className="text-slate-900 font-bold">{verifiedOrderDetails.order_id}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100/60 pb-1.5">
+                  <span>Transaction ID</span>
+                  <span className="text-slate-900 font-mono font-bold truncate pl-2 max-w-[140px]">{verifiedOrderDetails.cashfree_payment_id || 'CF_MOCK_TXN'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100/60 pb-1.5">
+                  <span>Book Title</span>
+                  <span className="text-slate-900 font-bold text-right truncate pl-4 max-w-[140px]" title={book?.title || "Multiple Items"}>{book?.title || "Multiple Items"}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between border-b border-slate-100/60 pb-1.5">
+                  <span>Quantity</span>
+                  <span className="text-slate-900 font-bold">{verifiedOrderDetails.quantity || 1}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100/60 pb-1.5">
+                  <span>Amount Paid</span>
+                  <span className="text-slate-900 font-bold text-fuchsia-600">₹{verifiedOrderDetails.amount}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100/60 pb-1.5">
+                  <span>Access Type</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                    isSoftCopy ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {isSoftCopy ? 'Soft Copy' : 'Printed Book'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Details Card: Portal Registration Info or Shipping Address */}
+          <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 text-left space-y-3">
+            <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest block">
+              {isSoftCopy ? "Portal Registration Credentials" : "Delivery Address Details"}
+            </span>
+
+            <div className="text-xs font-semibold text-slate-700 space-y-1">
+              <p className="text-slate-900 font-extrabold text-sm">{verifiedOrderDetails.customer_name}</p>
+              
+              {isSoftCopy ? (
+                <div className="space-y-1 text-slate-500 font-semibold pt-1">
+                  <div><strong>Email: </strong>{verifiedOrderDetails.customer_email}</div>
+                  <div><strong>Phone: </strong>{verifiedOrderDetails.customer_phone}</div>
+                </div>
+              ) : (
+                <div className="text-slate-500 font-semibold pt-1 leading-relaxed">
+                  {verifiedOrderDetails.shipping_address}<br/>
+                  {verifiedOrderDetails.city}, {verifiedOrderDetails.state}, {verifiedOrderDetails.country} - {verifiedOrderDetails.shipping_pincode}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="pt-2 flex flex-col sm:flex-row gap-4">
+            {isSoftCopy ? (
+              <>
+                <Link
+                  href="/textbooks/portal/signup"
+                  className="flex-1 bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-700 hover:to-fuchsia-700 text-white font-extrabold text-sm py-4 rounded-2xl shadow-lg shadow-indigo-100 hover:shadow-indigo-200 transition-all text-center flex items-center justify-center gap-1.5"
+                >
+                  <Compass size={16} />
+                  Go to Student Signup
+                </Link>
+                <Link
+                  href="/textbooks/store"
+                  className="flex-1 bg-slate-50 hover:bg-slate-105 border border-slate-200 text-slate-800 font-extrabold text-sm py-4 rounded-2xl transition-all text-center"
+                >
+                  Return to Bookstore
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/textbooks/store"
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-sm py-4 rounded-2xl shadow-lg shadow-emerald-100 hover:shadow-emerald-200 transition-all text-center flex items-center justify-center gap-1.5"
+              >
+                Return to Bookstore
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -563,39 +961,108 @@ function CheckoutContent() {
   }
 
   // Checkout price Calculations
-  const itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  let itemSubtotal = 0;
   let discount = 0;
-  const isMLCoupon = [
-    "LURNEXA-ML-BL26-PALLAVI",
-    "LURNEXA-ML-BL26-BALAJI",
-    "LURNEXA-ML-BL26-SARITHA"
-  ].includes((appliedCoupon || "").toUpperCase());
+  let gstVal = 0;
+  let shippingVal = 0;
+  let onlineFeeVal = 0;
+  let totalAmount = 0;
 
-  const isDBMSCoupon = [
-    "LURNEXA-DBMS-BL26-PALLAVI",
-    "LURNEXA-DBMS-BL26-BALAJI",
-    "LURNEXA-DBMS-BL26-SARITHA"
-  ].includes((appliedCoupon || "").toUpperCase());
+  if (format === "soft") {
+    const qty = isCartCheckout ? checkoutItems.reduce((acc, i) => acc + i.quantity, 0) : quantity;
+    itemSubtotal = getSoftCopyPrice(plan, isCartCheckout ? checkoutItems[0]?.id : bookId) * qty;
 
-  const hasMinerals = checkoutItems.some(item => item.id === "1");
-  if (!hasMinerals) {
-    if (isMLCoupon) {
-      const mlItem = checkoutItems.find(item => item.id === "2");
-      if (mlItem) {
-        discount = Math.round((mlItem.price * mlItem.quantity) * 0.10);
+    // Check dynamic coupon first
+    const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
+    if (dynamicCoupon && (dynamicCoupon.applicableFormat === 'both' || dynamicCoupon.applicableFormat === 'soft')) {
+      const targetBookId = dynamicCoupon.bookId;
+      const targetItem = checkoutItems.find(item => item.id === targetBookId) || (isCartCheckout ? undefined : { id: bookId, quantity });
+      if (targetItem) {
+        discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (dynamicCoupon.discountPercentage / 100));
       }
-    } else if (isDBMSCoupon) {
-      const dbmsItem = checkoutItems.find(item => item.id === "3");
-      if (dbmsItem) {
-        discount = Math.round((dbmsItem.price * dbmsItem.quantity) * 0.10);
+    } else {
+      const isMLCoupon = [
+        "LURNEXA-ML-BL26-PALLAVI",
+        "LURNEXA-ML-BL26-BALAJI",
+        "LURNEXA-ML-BL26-SARITHA"
+      ].includes((appliedCoupon || "").toUpperCase());
+
+      const isDBMSCoupon = [
+        "LURNEXA-DBMS-BL26-PALLAVI",
+        "LURNEXA-DBMS-BL26-BALAJI",
+        "LURNEXA-DBMS-BL26-SARITHA"
+      ].includes((appliedCoupon || "").toUpperCase());
+
+      if (isMLCoupon) {
+        const mlItem = checkoutItems.find(item => item.id === "2");
+        if (mlItem) {
+          discount = Math.round((getSoftCopyPrice(plan, mlItem.id) * mlItem.quantity) * 0.04);
+        }
+      } else if (isDBMSCoupon) {
+        const dbmsItem = checkoutItems.find(item => item.id === "3");
+        if (dbmsItem) {
+          discount = Math.round((getSoftCopyPrice(plan, dbmsItem.id) * dbmsItem.quantity) * 0.04);
+        }
       }
     }
-  }
 
-  const bookCostAfterDiscount = itemSubtotal - discount;
-  const gstVal = 0;
-  const shippingVal = getShippingCost(formPostalCode);
-  const totalAmount = bookCostAfterDiscount + gstVal + shippingVal;
+    const itemCostAfterDiscount = itemSubtotal - discount;
+    gstVal = Math.round(itemCostAfterDiscount * 0.18);
+    onlineFeeVal = Math.round((itemCostAfterDiscount + gstVal) * 0.02);
+    totalAmount = itemCostAfterDiscount + gstVal + onlineFeeVal;
+    itemSubtotal = itemCostAfterDiscount;
+  } else {
+    itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+    // Check dynamic coupon first
+    const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
+    if (dynamicCoupon && (dynamicCoupon.applicableFormat === 'both' || dynamicCoupon.applicableFormat === 'physical')) {
+      const targetBookId = dynamicCoupon.bookId;
+      const targetItem = checkoutItems.find(item => item.id === targetBookId);
+      if (targetItem) {
+        discount = Math.round((targetItem.price * targetItem.quantity) * (dynamicCoupon.discountPercentage / 100));
+      }
+    } else {
+      const isMLCoupon = [
+        "LURNEXA-ML-BL26-PALLAVI",
+        "LURNEXA-ML-BL26-BALAJI",
+        "LURNEXA-ML-BL26-SARITHA"
+      ].includes((appliedCoupon || "").toUpperCase());
+
+      const isDBMSCoupon = [
+        "LURNEXA-DBMS-BL26-PALLAVI",
+        "LURNEXA-DBMS-BL26-BALAJI",
+        "LURNEXA-DBMS-BL26-SARITHA"
+      ].includes((appliedCoupon || "").toUpperCase());
+
+      const isMineralsCoupon = (appliedCoupon || "").toUpperCase() === "LP_BVK_MINERAL_26";
+
+      const hasMinerals = checkoutItems.some(item => item.id === "1");
+      if (isMineralsCoupon && hasMinerals) {
+        const minItem = checkoutItems.find(item => item.id === "1");
+        if (minItem) {
+          discount = Math.round((minItem.price * minItem.quantity) * 0.10);
+        }
+      } else if (!hasMinerals) {
+        if (isMLCoupon) {
+          const mlItem = checkoutItems.find(item => item.id === "2");
+          if (mlItem) {
+            discount = Math.round((mlItem.price * mlItem.quantity) * 0.10);
+          }
+        } else if (isDBMSCoupon) {
+          const dbmsItem = checkoutItems.find(item => item.id === "3");
+          if (dbmsItem) {
+            discount = Math.round((dbmsItem.price * dbmsItem.quantity) * 0.10);
+          }
+        }
+      }
+    }
+
+    const bookCostAfterDiscount = itemSubtotal - discount;
+    shippingVal = getShippingCost(formPostalCode) || 50;
+    totalAmount = bookCostAfterDiscount + shippingVal;
+    itemSubtotal = bookCostAfterDiscount;
+  }
 
   return (
     <div className="max-w-6xl mx-auto mt-4 sm:mt-8 px-4 sm:px-6 pb-20">
@@ -710,6 +1177,41 @@ function CheckoutContent() {
 
               <div>
                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  College Name
+                </label>
+                <select
+                  value={selectedCollegeCode}
+                  onChange={(e) => setSelectedCollegeCode(e.target.value)}
+                  className={`w-full bg-white border ${formErrors.college ? 'border-red-400 focus:border-red-500' : 'border-[#E2E8F0] focus:border-fuchsia-500'} text-[#0F172A] rounded-xl px-4 py-3 text-sm focus:outline-none shadow-sm`}
+                >
+                  <option value="">-- Select College --</option>
+                  {collegesList.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                  <option value="others">Others</option>
+                </select>
+                {formErrors.college && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.college}</p>}
+              </div>
+
+              {selectedCollegeCode === "others" && (
+                <div>
+                  <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5">
+                    Custom College Name
+                  </label>
+                  <input
+                    type="text"
+                    value={customCollegeName}
+                    onChange={(e) => setCustomCollegeName(e.target.value)}
+                    placeholder="Enter your college name"
+                    className="w-full bg-white border border-[#E2E8F0] focus:border-fuchsia-500 text-[#0F172A] rounded-xl px-4 py-3 text-sm focus:outline-none shadow-sm"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <MapPin size={14} className="text-[#64748B]" /> Complete Shipping Address
                 </label>
                 <textarea
@@ -767,11 +1269,9 @@ function CheckoutContent() {
                   <input
                     type="text"
                     value={formCountry}
-                    onChange={(e) => setFormCountry(e.target.value)}
-                    placeholder="Country"
-                    className={`w-full bg-white border ${formErrors.country ? 'border-red-400 focus:border-red-500' : 'border-[#E2E8F0] focus:border-fuchsia-500'} text-[#0F172A] rounded-xl px-4 py-3 text-sm focus:outline-none shadow-sm`}
+                    disabled
+                    className="w-full bg-slate-100 border border-[#E2E8F0] text-[#0F172A] rounded-xl px-4 py-3 text-sm focus:outline-none shadow-sm cursor-not-allowed"
                   />
-                  {formErrors.country && <p className="text-red-500 text-xs mt-1 font-semibold">{formErrors.country}</p>}
                 </div>
               </div>
 
@@ -793,19 +1293,25 @@ function CheckoutContent() {
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
                   <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
                     <MapPin size={14} className="text-fuchsia-600" />
-                    <span>Shipping Destination</span>
+                    <span>{format === "physical" ? "Shipping & Delivery Info" : "Billing & Registration Info"}</span>
                   </h4>
                   <button 
                     onClick={() => setStep(1)} 
                     className="text-xs font-bold text-fuchsia-600 hover:underline animate-pulse"
                   >
-                    Edit Address
+                    Edit Info
                   </button>
                 </div>
                 <div className="text-sm space-y-2 font-semibold text-slate-700">
-                  <p><span className="text-[#64748B] w-24 inline-block">Recipient:</span> {formName}</p>
+                  <p><span className="text-[#64748B] w-24 inline-block">Name:</span> {formName}</p>
                   <p><span className="text-[#64748B] w-24 inline-block">Contact:</span> {formPhone}</p>
                   <p><span className="text-[#64748B] w-24 inline-block">Email:</span> {formEmail}</p>
+                  <p>
+                    <span className="text-[#64748B] w-24 inline-block">College:</span>{" "}
+                    {selectedCollegeCode === "others"
+                      ? customCollegeName
+                      : (collegesList.find((c) => c.code === selectedCollegeCode)?.name || "General")}
+                  </p>
                   <p><span className="text-[#64748B] w-24 inline-block">Address:</span> {formAddress}</p>
                   <p><span className="text-[#64748B] w-24 inline-block">Location:</span> {formCity}, {formState}, {formCountry} - {formPostalCode}</p>
                 </div>
@@ -1018,12 +1524,25 @@ function CheckoutContent() {
                   <span>-₹{discount}</span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span>Shipping Charges</span>
-                <span className="text-[#0F172A] font-bold">
-                  {shippingVal > 0 ? `₹${shippingVal}` : "Enter Pincode"}
-                </span>
-              </div>
+              {format === "soft" ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>GST Tax (18%)</span>
+                    <span className="text-[#0F172A] font-bold">₹{gstVal}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Online Charges (2%)</span>
+                    <span className="text-[#0F172A] font-bold">₹{onlineFeeVal}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between">
+                  <span>Shipping Charges</span>
+                  <span className="text-[#0F172A] font-bold">
+                    {shippingVal > 0 ? `₹${shippingVal}` : "Enter Pincode"}
+                  </span>
+                </div>
+              )}
               <div className="border-t border-[#E2E8F0] pt-4 flex justify-between text-sm font-extrabold text-[#0F172A]">
                 <span>Total Amount</span>
                 <span className="text-fuchsia-600 text-lg font-black">₹{totalAmount}</span>

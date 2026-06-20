@@ -18,9 +18,14 @@ async function ensureTables() {
       is_active BOOLEAN,
       access_id VARCHAR(50),
       teaching_faculty_access_id VARCHAR(50),
-      profile_picture TEXT
+      profile_picture TEXT,
+      plan VARCHAR(50) DEFAULT 'complete',
+      purchased_books JSONB
     );
   `);
+
+  await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS plan VARCHAR(50) DEFAULT 'complete'`);
+  await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS purchased_books JSONB`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS textbooks_allowed_access_ids (
@@ -28,9 +33,13 @@ async function ensureTables() {
       book_id VARCHAR(50),
       role VARCHAR(20),
       assigned_to VARCHAR(50),
-      college_code VARCHAR(50)
+      college_code VARCHAR(50),
+      plan VARCHAR(50)
     );
   `);
+
+  await pool.query(`ALTER TABLE textbooks_allowed_access_ids ADD COLUMN IF NOT EXISTS plan VARCHAR(50)`);
+
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS textbooks_colleges (
@@ -120,11 +129,46 @@ async function ensureTables() {
       selected_question_ids JSONB
     );
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS textbooks_interview_questions (
+      id VARCHAR(100) PRIMARY KEY,
+      company VARCHAR(255),
+      role VARCHAR(255),
+      question_text TEXT,
+      answer_text TEXT,
+      difficulty VARCHAR(50),
+      created_at VARCHAR(100)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS textbooks_company_updates (
+      id VARCHAR(100) PRIMARY KEY,
+      company VARCHAR(255),
+      updates JSONB,
+      created_at VARCHAR(100)
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS textbooks_coupons (
+      code VARCHAR(50) PRIMARY KEY,
+      discount_percentage INT,
+      book_id VARCHAR(50),
+      applicable_format VARCHAR(20) DEFAULT 'both'
+    );
+  `);
+  await pool.query(`ALTER TABLE textbooks_coupons ADD COLUMN IF NOT EXISTS applicable_format VARCHAR(20) DEFAULT 'both'`);
 }
 
 export async function GET() {
   try {
-    await ensureTables();
+    try {
+      await ensureTables();
+    } catch (tblErr) {
+      console.warn("⚠️ Warning: Table setup/alteration checks failed (continuing anyway):", tblErr);
+    }
 
     const usersRes = await pool.query("SELECT * FROM textbooks_users");
     const accessIdsRes = await pool.query("SELECT * FROM textbooks_allowed_access_ids");
@@ -136,6 +180,9 @@ export async function GET() {
     const practiceConfigsRes = await pool.query("SELECT * FROM textbooks_practice_configs");
     const practiceAttemptsRes = await pool.query("SELECT * FROM textbooks_practice_attempts");
     const practiceTestsRes = await pool.query("SELECT * FROM textbooks_practice_tests");
+    const interviewQuestionsRes = await pool.query("SELECT * FROM textbooks_interview_questions");
+    const companyUpdatesRes = await pool.query("SELECT * FROM textbooks_company_updates");
+    const couponsRes = await pool.query("SELECT * FROM textbooks_coupons");
 
     const users = usersRes.rows.map(u => ({
       name: u.name,
@@ -152,7 +199,9 @@ export async function GET() {
       isActive: u.is_active,
       accessId: u.access_id,
       teachingFacultyAccessId: u.teaching_faculty_access_id,
-      profilePicture: u.profile_picture
+      profilePicture: u.profile_picture,
+      plan: u.plan || 'complete',
+      purchasedBooks: u.purchased_books || []
     }));
 
     const allowedAccessIds = accessIdsRes.rows.map(a => ({
@@ -160,7 +209,8 @@ export async function GET() {
       bookId: a.book_id,
       role: a.role,
       assignedTo: a.assigned_to || undefined,
-      collegeCode: a.college_code || undefined
+      collegeCode: a.college_code || undefined,
+      plan: a.plan || undefined
     }));
 
     const colleges = collegesRes.rows.map(c => ({
@@ -235,6 +285,30 @@ export async function GET() {
       selectedQuestionIds: pt.selected_question_ids || []
     }));
 
+    const interviewQuestions = interviewQuestionsRes.rows.map(q => ({
+      id: q.id,
+      company: q.company,
+      role: q.role || "",
+      questionText: q.question_text,
+      answerText: q.answer_text || "",
+      difficulty: q.difficulty || "",
+      createdAt: q.created_at
+    }));
+
+    const companyUpdates = companyUpdatesRes.rows.map(u => ({
+      id: u.id,
+      company: u.company,
+      updates: u.updates || [],
+      createdAt: u.created_at
+    }));
+
+    const coupons = couponsRes.rows.map(c => ({
+      code: c.code,
+      discountPercentage: c.discount_percentage,
+      bookId: c.book_id,
+      applicableFormat: c.applicable_format || 'both'
+    }));
+
     return NextResponse.json({
       success: true,
       users,
@@ -246,7 +320,10 @@ export async function GET() {
       chaptersMap,
       configsMap,
       practiceAttempts,
-      practiceTests
+      practiceTests,
+      interviewQuestions,
+      companyUpdates,
+      coupons
     });
   } catch (err: any) {
     console.error("❌ Sync GET Error:", err);
@@ -256,7 +333,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await ensureTables();
+    try {
+      await ensureTables();
+    } catch (tblErr) {
+      console.warn("⚠️ Warning: Table setup/alteration checks failed in POST (continuing anyway):", tblErr);
+    }
     const { action, table, data } = await request.json();
 
     if (action === "save" || action === "update") {
@@ -268,8 +349,8 @@ export async function POST(request: Request) {
             INSERT INTO textbooks_users (
               mobile_number, name, book_id, role, college_name, college_id, faculty_id,
               college_email, department, faculty_role, subject_teaching, is_active,
-              access_id, teaching_faculty_access_id, profile_picture
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+              access_id, teaching_faculty_access_id, profile_picture, plan, purchased_books
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             ON CONFLICT (mobile_number) DO UPDATE SET
               name = EXCLUDED.name, book_id = EXCLUDED.book_id, role = EXCLUDED.role,
               college_name = EXCLUDED.college_name, college_id = EXCLUDED.college_id,
@@ -277,41 +358,29 @@ export async function POST(request: Request) {
               department = EXCLUDED.department, faculty_role = EXCLUDED.faculty_role,
               subject_teaching = EXCLUDED.subject_teaching, is_active = EXCLUDED.is_active,
               access_id = EXCLUDED.access_id, teaching_faculty_access_id = EXCLUDED.teaching_faculty_access_id,
-              profile_picture = EXCLUDED.profile_picture;
+              profile_picture = EXCLUDED.profile_picture, plan = EXCLUDED.plan, purchased_books = EXCLUDED.purchased_books;
           `, [
             u.mobileNumber, u.name, u.bookId, u.role, u.collegeName, u.collegeId || "", u.facultyId || "",
             u.collegeEmail || "", u.department || "", u.facultyRole || "", u.subjectTeaching || "",
-            u.isActive, u.accessId, u.teachingFacultyAccessId || "", u.profilePicture || ""
+            u.isActive, u.accessId, u.teachingFacultyAccessId || "", u.profilePicture || "",
+            u.plan || 'complete', JSON.stringify(u.purchasedBooks || [])
           ]);
         }
         
-        // Cascade delete removed records
-        const activeMobiles = items.map(u => u.mobileNumber);
-        if (activeMobiles.length > 0) {
-          const placeholders = activeMobiles.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_users WHERE mobile_number NOT IN (${placeholders})`, activeMobiles);
-        } else {
-          await pool.query("DELETE FROM textbooks_users");
-        }
+
 
       } else if (table === "allowed_access_ids") {
         for (const item of items) {
           await pool.query(`
-            INSERT INTO textbooks_allowed_access_ids (access_id, book_id, role, assigned_to, college_code)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO textbooks_allowed_access_ids (access_id, book_id, role, assigned_to, college_code, plan)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (access_id) DO UPDATE SET
               book_id = EXCLUDED.book_id, role = EXCLUDED.role,
-              assigned_to = EXCLUDED.assigned_to, college_code = EXCLUDED.college_code;
-          `, [item.accessId, item.bookId, item.role, item.assignedTo || null, item.collegeCode || null]);
+              assigned_to = EXCLUDED.assigned_to, college_code = EXCLUDED.college_code, plan = EXCLUDED.plan;
+          `, [item.accessId, item.bookId, item.role, item.assignedTo || null, item.collegeCode || null, item.plan || null]);
         }
 
-        const activeAccessIds = items.map(a => a.accessId);
-        if (activeAccessIds.length > 0) {
-          const placeholders = activeAccessIds.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_allowed_access_ids WHERE access_id NOT IN (${placeholders})`, activeAccessIds);
-        } else {
-          await pool.query("DELETE FROM textbooks_allowed_access_ids");
-        }
+
 
       } else if (table === "colleges") {
         for (const c of items) {
@@ -321,13 +390,7 @@ export async function POST(request: Request) {
           `, [c.code, c.name]);
         }
 
-        const activeCodes = items.map(c => c.code);
-        if (activeCodes.length > 0) {
-          const placeholders = activeCodes.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_colleges WHERE code NOT IN (${placeholders})`, activeCodes);
-        } else {
-          await pool.query("DELETE FROM textbooks_colleges");
-        }
+
 
       } else if (table === "textbooks") {
         for (const t of items) {
@@ -337,13 +400,7 @@ export async function POST(request: Request) {
           `, [t.id, t.title, t.code]);
         }
 
-        const activeBookIds = items.map(t => t.id);
-        if (activeBookIds.length > 0) {
-          const placeholders = activeBookIds.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_textbooks WHERE id NOT IN (${placeholders})`, activeBookIds);
-        } else {
-          await pool.query("DELETE FROM textbooks_textbooks");
-        }
+
 
       } else if (table === "quizzes") {
         for (const q of items) {
@@ -361,13 +418,7 @@ export async function POST(request: Request) {
           ]);
         }
 
-        const activeQuizCodes = items.map(q => q.quizCode);
-        if (activeQuizCodes.length > 0) {
-          const placeholders = activeQuizCodes.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_quizzes WHERE quiz_code NOT IN (${placeholders})`, activeQuizCodes);
-        } else {
-          await pool.query("DELETE FROM textbooks_quizzes");
-        }
+
 
       } else if (table === "attempts") {
         for (const att of items) {
@@ -383,13 +434,7 @@ export async function POST(request: Request) {
           ]);
         }
 
-        const activeAttemptIds = items.map(a => a.id);
-        if (activeAttemptIds.length > 0) {
-          const placeholders = activeAttemptIds.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_attempts WHERE id NOT IN (${placeholders})`, activeAttemptIds);
-        } else {
-          await pool.query("DELETE FROM textbooks_attempts");
-        }
+
 
       } else if (table === "book_chapters") {
         const entries = Object.entries(data);
@@ -400,13 +445,7 @@ export async function POST(request: Request) {
           `, [bookId, count]);
         }
 
-        const activeBookIds = Object.keys(data);
-        if (activeBookIds.length > 0) {
-          const placeholders = activeBookIds.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_book_chapters WHERE book_id NOT IN (${placeholders})`, activeBookIds);
-        } else {
-          await pool.query("DELETE FROM textbooks_book_chapters");
-        }
+
 
       } else if (table === "practice_configs") {
         const entries = Object.entries(data);
@@ -418,13 +457,7 @@ export async function POST(request: Request) {
           `, [bookId, duration, questionLimit]);
         }
 
-        const activeBookIds = Object.keys(data);
-        if (activeBookIds.length > 0) {
-          const placeholders = activeBookIds.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_practice_configs WHERE book_id NOT IN (${placeholders})`, activeBookIds);
-        } else {
-          await pool.query("DELETE FROM textbooks_practice_configs");
-        }
+
 
       } else if (table === "practice_attempts") {
         for (const pa of items) {
@@ -438,15 +471,9 @@ export async function POST(request: Request) {
           ]);
         }
 
-        const activeAttemptIds = items.map(pa => pa.id);
-        if (activeAttemptIds.length > 0) {
-          const placeholders = activeAttemptIds.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_practice_attempts WHERE id NOT IN (${placeholders})`, activeAttemptIds);
-        } else {
-          await pool.query("DELETE FROM textbooks_practice_attempts");
-        }
 
-      } else if (table === "practice_tests") {
+
+  } else if (table === "practice_tests") {
         for (const pt of items) {
           await pool.query(`
             INSERT INTO textbooks_practice_tests (id, title, book_id, duration, question_limit, start_time, end_time, created_at, selected_question_ids)
@@ -460,12 +487,40 @@ export async function POST(request: Request) {
           ]);
         }
 
-        const activeTestIds = items.map(pt => pt.id);
-        if (activeTestIds.length > 0) {
-          const placeholders = activeTestIds.map((_, i) => `$${i+1}`).join(",");
-          await pool.query(`DELETE FROM textbooks_practice_tests WHERE id NOT IN (${placeholders})`, activeTestIds);
-        } else {
-          await pool.query("DELETE FROM textbooks_practice_tests");
+
+      } else if (table === "interview_questions") {
+        for (const q of items) {
+          await pool.query(`
+            INSERT INTO textbooks_interview_questions (id, company, role, question_text, answer_text, difficulty, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (id) DO UPDATE SET
+              company = EXCLUDED.company, role = EXCLUDED.role, question_text = EXCLUDED.question_text,
+              answer_text = EXCLUDED.answer_text, difficulty = EXCLUDED.difficulty;
+          `, [q.id, q.company, q.role || "", q.questionText, q.answerText || "", q.difficulty || "", q.createdAt]);
+        }
+
+
+      } else if (table === "company_updates") {
+        for (const u of items) {
+          await pool.query(`
+            INSERT INTO textbooks_company_updates (id, company, updates, created_at)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (id) DO UPDATE SET
+              company = EXCLUDED.company, updates = EXCLUDED.updates;
+          `, [u.id, u.company, JSON.stringify(u.updates || []), u.createdAt]);
+        }
+
+
+      } else if (table === "coupons") {
+        for (const c of items) {
+          await pool.query(`
+            INSERT INTO textbooks_coupons (code, discount_percentage, book_id, applicable_format)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (code) DO UPDATE SET
+              discount_percentage = EXCLUDED.discount_percentage,
+              book_id = EXCLUDED.book_id,
+              applicable_format = EXCLUDED.applicable_format;
+          `, [c.code, c.discountPercentage, c.bookId, c.applicableFormat || 'both']);
         }
       }
     } else if (action === "delete") {
@@ -482,6 +537,9 @@ export async function POST(request: Request) {
       } else if (table === "colleges") {
         const { code } = data;
         await pool.query("DELETE FROM textbooks_colleges WHERE code = $1", [code]);
+      } else if (table === "coupons") {
+        const { code } = data;
+        await pool.query("DELETE FROM textbooks_coupons WHERE code = $1", [code]);
       }
     }
 

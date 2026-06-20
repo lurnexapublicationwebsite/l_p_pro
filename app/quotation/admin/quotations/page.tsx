@@ -18,6 +18,9 @@ export default function GeneratedQuotationsPage() {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [visibleDelete, setVisibleDelete] = useState<{ [key: string]: boolean }>({});
+  const [deleteTarget, setDeleteTarget] = useState<Quotation | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,6 +47,27 @@ export default function GeneratedQuotationsPage() {
       setError(err.message || "Failed to load quotations.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      setDeleting(true);
+      const res = await fetch("/api/quotation/admin/quotations", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to delete quotation");
+      }
+      setDeleteTarget(null);
+      fetchQuotations();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete quotation.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -85,7 +109,16 @@ export default function GeneratedQuotationsPage() {
                 </tr>
               ) : (
                 currentQuotations.map((quote) => (
-                  <tr key={quote.id} className="hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={quote.id} 
+                    className="hover:bg-gray-50 transition-colors select-none cursor-pointer"
+                    title="Triple click to reveal delete option"
+                    onClick={(e) => {
+                      if (e.detail === 3) {
+                        setVisibleDelete((prev) => ({ ...prev, [quote.id]: true }));
+                      }
+                    }}
+                  >
                     <td className="px-6 py-4 font-bold align-middle text-[#4f46e5]">
                       {quote.quotation_number}
                     </td>
@@ -106,8 +139,22 @@ export default function GeneratedQuotationsPage() {
                         year: "numeric",
                       })}
                     </td>
-                    <td className="px-6 py-4 align-middle text-right">
+                    <td className="px-6 py-4 align-middle text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2.5">
+                        {visibleDelete[quote.id] && (
+                          <button
+                            onClick={() => setDeleteTarget(quote)}
+                            className="bg-red-600 text-white hover:bg-red-700 font-semibold px-2.5 py-1 rounded-lg text-xs transition inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path d="M3 6h18" />
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            </svg>
+                            <span>Delete</span>
+                          </button>
+                        )}
+
                         {quote.is_confirmed ? (
                           <>
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
@@ -190,6 +237,40 @@ export default function GeneratedQuotationsPage() {
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </button>
+          </div>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl border border-red-100 max-w-[440px] w-full p-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-red-600 mb-3 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="shrink-0">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <line x1="12" x2="12" y1="9" y2="13" />
+                <line x1="12" x2="12.01" y1="17" y2="17" />
+              </svg>
+              Confirm Deletion
+            </h3>
+            <p className="text-sm text-[#4b5563] leading-relaxed mb-6">
+              Are you sure you want to permanently delete the quotation <strong>{deleteTarget.quotation_number}</strong> for <strong>{deleteTarget.institution_name}</strong>? This will also delete any associated order and revert the original request status to pending.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                disabled={deleting}
+                onClick={() => setDeleteTarget(null)}
+                className="bg-white border border-[#e5e7eb] text-[#374151] hover:bg-gray-50 font-semibold px-4 py-2 rounded-lg text-sm transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={deleting}
+                onClick={() => handleDelete(deleteTarget.id)}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition cursor-pointer"
+              >
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </button>
+            </div>
           </div>
         </div>
       )}

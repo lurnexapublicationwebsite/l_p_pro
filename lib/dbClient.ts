@@ -1,5 +1,29 @@
 import { SEED_QUESTIONS, Question } from './data/practice_questions';
 
+export interface InterviewQuestion {
+  id: string;
+  company: string;
+  role?: string;
+  questionText: string;
+  answerText?: string;
+  difficulty?: string;
+  createdAt: string;
+}
+
+export interface CompanyUpdate {
+  id: string;
+  company: string;
+  updates: string[];
+  createdAt: string;
+}
+
+export interface Coupon {
+  code: string;
+  discountPercentage: number;
+  bookId: string;
+  applicableFormat: 'soft' | 'physical' | 'both';
+}
+
 export interface TextbookUser {
   name: string;
   bookId: string;
@@ -16,6 +40,8 @@ export interface TextbookUser {
   accessId: string; // The pre-approved ID used during signup and login
   teachingFacultyAccessId?: string; // The Access ID of the student's teaching faculty
   profilePicture?: string; // Base64 profile photo data url
+  plan?: 'complete' | 'placements' | 'practice' | 'book_only' | 'caselet' | 'book_caselet' | 'book_portal' | 'book_caselet_portal';
+  purchasedBooks?: string[]; // array of book ids
 }
 
 export interface AllowedAccessId {
@@ -24,6 +50,7 @@ export interface AllowedAccessId {
   role: 'student' | 'faculty';
   assignedTo?: string; // Mobile number of the assigned user, undefined if unassigned
   collegeCode?: string; // Abbreviation code of mapped college
+  plan?: string;
 }
 
 export interface College {
@@ -107,7 +134,10 @@ const KEY_TO_TABLE: Record<string, string> = {
   'lurnexa_book_chapters': 'book_chapters',
   'lurnexa_practice_configs': 'practice_configs',
   'lurnexa_practice_attempts': 'practice_attempts',
-  'lurnexa_practice_tests': 'practice_tests'
+  'lurnexa_practice_tests': 'practice_tests',
+  'lurnexa_interview_questions': 'interview_questions',
+  'lurnexa_company_updates': 'company_updates',
+  'lurnexa_coupons': 'coupons'
 };
 
 function syncKeyToServer(key: string, value: any) {
@@ -130,7 +160,16 @@ export function getBookCode(bookId: string): string {
   initDb();
   const books = getStorageItem<Textbook[]>('lurnexa_textbooks', []);
   const book = books.find(b => b.id === bookId);
-  return book ? book.code : "XX";
+  if (book) return book.code;
+  
+  // Fallback mapping in case textbooks registry is not synced
+  const fallback: Record<string, string> = {
+    "1": "MP",
+    "2": "ML",
+    "3": "DB",
+    "4": "ED"
+  };
+  return fallback[bookId] || "XX";
 }
 
 export function getBookIdFromCode(code: string): string {
@@ -153,16 +192,58 @@ export function initDb(): void {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          if (data.users) IN_MEMORY_DB['lurnexa_users'] = data.users;
-          if (data.allowedAccessIds) IN_MEMORY_DB['lurnexa_allowed_access_ids'] = data.allowedAccessIds;
-          if (data.colleges) IN_MEMORY_DB['lurnexa_colleges'] = data.colleges;
-          if (data.textbooks) IN_MEMORY_DB['lurnexa_textbooks'] = data.textbooks;
-          if (data.quizzes) IN_MEMORY_DB['lurnexa_quizzes'] = data.quizzes;
-          if (data.attempts) IN_MEMORY_DB['lurnexa_attempts'] = data.attempts;
-          if (data.chaptersMap) IN_MEMORY_DB['lurnexa_book_chapters'] = data.chaptersMap;
-          if (data.configsMap) IN_MEMORY_DB['lurnexa_practice_configs'] = data.configsMap;
-          if (data.practiceAttempts) IN_MEMORY_DB['lurnexa_practice_attempts'] = data.practiceAttempts;
-          if (data.practiceTests) IN_MEMORY_DB['lurnexa_practice_tests'] = data.practiceTests;
+          if (data.users) {
+            IN_MEMORY_DB['lurnexa_users'] = data.users;
+            try { localStorage.setItem('lurnexa_users', JSON.stringify(data.users)); } catch (e) {}
+          }
+          if (data.allowedAccessIds) {
+            IN_MEMORY_DB['lurnexa_allowed_access_ids'] = data.allowedAccessIds;
+            try { localStorage.setItem('lurnexa_allowed_access_ids', JSON.stringify(data.allowedAccessIds)); } catch (e) {}
+          }
+          if (data.colleges) {
+            IN_MEMORY_DB['lurnexa_colleges'] = data.colleges;
+            try { localStorage.setItem('lurnexa_colleges', JSON.stringify(data.colleges)); } catch (e) {}
+          }
+          if (data.textbooks) {
+            IN_MEMORY_DB['lurnexa_textbooks'] = data.textbooks;
+            try { localStorage.setItem('lurnexa_textbooks', JSON.stringify(data.textbooks)); } catch (e) {}
+          }
+          if (data.quizzes) {
+            IN_MEMORY_DB['lurnexa_quizzes'] = data.quizzes;
+            try { localStorage.setItem('lurnexa_quizzes', JSON.stringify(data.quizzes)); } catch (e) {}
+          }
+          if (data.attempts) {
+            IN_MEMORY_DB['lurnexa_attempts'] = data.attempts;
+            try { localStorage.setItem('lurnexa_attempts', JSON.stringify(data.attempts)); } catch (e) {}
+          }
+          if (data.chaptersMap) {
+            IN_MEMORY_DB['lurnexa_book_chapters'] = data.chaptersMap;
+            try { localStorage.setItem('lurnexa_book_chapters', JSON.stringify(data.chaptersMap)); } catch (e) {}
+          }
+          if (data.configsMap) {
+            IN_MEMORY_DB['lurnexa_practice_configs'] = data.configsMap;
+            try { localStorage.setItem('lurnexa_practice_configs', JSON.stringify(data.configsMap)); } catch (e) {}
+          }
+          if (data.practiceAttempts) {
+            IN_MEMORY_DB['lurnexa_practice_attempts'] = data.practiceAttempts;
+            try { localStorage.setItem('lurnexa_practice_attempts', JSON.stringify(data.practiceAttempts)); } catch (e) {}
+          }
+          if (data.practiceTests) {
+            IN_MEMORY_DB['lurnexa_practice_tests'] = data.practiceTests;
+            try { localStorage.setItem('lurnexa_practice_tests', JSON.stringify(data.practiceTests)); } catch (e) {}
+          }
+          if (data.interviewQuestions) {
+            IN_MEMORY_DB['lurnexa_interview_questions'] = data.interviewQuestions;
+            try { localStorage.setItem('lurnexa_interview_questions', JSON.stringify(data.interviewQuestions)); } catch (e) {}
+          }
+          if (data.companyUpdates) {
+            IN_MEMORY_DB['lurnexa_company_updates'] = data.companyUpdates;
+            try { localStorage.setItem('lurnexa_company_updates', JSON.stringify(data.companyUpdates)); } catch (e) {}
+          }
+          if (data.coupons) {
+            IN_MEMORY_DB['lurnexa_coupons'] = data.coupons;
+            try { localStorage.setItem('lurnexa_coupons', JSON.stringify(data.coupons)); } catch (e) {}
+          }
         }
       })
       .catch(err => console.error("Error loading sync data from server database:", err));
@@ -170,26 +251,30 @@ export function initDb(): void {
 
   // Purge/clean up browser's legacy localStorage to guarantee compliance
   if (typeof window !== 'undefined') {
-    const keysToPurge = [
-      'lurnexa_users',
-      'lurnexa_allowed_access_ids',
-      'lurnexa_colleges',
-      'lurnexa_textbooks',
-      'lurnexa_quizzes',
-      'lurnexa_attempts',
-      'lurnexa_book_chapters',
-      'lurnexa_practice_configs',
-      'lurnexa_practice_attempts',
-      'lurnexa_practice_tests',
-      'lurnexa_sent_quiz_emails',
-      'lurnexa_admin_custom_profile',
-      'lurnexa_db_purge_v5'
-    ];
-    keysToPurge.forEach(k => {
-      try {
-        localStorage.removeItem(k);
-      } catch (e) {}
-    });
+    const localPurgeKey = 'lurnexa_db_purge_v5_local';
+    if (!localStorage.getItem(localPurgeKey)) {
+      const keysToPurge = [
+        'lurnexa_users',
+        'lurnexa_allowed_access_ids',
+        'lurnexa_colleges',
+        'lurnexa_textbooks',
+        'lurnexa_quizzes',
+        'lurnexa_attempts',
+        'lurnexa_book_chapters',
+        'lurnexa_practice_configs',
+        'lurnexa_practice_attempts',
+        'lurnexa_practice_tests',
+        'lurnexa_sent_quiz_emails',
+        'lurnexa_admin_custom_profile',
+        'lurnexa_db_purge_v5'
+      ];
+      keysToPurge.forEach(k => {
+        try {
+          localStorage.removeItem(k);
+        } catch (e) {}
+      });
+      localStorage.setItem(localPurgeKey, 'true');
+    }
   }
 
   // One-time database purge inside in-memory store
@@ -211,14 +296,75 @@ export function initDb(): void {
   if (!IN_MEMORY_DB['lurnexa_allowed_access_ids']) {
     IN_MEMORY_DB['lurnexa_allowed_access_ids'] = [];
   }
+  let allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
+  let allowedModified = false;
+  if (!allowedIds.some(item => item.accessId === "LSMLNC26001")) {
+    allowedIds.push({
+      accessId: "LSMLNC26001",
+      bookId: "2",
+      role: "student",
+      collegeCode: "NC",
+      assignedTo: "9999900001"
+    });
+    allowedModified = true;
+  }
+  if (!allowedIds.some(item => item.accessId === "LFMLNC26001")) {
+    allowedIds.push({
+      accessId: "LFMLNC26001",
+      bookId: "2",
+      role: "faculty",
+      collegeCode: "NC",
+      assignedTo: "9999900002"
+    });
+    allowedModified = true;
+  }
+  if (allowedModified) {
+    IN_MEMORY_DB['lurnexa_allowed_access_ids'] = allowedIds;
+    try { localStorage.setItem('lurnexa_allowed_access_ids', JSON.stringify(allowedIds)); } catch (e) {}
+  }
 
   // Initialize Users (Seed Admin user)
   let users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
+  
+  // Seed ML test student
+  let usersModified = false;
+  if (!users.some(u => u.accessId === "LSMLNC26001")) {
+    users.push({
+      name: "Test ML Student",
+      bookId: "2",
+      mobileNumber: "9999900001",
+      role: "student",
+      collegeName: "Narayana College",
+      isActive: true,
+      collegeEmail: "student@lurnexa.in",
+      accessId: "LSMLNC26001",
+      plan: "book_caselet_portal",
+      purchasedBooks: ["2"]
+    });
+    usersModified = true;
+  }
+  
+  // Seed ML test faculty
+  if (!users.some(u => u.accessId === "LFMLNC26001")) {
+    users.push({
+      name: "Test ML Faculty",
+      bookId: "2",
+      mobileNumber: "9999900002",
+      role: "faculty",
+      collegeName: "Narayana College",
+      isActive: true,
+      collegeEmail: "faculty@lurnexa.in",
+      accessId: "LFMLNC26001",
+      purchasedBooks: ["2"]
+    });
+    usersModified = true;
+  }
   
   // Enforce exactly 1 admin user matching the new required credentials
   const otherAdmins = users.filter(u => u.role === 'admin' && (u.mobileNumber !== '9347834904' || u.accessId.toUpperCase() !== 'LURNEXA'));
   if (otherAdmins.length > 0) {
     users = users.filter(u => !(u.role === 'admin' && (u.mobileNumber !== '9347834904' || u.accessId.toUpperCase() !== 'LURNEXA')));
+    usersModified = true;
   }
 
   const hasAdmin = users.some(u => u.role === 'admin' && u.mobileNumber === '9347834904');
@@ -234,12 +380,17 @@ export function initDb(): void {
       accessId: "LURNEXA"
     });
     IN_MEMORY_DB['lurnexa_users'] = users;
+    try { localStorage.setItem('lurnexa_users', JSON.stringify(users)); } catch (e) {}
+  } else if (usersModified) {
+    IN_MEMORY_DB['lurnexa_users'] = users;
+    try { localStorage.setItem('lurnexa_users', JSON.stringify(users)); } catch (e) {}
   } else {
     // If multiple duplicate admins of the correct credentials exist, keep exactly one
     const admins = users.filter(u => u.role === 'admin');
     if (admins.length > 1) {
       users = users.filter(u => u.role !== 'admin' || u.mobileNumber === '9347834904');
       IN_MEMORY_DB['lurnexa_users'] = users;
+      try { localStorage.setItem('lurnexa_users', JSON.stringify(users)); } catch (e) {}
     }
   }
 
@@ -297,6 +448,75 @@ export function initDb(): void {
     ];
     IN_MEMORY_DB['lurnexa_colleges'] = defaultColleges;
   }
+
+  // Initialize Career Hub - Interview Questions
+  const currentQuestions = getStorageItem<InterviewQuestion[]>('lurnexa_interview_questions', []);
+  if (currentQuestions.length === 0) {
+    const defaultQuestions: InterviewQuestion[] = [
+      {
+        id: "iq-1",
+        company: "Google",
+        role: "Software Engineer",
+        questionText: "Explain the difference between process and thread, and how multi-threading is handled in modern operating systems.",
+        answerText: "A process is an independent executing program with its own memory space, while a thread is a subset of a process that shares memory with other threads of the same process. OS handles multi-threading via context switching and CPU scheduling.",
+        difficulty: "Medium",
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "iq-2",
+        company: "Microsoft",
+        role: "Software Engineer II",
+        questionText: "Given a binary tree, write an efficient algorithm to serialize and deserialize it.",
+        answerText: "Use pre-order traversal for serialization, marking null nodes with a placeholder (e.g. '#'). For deserialization, reconstruct using a queue containing the serialized values.",
+        difficulty: "Hard",
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "iq-3",
+        company: "Amazon",
+        role: "Systems Engineer",
+        questionText: "Design a URL shortening service like bit.ly. Detail the database schema and scaling strategy.",
+        answerText: "Use Base62 encoding for short IDs, store mappings in a NoSQL database (e.g. DynamoDB) for scalability, and cache popular links using Redis.",
+        difficulty: "Hard",
+        createdAt: new Date().toISOString()
+      }
+    ];
+    IN_MEMORY_DB['lurnexa_interview_questions'] = defaultQuestions;
+    if (typeof window !== 'undefined') {
+      setStorageItem('lurnexa_interview_questions', defaultQuestions);
+    }
+  }
+
+  // Initialize Career Hub - Company Updates
+  const currentUpdates = getStorageItem<CompanyUpdate[]>('lurnexa_company_updates', []);
+  if (currentUpdates.length === 0) {
+    const defaultUpdates: CompanyUpdate[] = [
+      {
+        id: "cu-1",
+        company: "Google",
+        updates: [
+          "Google is hiring Software Engineering Interns for 2026/2027.",
+          "Applications open next week on the Google Careers portal.",
+          "Focus areas: Data Structures, Algorithms, and System Design."
+        ],
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "cu-2",
+        company: "Microsoft",
+        updates: [
+          "Microsoft IDC off-campus drive announced for Graduate Engineers.",
+          "Eligible branches: CSE, IT, ECE.",
+          "Online assessment is expected to commence in July."
+        ],
+        createdAt: new Date().toISOString()
+      }
+    ];
+    IN_MEMORY_DB['lurnexa_company_updates'] = defaultUpdates;
+    if (typeof window !== 'undefined') {
+      setStorageItem('lurnexa_company_updates', defaultUpdates);
+    }
+  }
 }
 
 // ==========================================
@@ -315,6 +535,7 @@ export function validateAccessId(accessId: string): {
   isAssigned?: boolean;
   collegeCode?: string;
   collegeName?: string;
+  plan?: string;
   error?: string; 
 } {
   initDb();
@@ -346,7 +567,8 @@ export function validateAccessId(accessId: string): {
     role: matched.role,
     isAssigned: !!matched.assignedTo,
     collegeCode: matched.collegeCode,
-    collegeName: collegeName
+    collegeName: collegeName,
+    plan: matched.plan
   };
 }
 
@@ -354,10 +576,10 @@ export function generateAccessId(bookId: string, role: 'student' | 'faculty', co
   initDb();
   const allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
   
-  const rolePrefix = role === 'student' ? 'LS' : 'LF';
+  const rolePrefix = role === 'faculty' ? 'LF' : 'LS';
   const bookCode = getBookCode(bookId);
   const collegePart = collegeCode ? collegeCode.toUpperCase() : "";
-  const prefix = `${rolePrefix}${bookCode}${collegePart}26`; // e.g. LSMLNC26
+  const prefix = `${rolePrefix}${bookCode}${collegePart}`; // e.g. LSMLNC or LFMLNC
 
   // Find all existing matching prefixes to calculate count
   const matches = allowedIds
@@ -368,9 +590,8 @@ export function generateAccessId(bookId: string, role: 'student' | 'faculty', co
       return isNaN(parsed) ? 0 : parsed;
     });
 
-  const nextNum = matches.length > 0 ? Math.max(...matches) + 1 : 1;
-  const nextNumStr = nextNum.toString().padStart(3, '0'); // e.g. 001, 002
-  const newId = `${prefix}${nextNumStr}`;
+  const nextNum = matches.length > 0 ? Math.max(...matches) + 1 : 26001;
+  const newId = `${prefix}${nextNum}`;
 
   allowedIds.push({
     accessId: newId,
@@ -387,10 +608,10 @@ export function generateAccessIdsBulk(bookId: string, role: 'student' | 'faculty
   initDb();
   const allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
   
-  const rolePrefix = role === 'student' ? 'LS' : 'LF';
+  const rolePrefix = role === 'faculty' ? 'LF' : 'LS';
   const bookCode = getBookCode(bookId);
   const collegePart = collegeCode ? collegeCode.toUpperCase() : "";
-  const prefix = `${rolePrefix}${bookCode}${collegePart}26`; // e.g. LSMLNC26
+  const prefix = `${rolePrefix}${bookCode}${collegePart}`; // e.g. LSMLNC or LFMLNC
 
   // Find all existing matching prefixes to calculate starting count
   const matches = allowedIds
@@ -401,12 +622,11 @@ export function generateAccessIdsBulk(bookId: string, role: 'student' | 'faculty
       return isNaN(parsed) ? 0 : parsed;
     });
 
-  let nextNum = matches.length > 0 ? Math.max(...matches) + 1 : 1;
+  let nextNum = matches.length > 0 ? Math.max(...matches) + 1 : 26001;
   const generatedIds: string[] = [];
 
   for (let i = 0; i < count; i++) {
-    const nextNumStr = nextNum.toString().padStart(3, '0'); // e.g. 001, 002
-    const newId = `${prefix}${nextNumStr}`;
+    const newId = `${prefix}${nextNum}`;
     
     allowedIds.push({
       accessId: newId,
@@ -858,6 +1078,91 @@ export function deleteCollege(code: string): void {
   const colleges = getStorageItem<College[]>('lurnexa_colleges', []);
   const updated = colleges.filter(c => c.code.toUpperCase() !== code.toUpperCase());
   setStorageItem('lurnexa_colleges', updated);
+}
+
+export function getInterviewQuestions(): InterviewQuestion[] {
+  initDb();
+  return getStorageItem<InterviewQuestion[]>('lurnexa_interview_questions', []);
+}
+
+export function saveInterviewQuestion(question: InterviewQuestion): void {
+  initDb();
+  if (typeof window === 'undefined') return;
+  const list = getStorageItem<InterviewQuestion[]>('lurnexa_interview_questions', []);
+  const idx = list.findIndex(q => q.id === question.id);
+  if (idx !== -1) {
+    list[idx] = question;
+  } else {
+    list.push(question);
+  }
+  setStorageItem('lurnexa_interview_questions', list);
+}
+
+export function deleteInterviewQuestion(id: string): void {
+  initDb();
+  if (typeof window === 'undefined') return;
+  const list = getStorageItem<InterviewQuestion[]>('lurnexa_interview_questions', []);
+  const updated = list.filter(q => q.id !== id);
+  setStorageItem('lurnexa_interview_questions', updated);
+}
+
+export function getCompanyUpdates(): CompanyUpdate[] {
+  initDb();
+  return getStorageItem<CompanyUpdate[]>('lurnexa_company_updates', []);
+}
+
+export function saveCompanyUpdate(update: CompanyUpdate): void {
+  initDb();
+  if (typeof window === 'undefined') return;
+  const list = getStorageItem<CompanyUpdate[]>('lurnexa_company_updates', []);
+  const idx = list.findIndex(u => u.id === update.id);
+  if (idx !== -1) {
+    list[idx] = update;
+  } else {
+    list.push(update);
+  }
+  setStorageItem('lurnexa_company_updates', list);
+}
+
+export function deleteCompanyUpdate(id: string): void {
+  initDb();
+  if (typeof window === 'undefined') return;
+  const list = getStorageItem<CompanyUpdate[]>('lurnexa_company_updates', []);
+  const updated = list.filter(u => u.id !== id);
+  setStorageItem('lurnexa_company_updates', updated);
+}
+
+export function getCoupons(): Coupon[] {
+  initDb();
+  return getStorageItem<Coupon[]>('lurnexa_coupons', []);
+}
+
+export function saveCoupon(coupon: Coupon): void {
+  initDb();
+  if (typeof window === 'undefined') return;
+  const list = getStorageItem<Coupon[]>('lurnexa_coupons', []);
+  const idx = list.findIndex(c => c.code.toUpperCase() === coupon.code.toUpperCase());
+  if (idx !== -1) {
+    list[idx] = coupon;
+  } else {
+    list.push(coupon);
+  }
+  setStorageItem('lurnexa_coupons', list);
+}
+
+export function deleteCoupon(code: string): void {
+  initDb();
+  if (typeof window === 'undefined') return;
+  const list = getStorageItem<Coupon[]>('lurnexa_coupons', []);
+  const updated = list.filter(c => c.code.toUpperCase() !== code.toUpperCase());
+  IN_MEMORY_DB['lurnexa_coupons'] = updated;
+  
+  // Also delete on server database
+  fetch('/api/textbooks/db/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', table: 'coupons', data: { code } })
+  }).catch(err => console.error(`Failed to delete coupon ${code} on server:`, err));
 }
 
 

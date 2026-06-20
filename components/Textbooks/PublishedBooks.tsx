@@ -55,9 +55,9 @@ export default function PublishedBooks() {
     <div className="py-4 w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto px-4">
         {books.map((bookItem) => {
-          let coverImg = "/published_books/covers/minerals.jpg";
-          if (bookItem.id === "2") coverImg = "/published_books/covers/ml.png";
-          if (bookItem.id === "3") coverImg = "/published_books/covers/dbms.jpeg";
+          let coverImg = "/portal_coverpages/minerals.jpg";
+          if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
+          if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
 
           return (
             <div 

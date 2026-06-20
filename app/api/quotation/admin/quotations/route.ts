@@ -231,3 +231,35 @@ export async function PUT(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await request.json();
+    if (!id) {
+      return NextResponse.json({ error: "Quotation ID is required" }, { status: 400 });
+    }
+
+    const quoteRes = await pool.query("SELECT quotation_request_id FROM quotations WHERE id::text = $1", [id]);
+    if (quoteRes.rows.length > 0) {
+      const requestId = quoteRes.rows[0].quotation_request_id;
+      await pool.query("UPDATE quotation_requests SET status = 'Pending' WHERE id::text = $1", [requestId]);
+    }
+
+    await pool.query("DELETE FROM quotation_orders WHERE quotation_id::text = $1", [id]);
+    await pool.query("DELETE FROM quotations WHERE id::text = $1", [id]);
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("❌ Delete Quotation Error:", error);
+    return NextResponse.json(
+      { error: "Internal server error", details: error.message },
+      { status: 500 }
+    );
+  }
+}
+

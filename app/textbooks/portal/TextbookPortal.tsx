@@ -60,7 +60,19 @@ import {
   deleteCollege,
   College,
   getStorageItem,
-  setStorageItem
+  setStorageItem,
+  getInterviewQuestions,
+  saveInterviewQuestion,
+  deleteInterviewQuestion,
+  getCompanyUpdates,
+  saveCompanyUpdate,
+  deleteCompanyUpdate,
+  InterviewQuestion,
+  CompanyUpdate,
+  getCoupons,
+  saveCoupon,
+  deleteCoupon,
+  Coupon
 } from "@/lib/dbClient";
 import { Question } from "@/lib/data/practice_questions";
 import {
@@ -96,12 +108,81 @@ import {
   ShoppingBag,
   Upload,
   Download,
-  GraduationCap
+  GraduationCap,
+  Briefcase,
+  Newspaper,
+  Search,
+  Filter,
+  Tag,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 
 const getQuizTotalMarks = (quiz: TextbookQuiz | null | undefined): number => {
   if (!quiz) return 0;
   return quiz.questions.reduce((acc, q) => acc + (q.maxMarks || (quiz.type === 'written' ? 5 : 1)), 0);
+};
+
+const PORTAL_PUBLISHED_BOOKS = [
+  { id: "1", title: "Introduction to Mineral Processing", pdfFileName: "minerals.pdf", coverImg: "/portal_coverpages/minerals.jpg", author: "Dr. K. Raghavan", price: 450 },
+  { id: "2", title: "Machine Learning", pdfFileName: "ml.pdf", coverImg: "/portal_coverpages/ml.png", author: "Prof. S. Balaji", price: 550 },
+  { id: "3", title: "Database Management Systems", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. V. Pallavi", price: 499 }
+];
+
+interface Caselet {
+  title: string;
+  scenario: string;
+  questions: string[];
+  pdfFileName?: string;
+}
+
+const BOOK_CASELETS: Record<string, Caselet[]> = {
+  "1": [
+    {
+      title: "Caselet",
+      scenario: `India's growing industrial sector demands robust mineral resources, particularly non-coal minerals. The government faces a dilemma between promoting domestic mineral exploration and keeping import costs low for manufacturing.
+Assume you are a policy adviser analyzing the implementation of a 10% import tariff on critical minerals. 
+
+Based on the textbook:
+- Critically evaluate the economywide impacts of import tariffs on steel and aluminum manufacturing.
+- How would such tariffs affect overall employment and consumer prices in the domestic market?`,
+      questions: [
+        "What are the direct and indirect impacts of imposing a tariff on crucial raw minerals on primary manufacturers?",
+        "How do strategic trade models justify selective tariffs on industrial minerals?"
+      ],
+      pdfFileName: "minerals.pdf"
+    }
+  ],
+  "2": [
+    {
+      title: "Caselet",
+      scenario: `An enterprise scale recruitment engine uses a neural network model to screen resumes. Historical hiring data was used for training, resulting in a model that disproportionately rejects female candidates for technical roles.
+
+Based on machine learning fairness concepts:
+- Identify the source of bias in the model.
+- Propose mitigation strategies (e.g., pre-processing data balancing, post-processing threshold calibration).`,
+      questions: [
+        "What metrics can be used to measure algorithmic fairness and demographic parity?",
+        "Explain how adversarial debiasing works in neural network architectures."
+      ],
+      pdfFileName: "ml.pdf"
+    }
+  ],
+  "3": [
+    {
+      title: "Caselet",
+      scenario: `A fast-growing e-commerce platform experiences severe write contention on its central PostgreSQL database during flash sales. Read replicas are not solving the write performance issues.
+
+Based on database scaling principles:
+- Propose a horizontal sharding architecture based on customer regions or order IDs.
+- Highlight the challenges of cross-shard joins and distributed transactions (e.g., 2-Phase Commit).`,
+      questions: [
+        "What are the trade-offs between range-based sharding and hash-based sharding?",
+        "How does the CAP theorem apply to distributed transactional database scaling?"
+      ],
+      pdfFileName: "dbms.pdf"
+    }
+  ]
 };
 
 const getEffectiveQuestionLimit = (bookId: string): number => {
@@ -131,6 +212,15 @@ export default function TextbookPortal({
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
+  const shuffleArray = <T,>(arr: T[]): T[] => {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
   // Auth State
   const [user, setUser] = useState<TextbookUser | null>(null);
   const [isSignup, setIsSignup] = useState(defaultSignup);
@@ -150,6 +240,7 @@ export default function TextbookPortal({
   const [isAccessIdVerified, setIsAccessIdVerified] = useState(false);
   const [detectedRole, setDetectedRole] = useState<'student' | 'faculty' | null>(null);
   const [detectedBookId, setDetectedBookId] = useState("");
+  const [detectedPlan, setDetectedPlan] = useState<string | null>(null);
   const [signupOtpSent, setSignupOtpSent] = useState(false);
   const [signupOtpInput, setSignupOtpInput] = useState("");
   const [twilioValidationCode, setTwilioValidationCode] = useState("");
@@ -175,8 +266,23 @@ export default function TextbookPortal({
   const [genIdCollege, setGenIdCollege] = useState("");
   const [isCollegeAutoFilled, setIsCollegeAutoFilled] = useState(false);
 
+  // --- COUPON STATE ---
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [newCouponCode, setNewCouponCode] = useState("");
+  const [newCouponDiscount, setNewCouponDiscount] = useState("");
+  const [newCouponBookId, setNewCouponBookId] = useState("");
+  const [newCouponFormat, setNewCouponFormat] = useState<'soft' | 'physical' | 'both'>('both');
+  const [deleteConfirmationCouponCode, setDeleteConfirmationCouponCode] = useState<string | null>(null);
+
   // Navigation / Tabs
   const [activeTab, setActiveTab] = useState(initialView || "");
+
+  // Secure e-Reader & Plan Upgrade States
+  const [readingBookId, setReadingBookId] = useState<string | null>(null);
+  const [isReaderBlurred, setIsReaderBlurred] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeCost, setUpgradeCost] = useState(0);
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   // --- ADMIN STATE ---
   const [adminUsers, setAdminUsers] = useState<TextbookUser[]>([]);
@@ -298,7 +404,7 @@ export default function TextbookPortal({
   const [selectedImportIds, setSelectedImportIds] = useState<string[]>([]);
   const [publishedQuizCode, setPublishedQuizCode] = useState("");
   const [notifiedStudents, setNotifiedStudents] = useState<string[]>([]);
-  const [activeToast, setActiveToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
+  const [activeToast, setActiveToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
   const [selectedStudentDetails, setSelectedStudentDetails] = useState<TextbookUser | null>(null);
   const [selectedTemplateFormat, setSelectedTemplateFormat] = useState<string>("");
 
@@ -351,7 +457,7 @@ export default function TextbookPortal({
   // Student Practice Test States
   const [activePracticeTest, setActivePracticeTest] = useState<PracticeTest | null>(null);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'warning') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'warning') => {
     setActiveToast({ message, type });
   };
 
@@ -371,6 +477,147 @@ export default function TextbookPortal({
   const [studentAnswers, setStudentAnswers] = useState<string[]>([]);
   const [studentQuizResult, setStudentQuizResult] = useState<QuizAttempt | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [readingCaseletIndex, setReadingCaseletIndex] = useState<number | null>(null);
+
+  const openSecureBook = (bookId: string) => {
+    setReadingBookId(bookId);
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(err => console.warn(err));
+    }
+  };
+
+  const openSecureCaselet = (index: number) => {
+    setReadingCaseletIndex(index);
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(err => console.warn(err));
+    }
+  };
+
+  const closeSecureReader = () => {
+    setReadingBookId(null);
+    setReadingCaseletIndex(null);
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(err => console.warn(err));
+    }
+  };
+
+  // Native Fullscreen API Escape / Change Sync
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && !(document as any).webkitFullscreenElement && !(document as any).mozFullScreenElement && !(document as any).msFullscreenElement) {
+        setReadingBookId(null);
+        setReadingCaseletIndex(null);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+    };
+  }, []);
+
+  // PDF.js secure rendering state
+  const [pdfDocument, setPdfDocument] = useState<any>(null);
+  const [pdfCurrentPage, setPdfCurrentPage] = useState(1);
+  const [pdfTotalPages, setPdfTotalPages] = useState(0);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [isEditingPage, setIsEditingPage] = useState(false);
+  const [pageInputVal, setPageInputVal] = useState("1");
+
+  useEffect(() => {
+    setPageInputVal(String(pdfCurrentPage));
+  }, [pdfCurrentPage]);
+
+  const handlePageSubmit = () => {
+    setIsEditingPage(false);
+    const parsedPage = parseInt(pageInputVal, 10);
+    if (!isNaN(parsedPage) && parsedPage >= 1 && parsedPage <= pdfTotalPages) {
+      setPdfCurrentPage(parsedPage);
+    } else {
+      setPageInputVal(String(pdfCurrentPage));
+    }
+  };
+
+  const loadPdfFile = async (url: string) => {
+    setPdfLoading(true);
+    try {
+      if (!(window as any).pdfjsLib) {
+        const script = document.createElement("script");
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js";
+        document.head.appendChild(script);
+        await new Promise((res) => { script.onload = res; });
+      }
+      const pdfjsLib = (window as any).pdfjsLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+      const loadedPdf = await pdfjsLib.getDocument(url).promise;
+      setPdfDocument(loadedPdf);
+      setPdfTotalPages(loadedPdf.numPages);
+      setPdfCurrentPage(1);
+    } catch (err) {
+      console.error("Error loading PDF:", err);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const renderPdfPage = async (pdfDoc: any, pageNum: number) => {
+    if (!pdfDoc) return;
+    try {
+      const page = await pdfDoc.getPage(pageNum);
+      const canvas = document.getElementById("secure-reader-canvas") as HTMLCanvasElement;
+      if (!canvas) return;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      // Render at high resolution scale 2.0 for clear text
+      const viewport = page.getViewport({ scale: 2.0 });
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport,
+      };
+      await page.render(renderContext).promise;
+    } catch (err) {
+      console.error("Error rendering PDF page:", err);
+    }
+  };
+
+  useEffect(() => {
+    const isReadingBook = !!readingBookId;
+    const isReadingCaselet = readingCaseletIndex !== null;
+
+    if (isReadingBook) {
+      const book = PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId);
+      if (book) {
+        loadPdfFile(`/portal_textbooks/${book.pdfFileName}`);
+      }
+    } else if (isReadingCaselet) {
+      const studentBookId = user?.bookId || "1";
+      const caselets = BOOK_CASELETS[studentBookId] || [];
+      const currentCaselet = caselets[readingCaseletIndex];
+      if (currentCaselet) {
+        loadPdfFile(`/portal_caselets/${currentCaselet.pdfFileName}`);
+      }
+    } else {
+      setPdfDocument(null);
+      setPdfTotalPages(0);
+      setPdfCurrentPage(1);
+    }
+  }, [readingBookId, readingCaseletIndex]);
+
+  useEffect(() => {
+    if (pdfDocument) {
+      renderPdfPage(pdfDocument, pdfCurrentPage);
+    }
+  }, [pdfCurrentPage, pdfDocument]);
 
   // Practice State
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
@@ -382,11 +629,84 @@ export default function TextbookPortal({
   const [pastPracticeAttempts, setPastPracticeAttempts] = useState<PracticeAttempt[]>([]);
   const [selectedPastAttempt, setSelectedPastAttempt] = useState<PracticeAttempt | null>(null);
 
+  // Career Hub State
+  const [interviewQuestions, setInterviewQuestions] = useState<InterviewQuestion[]>([]);
+  const [companyUpdates, setCompanyUpdates] = useState<CompanyUpdate[]>([]);
+  
+  // Search / filter / expand states for Student
+  const [careerSubTab, setCareerSubTab] = useState<"interviews" | "updates">("interviews");
+  const [interviewSearch, setInterviewSearch] = useState("");
+  const [interviewDiffFilter, setInterviewDiffFilter] = useState("all");
+  const [expandedInterviewId, setExpandedInterviewId] = useState<string | null>(null);
+
+  // Plan tab allowance helper
+  const isTabAllowed = (tab: string) => {
+    if (user?.role !== "student") return true;
+    const plan = user?.plan || "complete";
+    const PLAN_ALLOWED_OPTIONS: Record<string, string[]> = {
+      book_only: ["mybooks"],
+      caselet: ["caselets"],
+      book_caselet: ["mybooks", "caselets"],
+      book_portal: ["mybooks", "join", "practice", "history"],
+      book_caselet_portal: ["mybooks", "caselets", "join", "practice", "history"],
+      complete: ["mybooks", "caselets", "join", "practice", "history", "studentCareerHub"],
+      placements: ["studentCareerHub"],
+      practice: ["practice"]
+    };
+
+    if (tab === "studentProfile") return true;
+    
+    // If it's a known custom plan
+    if (["book_only", "caselet", "book_caselet", "book_portal", "book_caselet_portal", "complete"].includes(plan)) {
+      const allowed = PLAN_ALLOWED_OPTIONS[plan] || [];
+      return allowed.includes(tab);
+    }
+    
+    // Original plans checks
+    if (tab === "mybooks") {
+      return !!(user.purchasedBooks && user.purchasedBooks.length > 0);
+    }
+    if (tab === "join" || tab === "practice" || tab === "history") {
+      return plan !== "placements";
+    }
+    if (tab === "studentCareerHub") {
+      return plan !== "practice";
+    }
+    return false;
+  };
+
+  // Management Form states for Admin
+  const [adminCareerSubTab, setAdminCareerSubTab] = useState<"interviews" | "updates">("interviews");
+  // Interview Question form
+  const [editingQuestion, setEditingQuestion] = useState<InterviewQuestion | null>(null);
+  const [iqCompany, setIqCompany] = useState("");
+  const [iqRole, setIqRole] = useState("");
+  const [iqQuestion, setIqQuestion] = useState("");
+  const [iqAnswer, setIqAnswer] = useState("");
+  const [iqDifficulty, setIqDifficulty] = useState("Medium");
+  // Company Update form
+  const [editingUpdate, setEditingUpdate] = useState<CompanyUpdate | null>(null);
+  const [cuCompany, setCuCompany] = useState("");
+  const [cuBullets, setCuBullets] = useState(""); // newline separated
+
   // Safe window mount check
   useEffect(() => {
     setMounted(true);
     setTextbooks(getAllTextbooks());
     setColleges(getColleges());
+    setInterviewQuestions(getInterviewQuestions());
+    setCompanyUpdates(getCompanyUpdates());
+
+    // Load Cashfree Javascript SDK dynamically
+    const scriptId = "cashfree-sdk-script";
+    let script = document.getElementById(scriptId) as HTMLScriptElement;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
 
     // Detect back/forward cache navigation and force login
     const handlePageShow = (e: PageTransitionEvent) => {
@@ -419,7 +739,20 @@ export default function TextbookPortal({
         // Set default tab based on role
         if (parsed.role === "admin") setActiveTab(initialView || "users");
         else if (parsed.role === "faculty") setActiveTab(initialView || "create");
-        else setActiveTab(initialView || "join");
+        else {
+          const plan = parsed.plan || "complete";
+          if (plan === "placements") {
+            setActiveTab(initialView || "studentCareerHub");
+          } else if (plan === "book_only" || plan === "book_caselet") {
+            setActiveTab(initialView || "mybooks");
+          } else if (plan === "caselet") {
+            setActiveTab(initialView || "caselets");
+          } else if (plan === "practice") {
+            setActiveTab(initialView || "practice");
+          } else {
+            setActiveTab(initialView || "join");
+          }
+        }
       } catch (e) {
         sessionStorage.removeItem("lurnexa_current_user");
       }
@@ -428,6 +761,198 @@ export default function TextbookPortal({
       window.removeEventListener("pageshow", handlePageShow);
     };
   }, []);
+
+  // Screen protection / anti-screenshot effect
+  useEffect(() => {
+    const isReading = !!readingBookId || readingCaseletIndex !== null;
+    if (!isReading) {
+      document.documentElement.classList.remove("force-secure-blur");
+      setIsReaderBlurred(false);
+      return;
+    }
+
+    // Inject high-speed blur stylesheet
+    const styleEl = document.createElement("style");
+    styleEl.id = "secure-blur-styles";
+    styleEl.innerHTML = `
+      .force-secure-blur {
+        filter: blur(80px) !important;
+        opacity: 0 !important;
+        background: #090d16 !important;
+        pointer-events: none !important;
+        transition: none !important;
+      }
+    `;
+    document.head.appendChild(styleEl);
+
+    const preventDefault = (e: Event) => e.preventDefault();
+
+    const applyBlur = () => {
+      document.documentElement.classList.add("force-secure-blur");
+      setIsReaderBlurred(true);
+    };
+
+    const removeBlur = () => {
+      document.documentElement.classList.remove("force-secure-blur");
+      setIsReaderBlurred(false);
+    };
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Preemptively blur on Windows / Meta key press
+      if (e.key === "Meta" || e.keyCode === 91 || e.keyCode === 92) {
+        applyBlur();
+        try { navigator.clipboard.writeText(""); } catch (err) {}
+        return;
+      }
+
+      if (
+        e.key === "PrintScreen" || 
+        e.keyCode === 44 ||
+        (e.ctrlKey && (e.key === "p" || e.key === "P" || e.key === "s" || e.key === "S" || e.key === "u" || e.key === "U")) ||
+        (e.ctrlKey && e.shiftKey && (e.key === "i" || e.key === "I" || e.key === "c" || e.key === "C" || e.key === "j" || e.key === "J")) ||
+        (e.metaKey && e.shiftKey && (e.key === "s" || e.key === "S" || e.key === "3" || e.key === "4")) ||
+        e.key === "F12"
+      ) {
+        e.preventDefault();
+        try { navigator.clipboard.writeText(""); } catch (err) {}
+        applyBlur();
+        alert("Action not allowed: Screenshot, printing, saving, and developer tools are disabled for secure content.");
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "PrintScreen" || e.keyCode === 44 || e.key === "Meta" || e.keyCode === 91 || e.keyCode === 92) {
+        try { navigator.clipboard.writeText(""); } catch (err) {}
+        applyBlur();
+      }
+    };
+
+    const handleWindowBlur = () => {
+      applyBlur();
+    };
+
+    const handleWindowFocus = () => {
+      // Small timeout to ensure they returned from overlay
+      setTimeout(() => {
+        if (document.hasFocus()) {
+          removeBlur();
+        }
+      }, 300);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        applyBlur();
+      } else {
+        removeBlur();
+      }
+    };
+
+    const handleMouseLeave = () => {
+      applyBlur();
+    };
+
+    const handleMouseEnter = () => {
+      removeBlur();
+    };
+
+    window.addEventListener("contextmenu", preventDefault);
+    window.addEventListener("selectstart", preventDefault);
+    window.addEventListener("copy", preventDefault);
+    window.addEventListener("paste", preventDefault);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleWindowBlur);
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("mouseleave", handleMouseLeave);
+    document.addEventListener("mouseenter", handleMouseEnter);
+
+    return () => {
+      document.documentElement.classList.remove("force-secure-blur");
+      const el = document.getElementById("secure-blur-styles");
+      if (el) el.remove();
+
+      window.removeEventListener("contextmenu", preventDefault);
+      window.removeEventListener("selectstart", preventDefault);
+      window.removeEventListener("copy", preventDefault);
+      window.removeEventListener("paste", preventDefault);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleWindowBlur);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("mouseleave", handleMouseLeave);
+      document.removeEventListener("mouseenter", handleMouseEnter);
+    };
+  }, [readingBookId, readingCaseletIndex]);
+
+  // Tab restriction redirect effect for students
+  useEffect(() => {
+    if (user && user.role === "student") {
+      if (!isTabAllowed(activeTab)) {
+        const allTabs = ["mybooks", "caselets", "join", "practice", "history", "studentCareerHub"];
+        const redirectTab = allTabs.find(t => isTabAllowed(t)) || "studentProfile";
+        setActiveTab(redirectTab);
+      }
+    }
+  }, [user, activeTab]);
+
+  // Verify plan upgrade from Cashfree redirect
+  useEffect(() => {
+    if (!mounted) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get("order_id");
+    if (orderId && !sessionStorage.getItem(`verified_upgrade_${orderId}`)) {
+      setIsUpgrading(true);
+      showToast("Verifying your payment status...", "info");
+      
+      fetch("/api/payments/cashfree/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.status === "PAID") {
+          sessionStorage.setItem(`verified_upgrade_${orderId}`, "true");
+          showToast("Success! Plan upgraded to Complete Access successfully.", "success");
+          
+          // Retrieve current user dynamically from sessionStorage to avoid React state closure bugs
+          const savedUserStr = sessionStorage.getItem("lurnexa_current_user");
+          if (savedUserStr) {
+            try {
+              const currentUserObj = JSON.parse(savedUserStr);
+              const updatedUser: TextbookUser = { ...currentUserObj, plan: "complete" };
+              sessionStorage.setItem("lurnexa_current_user", JSON.stringify(updatedUser));
+              setUser(updatedUser);
+              
+              // Sync with local memory database
+              const users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
+              const index = users.findIndex(u => u.mobileNumber === currentUserObj.mobileNumber);
+              if (index !== -1) {
+                users[index].plan = "complete";
+                setStorageItem('lurnexa_users', users);
+              }
+            } catch (jsonErr) {
+              console.error("Error parsing logged-in user for plan upgrade sync:", jsonErr);
+            }
+          }
+        } else {
+          showToast(data.message || "Payment verification failed or was declined.", "error");
+        }
+      })
+      .catch(err => {
+        console.error("Verification error:", err);
+        showToast("Error connecting to payment verification server.", "error");
+      })
+      .finally(() => {
+        setIsUpgrading(false);
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      });
+    }
+  }, [mounted, user]);
 
   // Scan for expired quizzes and send results to teachers
   useEffect(() => {
@@ -508,6 +1033,9 @@ export default function TextbookPortal({
       if (activeTab === "colleges") {
         setColleges(getColleges());
       }
+      if (activeTab === "coupons") {
+        setCoupons(getCoupons());
+      }
       if (activeTab === "qbank") {
         setAdminQuestions(getQuestionsByBook(adminQBankBook));
         const chaptersMap: Record<string, number> = {};
@@ -528,6 +1056,18 @@ export default function TextbookPortal({
     const intervalId = setInterval(refreshData, 2000); // Refresh every 2 seconds
     return () => clearInterval(intervalId);
   }, [user, activeTab, adminQBankBook, selectedPracticeTestId]);
+
+  // Periodically refresh Career Hub data to keep in sync
+  useEffect(() => {
+    if (!mounted || !user) return;
+    const refreshCareerData = () => {
+      setInterviewQuestions(getInterviewQuestions());
+      setCompanyUpdates(getCompanyUpdates());
+    };
+    refreshCareerData();
+    const intervalId = setInterval(refreshCareerData, 2000);
+    return () => clearInterval(intervalId);
+  }, [mounted, user]);
 
   // Sync Admin Textbook Settings Form
   useEffect(() => {
@@ -625,6 +1165,8 @@ export default function TextbookPortal({
   };
 
   // Refs to avoid stale closures in visibilitychange listener
+  const quizQuestionMappingRef = useRef<{ originalIndex: number; optionMapping: Record<string, string> }[]>([]);
+  const practiceQuestionMappingRef = useRef<{ originalIndex: number; optionMapping: Record<string, string> }[]>([]);
   const handleSubmitStudentQuizRef = useRef<(() => void) | null>(null);
   const handleSubmitPracticeRef = useRef<(() => void) | null>(null);
   const activeStudentQuizRef = useRef(activeStudentQuiz);
@@ -1004,7 +1546,20 @@ export default function TextbookPortal({
       
       if (loggedInUser.role === "admin") setActiveTab("users");
       else if (loggedInUser.role === "faculty") setActiveTab("create");
-      else setActiveTab("join");
+      else {
+        const plan = loggedInUser.plan || "complete";
+        if (plan === "placements") {
+          setActiveTab("studentCareerHub");
+        } else if (plan === "book_only" || plan === "book_caselet") {
+          setActiveTab("mybooks");
+        } else if (plan === "caselet") {
+          setActiveTab("caselets");
+        } else if (plan === "practice") {
+          setActiveTab("practice");
+        } else {
+          setActiveTab("join");
+        }
+      }
     } catch (err) {
       setErrorMessage("Network error: OTP verification failed.");
     }
@@ -1035,6 +1590,7 @@ export default function TextbookPortal({
     setIsAccessIdVerified(true);
     setDetectedRole(res.role || null);
     setDetectedBookId(res.bookId || "");
+    setDetectedPlan((res as any).plan || null);
     if (res.collegeName) {
       setSignupForm(prev => ({ ...prev, collegeName: res.collegeName! }));
       setIsCollegeAutoFilled(true);
@@ -1202,6 +1758,7 @@ export default function TextbookPortal({
         collegeName,
         isActive: true,
         accessId: signupAccessId,
+        plan: (detectedPlan as any) || 'complete',
         ...(detectedRole === "student" 
           ? { collegeId, department, teachingFacultyAccessId: verifiedFacultyAccessId, collegeEmail } 
           : { facultyRole, subjectTeaching, facultyId, collegeEmail })
@@ -1249,6 +1806,95 @@ export default function TextbookPortal({
       }
     } catch (err) {
       setErrorMessage("Verification failed due to a server error. Please try again.");
+    }
+  };
+
+  // Career Hub action handlers
+  const handleSaveInterviewQuestion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!iqCompany.trim() || !iqQuestion.trim()) {
+      setErrorMessage("Company and Question are required.");
+      return;
+    }
+    const target: InterviewQuestion = {
+      id: editingQuestion ? editingQuestion.id : Date.now().toString(),
+      company: iqCompany.trim(),
+      role: iqRole.trim() || undefined,
+      questionText: iqQuestion.trim(),
+      answerText: iqAnswer.trim() || undefined,
+      difficulty: iqDifficulty || "Medium",
+      createdAt: editingQuestion ? editingQuestion.createdAt : new Date().toISOString()
+    };
+    saveInterviewQuestion(target);
+    setSuccessMessage(editingQuestion ? "Interview Question updated successfully." : "Interview Question added successfully.");
+    setErrorMessage("");
+    // reset form
+    setEditingQuestion(null);
+    setIqCompany("");
+    setIqRole("");
+    setIqQuestion("");
+    setIqAnswer("");
+    setIqDifficulty("Medium");
+    setInterviewQuestions(getInterviewQuestions());
+  };
+
+  const handleEditInterviewQuestion = (q: InterviewQuestion) => {
+    setEditingQuestion(q);
+    setIqCompany(q.company);
+    setIqRole(q.role || "");
+    setIqQuestion(q.questionText);
+    setIqAnswer(q.answerText || "");
+    setIqDifficulty(q.difficulty || "Medium");
+  };
+
+  const handleDeleteInterviewQuestion = (id: string) => {
+    if (confirm("Are you sure you want to delete this interview question?")) {
+      deleteInterviewQuestion(id);
+      setSuccessMessage("Interview Question deleted successfully.");
+      setErrorMessage("");
+      setInterviewQuestions(getInterviewQuestions());
+    }
+  };
+
+  const handleSaveCompanyUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cuCompany.trim() || !cuBullets.trim()) {
+      setErrorMessage("Company name and updates are required.");
+      return;
+    }
+    const bulletList = cuBullets.split("\n").map(b => b.trim()).filter(b => b.length > 0);
+    if (bulletList.length === 0) {
+      setErrorMessage("At least one update point is required.");
+      return;
+    }
+    const target: CompanyUpdate = {
+      id: editingUpdate ? editingUpdate.id : Date.now().toString(),
+      company: cuCompany.trim(),
+      updates: bulletList,
+      createdAt: editingUpdate ? editingUpdate.createdAt : new Date().toISOString()
+    };
+    saveCompanyUpdate(target);
+    setSuccessMessage(editingUpdate ? "Company update updated successfully." : "Company update added successfully.");
+    setErrorMessage("");
+    // reset form
+    setEditingUpdate(null);
+    setCuCompany("");
+    setCuBullets("");
+    setCompanyUpdates(getCompanyUpdates());
+  };
+
+  const handleEditCompanyUpdate = (u: CompanyUpdate) => {
+    setEditingUpdate(u);
+    setCuCompany(u.company);
+    setCuBullets(u.updates.join("\n"));
+  };
+
+  const handleDeleteCompanyUpdate = (id: string) => {
+    if (confirm("Are you sure you want to delete this company update?")) {
+      deleteCompanyUpdate(id);
+      setSuccessMessage("Company update deleted successfully.");
+      setErrorMessage("");
+      setCompanyUpdates(getCompanyUpdates());
     }
   };
 
@@ -2123,6 +2769,58 @@ export default function TextbookPortal({
     }
   };
 
+  const handleUpgradePlan = async (target: 'complete', cost: number) => {
+    if (!user) return;
+    setIsUpgrading(true);
+    try {
+      const res = await fetch("/api/payments/cashfree/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookId: user.bookId || "1",
+          bookTitle: "Plan Upgrade to Complete Portal Access",
+          price: cost,
+          customerName: user.name,
+          customerEmail: user.collegeEmail || `${user.mobileNumber}@lurnexa.in`,
+          customerPhone: user.mobileNumber,
+          shippingAddress: "Soft Copy Access",
+          postalCode: "000000",
+          format: "upgrade",
+          plan: "complete",
+          collegeCode: "others"
+        })
+      });
+
+      const orderData = await res.json();
+      if (!res.ok) {
+        showToast(orderData.error || "Failed to initialize payment.", "error");
+        setIsUpgrading(false);
+        return;
+      }
+
+      if (!(window as any).Cashfree) {
+        showToast("Cashfree Payment SDK failed to load. Please refresh the page.", "error");
+        setIsUpgrading(false);
+        return;
+      }
+
+      const isProduction = process.env.NEXT_PUBLIC_CASHFREE_ENV === "production";
+      const cashfree = (window as any).Cashfree({
+        mode: isProduction ? "production" : "sandbox"
+      });
+
+      cashfree.checkout({
+        paymentSessionId: orderData.payment_session_id,
+        redirectTarget: "_self"
+      });
+
+    } catch (err) {
+      console.error(err);
+      showToast("Checkout connection failed. Please check your network connection.", "error");
+      setIsUpgrading(false);
+    }
+  };
+
   const handleInitiateAdminProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -2265,9 +2963,62 @@ export default function TextbookPortal({
       return;
     }
 
-    setActiveStudentQuiz(quiz);
+    const quizCopy = JSON.parse(JSON.stringify(quiz)) as TextbookQuiz;
+    const pairedQuestions = quizCopy.questions.map((q, idx) => ({ q, originalIndex: idx }));
+    const shuffledPairs = shuffleArray(pairedQuestions);
+
+    const mapping: { originalIndex: number; optionMapping: Record<string, string> }[] = [];
+
+    const randomizedQuestions = shuffledPairs.map((pair) => {
+      const q = pair.q;
+      const isWritten = quizCopy.type === 'written';
+
+      if (isWritten) {
+        mapping.push({
+          originalIndex: pair.originalIndex,
+          optionMapping: {}
+        });
+        return q;
+      }
+
+      const optionKeys: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
+      const originalOptionsList = [
+        { key: 'A', text: q.optionA || "" },
+        { key: 'B', text: q.optionB || "" },
+        { key: 'C', text: q.optionC || "" },
+        { key: 'D', text: q.optionD || "" }
+      ];
+
+      const shuffledOptionsList = shuffleArray(originalOptionsList);
+
+      q.optionA = shuffledOptionsList[0].text;
+      q.optionB = shuffledOptionsList[1].text;
+      q.optionC = shuffledOptionsList[2].text;
+      q.optionD = shuffledOptionsList[3].text;
+
+      const origCorrectKey = q.correctOption || 'A';
+      const newCorrectIndex = shuffledOptionsList.findIndex(opt => opt.key === origCorrectKey);
+      q.correctOption = optionKeys[newCorrectIndex] || 'A';
+
+      const optionMapping: Record<string, string> = {};
+      shuffledOptionsList.forEach((opt, idx) => {
+        optionMapping[optionKeys[idx]] = opt.key;
+      });
+
+      mapping.push({
+        originalIndex: pair.originalIndex,
+        optionMapping
+      });
+
+      return q;
+    });
+
+    quizCopy.questions = randomizedQuestions;
+    quizQuestionMappingRef.current = mapping;
+
+    setActiveStudentQuiz(quizCopy);
     setStudentCurrentQuestionIndex(0);
-    setStudentAnswers(new Array(quiz.questions.length).fill(""));
+    setStudentAnswers(new Array(quizCopy.questions.length).fill(""));
     if (quiz.duration > 0) {
       setTimeRemaining(quiz.duration * 60);
     } else {
@@ -2289,22 +3040,45 @@ export default function TextbookPortal({
     if (!activeStudentQuiz) return;
     exitFullScreen();
 
-    let score = 0;
     const isWritten = activeStudentQuiz.type === 'written';
+    const originalOrderedAnswers = new Array(activeStudentQuiz.questions.length).fill("");
 
-    if (!isWritten) {
-      activeStudentQuiz.questions.forEach((q, idx) => {
-        if (studentAnswers[idx] === q.correctOption) {
-          score++;
+    studentAnswers.forEach((ans, idx) => {
+      const mapItem = quizQuestionMappingRef.current[idx];
+      if (mapItem) {
+        const origIdx = mapItem.originalIndex;
+        if (isWritten) {
+          originalOrderedAnswers[origIdx] = ans;
+        } else {
+          const originalAns = mapItem.optionMapping[ans] || ans;
+          originalOrderedAnswers[origIdx] = originalAns;
         }
-      });
+      }
+    });
+
+    let score = 0;
+    if (!isWritten) {
+      const dbQuiz = getQuizByCode(activeStudentQuiz.quizCode);
+      if (dbQuiz) {
+        dbQuiz.questions.forEach((q, idx) => {
+          if (originalOrderedAnswers[idx] === q.correctOption) {
+            score++;
+          }
+        });
+      } else {
+        activeStudentQuiz.questions.forEach((q, idx) => {
+          if (studentAnswers[idx] === q.correctOption) {
+            score++;
+          }
+        });
+      }
     }
 
     const attempt = submitAttempt({
       quizCode: activeStudentQuiz.quizCode,
       studentMobile: user!.mobileNumber,
       studentName: user!.name,
-      answers: studentAnswers,
+      answers: originalOrderedAnswers,
       score: isWritten ? 0 : score,
       totalQuestions: activeStudentQuiz.questions.length,
       type: activeStudentQuiz.type,
@@ -2331,12 +3105,24 @@ export default function TextbookPortal({
       }
     });
 
+    const originalOrderedAnswers = new Array(practiceQuestions.length).fill("");
+    practiceAnswers.forEach((ans, idx) => {
+      const mapItem = practiceQuestionMappingRef.current[idx];
+      if (mapItem) {
+        const origIdx = mapItem.originalIndex;
+        const originalAns = mapItem.optionMapping[ans] || ans;
+        originalOrderedAnswers[origIdx] = originalAns;
+      } else {
+        originalOrderedAnswers[idx] = ans;
+      }
+    });
+
     const newAttempt: PracticeAttempt = {
       id: `prac-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       studentMobile: user!.mobileNumber,
       bookId: user!.bookId,
       practiceTestId: activePracticeTest?.id || "",
-      answers: practiceAnswers,
+      answers: originalOrderedAnswers,
       score: score,
       totalQuestions: practiceQuestions.length,
       completedAt: new Date().toISOString()
@@ -2695,35 +3481,78 @@ export default function TextbookPortal({
               </h1>
             </div>
             {user && (
-              <div className="flex items-center gap-4 bg-white border border-slate-200 p-4 rounded-2xl shadow-lg">
-                <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 flex items-center justify-center bg-fuchsia-600/20 text-fuchsia-500 font-black shrink-0">
-                  {user.profilePicture ? (
-                    <img
-                      src={user.profilePicture}
-                      alt={user.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    user.name.charAt(0).toUpperCase()
-                  )}
-                </div>
-
-                <div>
-                  <div className="font-bold text-slate-900 text-sm">{user.name}</div>
-                  <div className="text-xs text-slate-600 flex items-center gap-1.5 capitalize">
-                    {user.role === "admin" && <Shield size={12} className="text-red-400" />}
-                    {user.role === "faculty" && <BookOpenCheck size={12} className="text-blue-400" />}
-                    {user.role === "student" && <Users size={12} className="text-green-400" />}
-                    {user.role} Portal
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                {user.role === "student" && user.plan && (
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 p-4 rounded-2xl shadow-lg">
+                    <span className="text-xs text-slate-500 font-medium">
+                      Plan: <span className="font-bold text-slate-800">{
+                        user.plan === "placements" ? "Placements Plan" : 
+                        user.plan === "practice" ? "Practice Plan" : 
+                        user.plan === "book_only" ? "Book Only" :
+                        user.plan === "caselet" ? "Caselet Only" :
+                        user.plan === "book_caselet" ? "Book + Caselet" :
+                        user.plan === "book_portal" ? "Book + Portal Access" :
+                        user.plan === "book_caselet_portal" ? "Book + Caselet + Portal" :
+                        "Complete Portal Access"
+                      }</span>
+                    </span>
+                    {["practice", "placements", "book_only", "book_caselet", "caselet"].includes(user.plan || "") && (
+                      <button
+                        onClick={() => {
+                          const bId = user.bookId || "1";
+                          let cost = 50;
+                          if (user.plan === "practice") {
+                            cost = bId === "3" ? 100 : 120;
+                          } else if (user.plan === "placements") {
+                            cost = bId === "3" ? 30 : 50;
+                          } else if (user.plan === "book_only") {
+                            cost = 169;
+                          } else if (user.plan === "book_caselet") {
+                            cost = 184;
+                          } else if (user.plan === "caselet") {
+                            cost = bId === "3" ? 120 : 140;
+                          }
+                          setUpgradeCost(cost);
+                          setShowUpgradeModal(true);
+                        }}
+                        className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-sm animate-pulse ml-2"
+                      >
+                        Upgrade Plan
+                      </button>
+                    )}
                   </div>
+                )}
+
+                <div className="flex items-center gap-4 bg-white border border-slate-200 p-4 rounded-2xl shadow-lg">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 flex items-center justify-center bg-fuchsia-600/20 text-fuchsia-500 font-black shrink-0">
+                    {user.profilePicture ? (
+                      <img
+                        src={user.profilePicture}
+                        alt={user.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      user.name.charAt(0).toUpperCase()
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm">{user.name}</div>
+                    <div className="text-xs text-slate-600 flex items-center gap-1.5 capitalize">
+                      {user.role === "admin" && <Shield size={12} className="text-red-400" />}
+                      {user.role === "faculty" && <BookOpenCheck size={12} className="text-blue-400" />}
+                      {user.role === "student" && <Users size={12} className="text-green-400" />}
+                      {user.role} Portal
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="ml-4 p-2 bg-slate-100 hover:bg-red-950/40 text-slate-600 hover:text-red-400 rounded-xl transition-all"
+                    title="Logout"
+                  >
+                    <LogOut size={18} />
+                  </button>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="ml-4 p-2 bg-slate-100 hover:bg-red-950/40 text-slate-600 hover:text-red-400 rounded-xl transition-all"
-                  title="Logout"
-                >
-                  <LogOut size={18} />
-                </button>
               </div>
             )}
           </div>
@@ -3198,7 +4027,7 @@ export default function TextbookPortal({
             <div className="space-y-6">
               {/* Admin Tabs */}
               <div className="flex flex-wrap items-center justify-between border-b border-slate-200 gap-4">
-                <div className="flex overflow-x-auto whitespace-nowrap scrollbar-hide w-full sm:w-auto pb-1 sm:pb-0 gap-1">
+                <div className="flex flex-wrap w-full sm:w-auto pb-1 sm:pb-0 gap-1">
                   <button
                     onClick={() => { setActiveTab("users"); setErrorMessage(""); setSuccessMessage(""); }}
                     className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
@@ -3244,6 +4073,15 @@ export default function TextbookPortal({
                     <GraduationCap size={16} />
                     Colleges Manager
                   </button>
+                  <button
+                    onClick={() => { setActiveTab("coupons"); setErrorMessage(""); setSuccessMessage(""); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "coupons" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Tag size={16} />
+                    Coupons Manager
+                  </button>
                    <button
                     onClick={() => { setActiveTab("practiceResults"); setErrorMessage(""); setSuccessMessage(""); }}
                     className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
@@ -3252,6 +4090,15 @@ export default function TextbookPortal({
                   >
                     <FileSpreadsheet size={16} />
                     Practice Results
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab("adminCareerHub"); setErrorMessage(""); setSuccessMessage(""); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "adminCareerHub" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Briefcase size={16} />
+                    Career Hub
                   </button>
                   <button
                     onClick={() => { setActiveTab("adminProfile"); setErrorMessage(""); setSuccessMessage(""); setIsEditingProfile(false); setProfileOtpSent(false); }}
@@ -3264,7 +4111,7 @@ export default function TextbookPortal({
                   </button>
                 </div>
 
-                {activeTab !== "adminProfile" && activeTab !== "qbank" && activeTab !== "textbooks" && (
+                {activeTab !== "adminProfile" && activeTab !== "qbank" && activeTab !== "textbooks" && activeTab !== "adminCareerHub" && activeTab !== "coupons" && (
                   <div className="flex flex-wrap items-center gap-4 pr-4 pb-2 sm:pb-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filter by College:</span>
@@ -4785,6 +5632,492 @@ export default function TextbookPortal({
                 </div>
               )}
 
+              {activeTab === "coupons" && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Left Column: Form */}
+                  <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
+                    <h3 className="text-xl font-bold text-slate-900">Create New Coupon</h3>
+                    <p className="text-xs text-slate-600">Configure dynamic discount codes for specific textbooks and format requirements.</p>
+
+                    <form 
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setErrorMessage("");
+                        setSuccessMessage("");
+                        const cleanCode = newCouponCode.trim().toUpperCase();
+                        const percentage = parseInt(newCouponDiscount);
+                        if (!cleanCode) {
+                          setErrorMessage("Coupon code cannot be empty.");
+                          return;
+                        }
+                        if (isNaN(percentage) || percentage < 1 || percentage > 100) {
+                          setErrorMessage("Discount percentage must be between 1 and 105.");
+                          return;
+                        }
+                        if (!newCouponBookId) {
+                          setErrorMessage("Please select an applicable textbook.");
+                          return;
+                        }
+                        
+                        // Check duplicate
+                        if (coupons.some(c => c.code.toUpperCase() === cleanCode)) {
+                          setErrorMessage(`Coupon "${cleanCode}" already exists.`);
+                          return;
+                        }
+
+                        saveCoupon({
+                          code: cleanCode,
+                          discountPercentage: percentage,
+                          bookId: newCouponBookId,
+                          applicableFormat: newCouponFormat
+                        });
+                        setNewCouponCode("");
+                        setNewCouponDiscount("");
+                        setNewCouponBookId("");
+                        setNewCouponFormat("both");
+                        setSuccessMessage(`Coupon "${cleanCode}" created successfully.`);
+                        setCoupons(getCoupons());
+                      }}
+                      className="space-y-4"
+                    >
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Coupon Code</label>
+                        <input
+                          type="text"
+                          value={newCouponCode}
+                          onChange={(e) => setNewCouponCode(e.target.value)}
+                          placeholder="e.g. SUMMER25"
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-medium"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Discount Percentage (%)</label>
+                        <input
+                          type="number"
+                          value={newCouponDiscount}
+                          onChange={(e) => setNewCouponDiscount(e.target.value)}
+                          placeholder="e.g. 15"
+                          min="1"
+                          max="100"
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-medium"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Applicable Textbook / Subject</label>
+                        <select
+                          value={newCouponBookId}
+                          onChange={(e) => setNewCouponBookId(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-bold"
+                        >
+                          <option value="">-- Select Textbook --</option>
+                          {textbooks.map(b => (
+                            <option key={b.id} value={b.id}>{b.title} ({b.code})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Applicable Format</label>
+                        <select
+                          value={newCouponFormat}
+                          onChange={(e) => setNewCouponFormat(e.target.value as any)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-bold"
+                        >
+                          <option value="both">Both (Soft & Hard Copy)</option>
+                          <option value="soft">Soft Copy Only</option>
+                          <option value="physical">Hard Copy Only</option>
+                        </select>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 active:scale-98"
+                      >
+                        <Plus size={14} />
+                        <span>Create Coupon</span>
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right Column: Coupons List */}
+                  <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-900">Active Coupons</h3>
+                        <p className="text-xs text-slate-600">List of registered store discount coupons.</p>
+                      </div>
+                      <span className="bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 text-[10px] font-extrabold px-3 py-1 rounded-xl">
+                        {coupons.length} Active
+                      </span>
+                    </div>
+
+                    {coupons.length === 0 ? (
+                      <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-2xl">
+                        <Tag className="mx-auto text-slate-300 mb-3" size={40} />
+                        <p className="text-sm font-bold text-slate-700">No coupons registered yet.</p>
+                        <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">Use the form on the left to create dynamic promotional coupon codes.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                        <table className="w-full text-left text-xs text-slate-700">
+                          <thead className="bg-slate-50 text-[10px] font-black uppercase text-slate-500 border-b border-slate-200">
+                            <tr>
+                              <th className="px-5 py-3">Code</th>
+                              <th className="px-5 py-3">Discount</th>
+                              <th className="px-5 py-3">Subject / Textbook</th>
+                              <th className="px-5 py-3">Format</th>
+                              <th className="px-5 py-3 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-medium">
+                            {coupons.map((c) => {
+                              const book = textbooks.find(b => b.id === c.bookId);
+                              return (
+                                <tr key={c.code} className="hover:bg-slate-50/55 transition-colors">
+                                  <td className="px-5 py-3.5 font-bold text-slate-900">{c.code}</td>
+                                  <td className="px-5 py-3.5">
+                                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-extrabold px-2 py-0.5 rounded text-[11px]">
+                                      {c.discountPercentage}% OFF
+                                    </span>
+                                  </td>
+                                  <td className="px-5 py-3.5 max-w-[200px] truncate" title={book?.title || "Unknown Textbook"}>
+                                    {book ? `${book.title} (${book.code})` : `Book ID: ${c.bookId}`}
+                                  </td>
+                                  <td className="px-5 py-3.5 capitalize font-semibold text-slate-600">
+                                    {c.applicableFormat === 'both' ? 'Soft & Hard' : c.applicableFormat === 'soft' ? 'Soft Copy' : 'Hard Copy'}
+                                  </td>
+                                  <td className="px-5 py-3.5 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setConfirmModal({
+                                          isOpen: true,
+                                          title: "Delete Coupon",
+                                          message: `Are you sure you want to delete coupon code "${c.code}"? This will immediately remove this discount option in the bookstore checkout.`,
+                                          confirmText: "Yes, Delete",
+                                          cancelText: "Cancel",
+                                          isDanger: true,
+                                          onConfirm: () => {
+                                            deleteCoupon(c.code);
+                                            setCoupons(getCoupons());
+                                            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                            setSuccessMessage(`Coupon "${c.code}" deleted successfully.`);
+                                          }
+                                        });
+                                      }}
+                                      className="text-red-500 hover:text-red-750 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                                      title="Delete Coupon"
+                                    >
+                                      <Trash2 size={15} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "adminCareerHub" && (
+                <div className="space-y-6">
+                  {/* Internal Tab Navigation */}
+                  <div className="flex border-b border-slate-200 gap-1 pb-1">
+                    <button
+                      onClick={() => setAdminCareerSubTab("interviews")}
+                      className={`px-4 py-2 font-bold text-xs rounded-lg transition-all ${
+                        adminCareerSubTab === "interviews"
+                          ? "bg-fuchsia-600 text-white shadow"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      Interview Questions
+                    </button>
+                    <button
+                      onClick={() => setAdminCareerSubTab("updates")}
+                      className={`px-4 py-2 font-bold text-xs rounded-lg transition-all ${
+                        adminCareerSubTab === "updates"
+                          ? "bg-fuchsia-600 text-white shadow"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      Company Updates
+                    </button>
+                  </div>
+
+                  {adminCareerSubTab === "interviews" ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                      {/* Left side form to add/edit interview question */}
+                      <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
+                        <h3 className="text-xl font-bold text-slate-900">
+                          {editingQuestion ? "Edit Interview Question" : "Add Interview Question"}
+                        </h3>
+                        <p className="text-xs text-slate-600">
+                          Provide student-facing career preparation material by detailing interview questions asked by top recruiters.
+                        </p>
+                        
+                        <form onSubmit={handleSaveInterviewQuestion} className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Company *</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Google, Microsoft"
+                              value={iqCompany}
+                              onChange={(e) => setIqCompany(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Role / Designation</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Frontend Engineer, Analyst"
+                              value={iqRole}
+                              onChange={(e) => setIqRole(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Difficulty</label>
+                            <select
+                              value={iqDifficulty}
+                              onChange={(e) => setIqDifficulty(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuchsia-500 font-bold text-xs"
+                            >
+                              <option value="Easy">Easy</option>
+                              <option value="Medium">Medium</option>
+                              <option value="Hard">Hard</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Question Text *</label>
+                            <textarea
+                              placeholder="Describe the coding challenge, logic puzzle, or behavioral question..."
+                              value={iqQuestion}
+                              onChange={(e) => setIqQuestion(e.target.value)}
+                              rows={4}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium text-xs resize-none"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Suggested Answer / Explanation</label>
+                            <textarea
+                              placeholder="Optional solution code, notes or guidelines..."
+                              value={iqAnswer}
+                              onChange={(e) => setIqAnswer(e.target.value)}
+                              rows={5}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuchsia-500 font-mono text-xs resize-none"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            {editingQuestion && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingQuestion(null);
+                                  setIqCompany("");
+                                  setIqRole("");
+                                  setIqQuestion("");
+                                  setIqAnswer("");
+                                  setIqDifficulty("Medium");
+                                }}
+                                className="flex-1 py-2.5 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold transition-all"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                            <button
+                              type="submit"
+                              className="flex-1 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-xl text-xs font-bold shadow-lg transition-all"
+                            >
+                              {editingQuestion ? "Update Question" : "Save Question"}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+
+                      {/* Right side list of questions */}
+                      <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                          <h4 className="font-extrabold text-slate-900 text-base">Registered Interview Questions</h4>
+                          <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-md uppercase">
+                            {interviewQuestions.length} Questions
+                          </span>
+                        </div>
+                        {interviewQuestions.length === 0 ? (
+                          <div className="text-center py-12 text-slate-400 space-y-2">
+                            <Briefcase size={36} className="mx-auto text-slate-300 animate-pulse" />
+                            <p className="text-xs font-semibold">No questions added yet.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                            {interviewQuestions.map((q) => (
+                              <div key={q.id} className="border border-slate-200 rounded-2xl p-5 hover:border-fuchsia-500/30 transition-all space-y-3 bg-slate-50/50">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <span className="bg-fuchsia-100 text-fuchsia-700 text-[10px] font-black px-2.5 py-0.5 rounded-full mr-2">
+                                      {q.company}
+                                    </span>
+                                    {q.role && (
+                                      <span className="text-xs text-slate-500 font-bold mr-2">
+                                        ({q.role})
+                                      </span>
+                                    )}
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                      q.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
+                                      q.difficulty === 'Hard' ? 'bg-red-100 text-red-700' :
+                                      'bg-amber-100 text-amber-700'
+                                    }`}>
+                                      {q.difficulty || "Medium"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleEditInterviewQuestion(q)}
+                                      className="text-xs font-bold text-fuchsia-600 hover:text-fuchsia-700 px-2 py-1 bg-fuchsia-50 rounded-lg border border-fuchsia-100"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteInterviewQuestion(q.id)}
+                                      className="text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 bg-red-50 rounded-lg border border-red-100"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                                <p className="text-slate-800 text-xs font-semibold whitespace-pre-wrap">{q.questionText}</p>
+                                {q.answerText && (
+                                  <div className="pt-2 border-t border-slate-100 mt-2">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Answer / Explanation</span>
+                                    <pre className="bg-slate-100 p-3 rounded-xl text-[10px] font-mono overflow-x-auto text-slate-700 max-h-40 whitespace-pre-wrap">{q.answerText}</pre>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                      {/* Left side form for updates */}
+                      <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
+                        <h3 className="text-xl font-bold text-slate-900">
+                          {editingUpdate ? "Edit Company Update" : "Add Company Update"}
+                        </h3>
+                        <p className="text-xs text-slate-600">
+                          Publish corporate news, hiring drives, internship announcements or technological updates in bullet points.
+                        </p>
+                        
+                        <form onSubmit={handleSaveCompanyUpdate} className="space-y-4">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Company Name *</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Amazon, Infosys"
+                              value={cuCompany}
+                              onChange={(e) => setCuCompany(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Updates (One per line) *</label>
+                            <textarea
+                              placeholder="Enter updates. Press Enter for each new bullet point..."
+                              value={cuBullets}
+                              onChange={(e) => setCuBullets(e.target.value)}
+                              rows={8}
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium text-xs resize-none"
+                              required
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            {editingUpdate && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingUpdate(null);
+                                  setCuCompany("");
+                                  setCuBullets("");
+                                }}
+                                className="flex-1 py-2.5 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold transition-all"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                            <button
+                              type="submit"
+                              className="flex-1 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-xl text-xs font-bold shadow-lg transition-all"
+                            >
+                              {editingUpdate ? "Update News" : "Publish News"}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+
+                      {/* Right side list of updates */}
+                      <div className="lg:col-span-8 bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                          <h4 className="font-extrabold text-slate-900 text-base">Published Updates</h4>
+                          <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-md uppercase">
+                            {companyUpdates.length} Updates
+                          </span>
+                        </div>
+                        {companyUpdates.length === 0 ? (
+                          <div className="text-center py-12 text-slate-400 space-y-2">
+                            <Newspaper size={36} className="mx-auto text-slate-300 animate-pulse" />
+                            <p className="text-xs font-semibold">No company updates published yet.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                            {companyUpdates.map((u) => (
+                              <div key={u.id} className="border border-slate-200 rounded-2xl p-5 hover:border-fuchsia-500/30 transition-all space-y-3 bg-slate-50/50">
+                                <div className="flex items-start justify-between">
+                                  <div className="space-y-1">
+                                    <h5 className="font-black text-slate-950 text-sm">{u.company}</h5>
+                                    <span className="text-[10px] text-slate-400 font-semibold block">
+                                      Published: {new Date(u.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleEditCompanyUpdate(u)}
+                                      className="text-xs font-bold text-fuchsia-600 hover:text-fuchsia-700 px-2 py-1 bg-fuchsia-50 rounded-lg border border-fuchsia-100"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteCompanyUpdate(u.id)}
+                                      className="text-xs font-bold text-red-600 hover:text-red-700 px-2 py-1 bg-red-50 rounded-lg border border-red-100"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                                <ul className="list-disc pl-5 space-y-1 text-slate-700 text-xs">
+                                  {u.updates.map((bullet, idx) => (
+                                    <li key={idx} className="font-medium leading-relaxed">{bullet}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {activeTab === "adminProfile" && (
                 <div className="max-w-4xl mx-auto space-y-6">
                   <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl">
@@ -4996,7 +6329,7 @@ export default function TextbookPortal({
           {user?.role === "faculty" && (
             <div className="space-y-6">
               {/* Faculty Tabs */}
-               <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap scrollbar-hide w-full gap-1">
+               <div className="flex border-b border-slate-200 flex-wrap w-full gap-1">
                 <button
                   onClick={() => { setActiveTab("create"); setErrorMessage(""); setSuccessMessage(""); setSelectedFacultyQuiz(null); }}
                   className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
@@ -5388,7 +6721,7 @@ export default function TextbookPortal({
                             <div key={idx} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl relative flex gap-4">
                               <div className="font-bold text-fuchsia-500">{idx + 1}.</div>
                               <div className="flex-1 space-y-1">
-                                <div className="font-semibold text-white text-sm leading-tight pr-6">{q.questionText}</div>
+                                <div className="font-semibold text-slate-900 text-sm leading-tight pr-6">{q.questionText}</div>
                                 {newQuizType === 'mcq' && (
                                   <>
                                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-600">
@@ -6150,44 +7483,141 @@ export default function TextbookPortal({
           {user?.role === "student" && (
             <div className="space-y-6">
               {/* Student Tabs */}
-              <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap scrollbar-hide w-full gap-1">
-                <button
-                  onClick={() => { setActiveTab("join"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
-                    activeTab === "join" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <Play size={16} />
-                  Join Active Quiz
-                </button>
-                <button
-                  onClick={() => { setActiveTab("practice"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
-                    activeTab === "practice" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <BookOpen size={16} />
-                  Practice Questions
-                </button>
-                <button
-                  onClick={() => { setActiveTab("history"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
-                    activeTab === "history" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <FileSpreadsheet size={16} />
-                  My Quiz History
-                </button>
-                <button
-                  onClick={() => { setActiveTab("studentProfile"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
-                  className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
-                    activeTab === "studentProfile" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <User size={16} />
-                  My Profile
-                </button>
+              <div className="flex border-b border-slate-200 flex-wrap w-full gap-1">
+                {/* My Books Tab (only if student has purchased books) */}
+                {isTabAllowed("mybooks") && (
+                  <button
+                    onClick={() => { setActiveTab("mybooks"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "mybooks" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <BookOpen size={16} />
+                    My Books
+                  </button>
+                )}
+
+                {/* Caselets Tab */}
+                {isTabAllowed("caselets") && (
+                  <button
+                    onClick={() => { setActiveTab("caselets"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); setReadingCaseletIndex(null); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "caselets" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <FileSpreadsheet size={16} />
+                    My Caselets
+                  </button>
+                )}
+
+                {/* Join Active Quiz */}
+                {isTabAllowed("join") && (
+                  <button
+                    onClick={() => { setActiveTab("join"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "join" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Play size={16} />
+                    Join Active Quiz
+                  </button>
+                )}
+
+                {/* Practice Questions */}
+                {isTabAllowed("practice") && (
+                  <button
+                    onClick={() => { setActiveTab("practice"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "practice" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <BookOpen size={16} />
+                    Practice Questions
+                  </button>
+                )}
+
+                {/* My Quiz History */}
+                {isTabAllowed("history") && (
+                  <button
+                    onClick={() => { setActiveTab("history"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "history" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <FileSpreadsheet size={16} />
+                    My Quiz History
+                  </button>
+                )}
+
+                {/* Career Hub */}
+                {isTabAllowed("studentCareerHub") && (
+                  <button
+                    onClick={() => { setActiveTab("studentCareerHub"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "studentCareerHub" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Briefcase size={16} />
+                    Career Hub
+                  </button>
+                )}
+
+                {/* My Profile */}
+                {isTabAllowed("studentProfile") && (
+                  <button
+                    onClick={() => { setActiveTab("studentProfile"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "studentProfile" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <User size={16} />
+                    My Profile
+                  </button>
+                )}
               </div>
+
+              {/* Tab: My Books */}
+              {activeTab === "mybooks" && (
+                <div className="space-y-6">
+                  {readingBookId ? null : (
+                    // Library Grid
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xl font-bold text-slate-900 font-display">My Soft Copies</h4>
+                          <p className="text-sm text-slate-500">Access your purchased textbook digital editions.</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                        {PORTAL_PUBLISHED_BOOKS.filter(book => user?.purchasedBooks?.includes(book.id)).map((book) => (
+                          <div key={book.id} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-lg flex flex-col justify-between hover:shadow-xl transition-all">
+                            <div className="space-y-4">
+                              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150">
+                                <img
+                                  src={book.coverImg}
+                                  alt={book.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div>
+                                <h5 className="font-bold text-slate-900 line-clamp-2">{book.title}</h5>
+                                <p className="text-xs text-slate-500 mt-1">By {book.author}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => openSecureBook(book.id)}
+                              className="w-full mt-5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-sm transition-all"
+                            >
+                              Read Book
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Tab 1: Join & Attempt Quiz */}
               {activeTab === "join" && (
@@ -6734,8 +8164,59 @@ export default function TextbookPortal({
                                           }
                                           selectedQ = fallbackQ.slice(0, t.questionLimit);
                                         }
-                                        setPracticeQuestions(selectedQ);
-                                        setPracticeAnswers(new Array(selectedQ.length).fill(""));
+                                        const selectedQCopy = JSON.parse(JSON.stringify(selectedQ)) as Question[];
+                                        const pairedQ = selectedQCopy.map((q, idx) => ({ q, originalIndex: idx }));
+                                        const shuffledP = shuffleArray(pairedQ);
+
+                                        const practiceMap: { originalIndex: number; optionMapping: Record<string, string> }[] = [];
+
+                                        const randomizedQ = shuffledP.map((pair) => {
+                                          const q = pair.q;
+                                          const isWritten = q.type === 'written';
+
+                                          if (isWritten) {
+                                            practiceMap.push({
+                                              originalIndex: pair.originalIndex,
+                                              optionMapping: {}
+                                            });
+                                            return q;
+                                          }
+
+                                          const optionKeys: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
+                                          const originalOptionsList = [
+                                            { key: 'A', text: q.optionA || "" },
+                                            { key: 'B', text: q.optionB || "" },
+                                            { key: 'C', text: q.optionC || "" },
+                                            { key: 'D', text: q.optionD || "" }
+                                          ];
+
+                                          const shuffledOptionsList = shuffleArray(originalOptionsList);
+
+                                          q.optionA = shuffledOptionsList[0].text;
+                                          q.optionB = shuffledOptionsList[1].text;
+                                          q.optionC = shuffledOptionsList[2].text;
+                                          q.optionD = shuffledOptionsList[3].text;
+
+                                          const origCorrectKey = q.correctOption || 'A';
+                                          const newCorrectIndex = shuffledOptionsList.findIndex(opt => opt.key === origCorrectKey);
+                                          q.correctOption = optionKeys[newCorrectIndex] || 'A';
+
+                                          const optionMapping: Record<string, string> = {};
+                                          shuffledOptionsList.forEach((opt, idx) => {
+                                            optionMapping[optionKeys[idx]] = opt.key;
+                                          });
+
+                                          practiceMap.push({
+                                            originalIndex: pair.originalIndex,
+                                            optionMapping
+                                          });
+
+                                          return q;
+                                        });
+
+                                        practiceQuestionMappingRef.current = practiceMap;
+                                        setPracticeQuestions(randomizedQ);
+                                        setPracticeAnswers(new Array(randomizedQ.length).fill(""));
                                         setPracticeCurrentIndex(0);
                                         setPracticeTimeRemaining(t.duration * 60);
                                         setPracticeResultScore(null);
@@ -6827,6 +8308,268 @@ export default function TextbookPortal({
                           )}
                         </div>
                       </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {activeTab === "studentCareerHub" && (
+                <div className="space-y-6">
+                  {/* Career Hub Header */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-2">
+                    <h3 className="text-xl font-bold text-slate-900">Career & Placement Hub</h3>
+                    <p className="text-xs text-slate-600">Access exclusive mock interview questions and corporate placement updates directly from our partner network.</p>
+                  </div>
+
+                  {/* Internal Tab Navigation */}
+                  <div className="flex border-b border-slate-200 gap-1 pb-1">
+                    <button
+                      onClick={() => setCareerSubTab("interviews")}
+                      className={`px-4 py-2 font-bold text-xs rounded-lg transition-all ${
+                        careerSubTab === "interviews"
+                          ? "bg-fuchsia-600 text-white shadow"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      Interview Questions
+                    </button>
+                    <button
+                      onClick={() => setCareerSubTab("updates")}
+                      className={`px-4 py-2 font-bold text-xs rounded-lg transition-all ${
+                        careerSubTab === "updates"
+                          ? "bg-fuchsia-600 text-white shadow"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      Company Updates
+                    </button>
+                  </div>
+
+                  {careerSubTab === "interviews" ? (
+                    <div className="space-y-4">
+                      {/* Search and Filters */}
+                      <div className="bg-white border border-slate-200 p-4 rounded-3xl shadow-md flex flex-col sm:flex-row gap-4 items-center justify-between">
+                        <div className="relative w-full sm:max-w-xs">
+                          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Search by company..."
+                            value={interviewSearch}
+                            onChange={(e) => setInterviewSearch(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs shadow-sm"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+                          <Filter size={14} className="text-slate-400" />
+                          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Difficulty:</span>
+                          <select
+                            value={interviewDiffFilter}
+                            onChange={(e) => setInterviewDiffFilter(e.target.value)}
+                            className="bg-white border border-slate-200 text-slate-900 rounded-xl px-3 py-1.5 focus:outline-none focus:border-fuchsia-500 font-bold text-xs shadow-sm"
+                          >
+                            <option value="all">All Difficulties</option>
+                            <option value="Easy">Easy</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Hard">Hard</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Interview Questions list */}
+                      {(() => {
+                        const filtered = interviewQuestions.filter((q) => {
+                          const matchesSearch = q.company.toLowerCase().includes(interviewSearch.toLowerCase());
+                          const matchesFilter = interviewDiffFilter === "all" || q.difficulty === interviewDiffFilter;
+                          return matchesSearch && matchesFilter;
+                        });
+
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center text-slate-400 space-y-2">
+                              <Briefcase size={36} className="mx-auto text-slate-300 animate-pulse" />
+                              <p className="text-xs font-semibold">No interview questions match your criteria.</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-4">
+                            {filtered.map((q) => {
+                              const isExpanded = expandedInterviewId === q.id;
+                              return (
+                                <div
+                                  key={q.id}
+                                  className="bg-white border border-slate-200 rounded-3xl p-6 shadow-md hover:shadow-lg transition-all duration-300 group flex flex-col gap-3"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="bg-fuchsia-500/10 text-fuchsia-600 text-xs font-black px-3 py-1 rounded-full">
+                                        {q.company}
+                                      </span>
+                                      {q.role && (
+                                        <span className="text-xs text-slate-600 font-bold">
+                                          Role: {q.role}
+                                        </span>
+                                      )}
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                        q.difficulty === 'Easy' ? 'bg-green-100 text-green-700' :
+                                        q.difficulty === 'Hard' ? 'bg-red-100 text-red-700' :
+                                        'bg-amber-100 text-amber-700'
+                                      }`}>
+                                        {q.difficulty || "Medium"}
+                                      </span>
+                                    </div>
+                                    {q.answerText && (
+                                      <button
+                                        onClick={() => setExpandedInterviewId(isExpanded ? null : q.id)}
+                                        className="text-xs font-bold text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1 bg-fuchsia-50 px-2.5 py-1.5 rounded-xl border border-fuchsia-100/50 transition-colors"
+                                      >
+                                        {isExpanded ? (
+                                          <>
+                                            Hide Answer <ChevronUp size={14} />
+                                          </>
+                                        ) : (
+                                          <>
+                                            Reveal Answer <ChevronDown size={14} />
+                                          </>
+                                        )}
+                                      </button>
+                                    )}
+                                  </div>
+                                  <p className="text-slate-800 text-sm font-semibold whitespace-pre-wrap leading-relaxed">
+                                    {q.questionText}
+                                  </p>
+                                  {isExpanded && q.answerText && (
+                                    <div className="pt-4 border-t border-slate-100 mt-2 animate-fadeIn space-y-2">
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Suggested Solution / Guidance</span>
+                                      <pre className="bg-slate-50 border border-slate-200/60 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto text-slate-700 whitespace-pre-wrap leading-relaxed max-h-96">
+                                        {q.answerText}
+                                      </pre>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Search for updates */}
+                      <div className="bg-white border border-slate-200 p-4 rounded-3xl shadow-md flex items-center justify-between">
+                        <div className="relative w-full sm:max-w-xs">
+                          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Filter by company name..."
+                            value={interviewSearch}
+                            onChange={(e) => setInterviewSearch(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs shadow-sm"
+                          />
+                        </div>
+                        <span className="text-xs font-bold text-slate-500 hidden sm:inline">
+                          Latest corporate notifications & announcements
+                        </span>
+                      </div>
+
+                      {/* Updates listing */}
+                      {(() => {
+                        const filtered = companyUpdates.filter((u) =>
+                          u.company.toLowerCase().includes(interviewSearch.toLowerCase())
+                        );
+
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center text-slate-400 space-y-2">
+                              <Newspaper size={36} className="mx-auto text-slate-300 animate-pulse" />
+                              <p className="text-xs font-semibold">No company updates available.</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {filtered.map((u) => (
+                              <div
+                                key={u.id}
+                                className="bg-white border border-slate-200 rounded-3xl p-6 shadow-md hover:shadow-lg transition-all duration-300 flex flex-col gap-4"
+                              >
+                                <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+                                  <div className="space-y-1">
+                                    <h4 className="font-black text-slate-950 text-base">{u.company}</h4>
+                                    <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
+                                      Posted: {new Date(u.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <span className="bg-fuchsia-100 text-fuchsia-600 p-2 rounded-xl">
+                                    <Newspaper size={18} />
+                                  </span>
+                                </div>
+                                <ul className="list-disc pl-5 space-y-2 text-slate-700 text-xs font-medium">
+                                  {u.updates.map((bullet, idx) => (
+                                    <li key={idx} className="leading-relaxed">{bullet}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab: My Caselets */}
+              {activeTab === "caselets" && (
+                <div className="space-y-6">
+                  {(() => {
+                    const studentBookId = user?.bookId || "1";
+                    const caselets = BOOK_CASELETS[studentBookId] || [];
+                    
+                    if (caselets.length === 0) {
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xl">
+                          <FileSpreadsheet className="mx-auto text-slate-300 mb-4" size={48} />
+                          <h4 className="text-lg font-bold text-slate-800 mb-1">No Caselets Available</h4>
+                          <p className="text-slate-500 text-sm">There are no caselets assigned to your mapped textbook.</p>
+                        </div>
+                      );
+                    }
+
+                    if (readingCaseletIndex !== null && caselets[readingCaseletIndex]) {
+                      return null;
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 animate-fadeIn">
+                        {caselets.map((c, idx) => {
+                          const book = PORTAL_PUBLISHED_BOOKS.find(b => b.id === studentBookId);
+                          return (
+                            <div key={idx} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-lg flex flex-col justify-between hover:shadow-xl transition-all">
+                              <div className="space-y-4">
+                                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150">
+                                  <img
+                                    src={book?.coverImg || "/portal_coverpages/minerals.jpg"}
+                                    alt={c.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <div>
+                                  <h5 className="font-bold text-slate-900 line-clamp-2">{c.title}</h5>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => openSecureCaselet(idx)}
+                                className="w-full mt-5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-sm transition-all"
+                              >
+                                Read Caselet
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     );
                   })()}
                 </div>
@@ -7008,6 +8751,67 @@ export default function TextbookPortal({
                   </div>
                 </div>
               )}
+
+              {/* --- STUDENT PLAN UPGRADE MODAL --- */}
+              {showUpgradeModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+                  <div
+                    onClick={() => setShowUpgradeModal(false)}
+                    className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                  />
+                  <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md relative z-10 p-6 shadow-2xl flex flex-col space-y-4 animate-scaleIn">
+                    <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                      <h3 className="text-lg font-bold text-slate-900">Upgrade to Complete Access</h3>
+                      <button
+                        onClick={() => setShowUpgradeModal(false)}
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <p className="text-sm text-slate-600">
+                        You are upgrading your current <strong>{user?.plan} plan</strong> to the <strong>Complete Portal Access</strong> which unlocks:
+                      </p>
+                      <ul className="text-xs text-slate-650 space-y-1.5 pl-4 list-disc font-medium">
+                        <li>All Practice Questions & Chapters</li>
+                        <li>All Placement Activities & Career Hub resources</li>
+                        <li>Active Quizzes with assigned teachers</li>
+                      </ul>
+                      
+                      <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center border border-slate-150">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Upgrade Fee</span>
+                        <span className="text-xl font-black text-slate-900">₹{upgradeCost}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-3">
+                      <button
+                        onClick={() => setShowUpgradeModal(false)}
+                        disabled={isUpgrading}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm py-3 rounded-xl transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleUpgradePlan('complete', upgradeCost)}
+                        disabled={isUpgrading}
+                        className="flex-1 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2"
+                      >
+                        {isUpgrading ? (
+                          <>
+                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          "Pay & Upgrade"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -7138,11 +8942,11 @@ export default function TextbookPortal({
               <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 border border-slate-200 rounded-2xl text-xs text-slate-600">
                 <div>
                   <span className="font-bold text-slate-500 uppercase tracking-wider block mb-1">Student Name</span>
-                  <span className="text-white font-bold text-sm">{gradingAttempt.studentName}</span>
+                  <span className="text-slate-900 font-bold text-sm">{gradingAttempt.studentName}</span>
                 </div>
                 <div>
                   <span className="font-bold text-slate-500 uppercase tracking-wider block mb-1">Mobile/Email</span>
-                  <span className="text-white font-bold text-sm">{gradingAttempt.studentMobile}</span>
+                  <span className="text-slate-900 font-bold text-sm">{gradingAttempt.studentMobile}</span>
                 </div>
               </div>              <div className="space-y-4 border-t border-slate-200 pt-4">
                 {getQuizByCode(gradingAttempt.quizCode)?.questions.map((q, idx) => {
@@ -7150,7 +8954,7 @@ export default function TextbookPortal({
                   const maxM = q.maxMarks || 5;
                   return (
                     <div key={idx} className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
-                      <div className="font-bold text-white text-sm">
+                      <div className="font-bold text-slate-900 text-sm">
                         Question {idx + 1}: {q.questionText}
                       </div>
                       <div className="bg-white/60 p-3 rounded-lg border border-slate-200 text-xs text-slate-700 leading-relaxed font-mono whitespace-pre-wrap">
@@ -7270,6 +9074,241 @@ export default function TextbookPortal({
           </div>
         </div>
       )}
+
+      {readingBookId && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-950 flex flex-col w-screen h-screen select-none overflow-hidden" 
+          style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+        >
+          {/* Print protection style tag */}
+          <style>{`
+            @media print {
+              body {
+                display: none !important;
+              }
+            }
+          `}</style>
+
+          {/* Secure Reader Header */}
+          <div className="flex justify-between items-center px-6 py-4 bg-slate-900 border-b border-slate-800 text-white shrink-0 font-sans">
+            <div>
+              <h4 className="text-lg font-bold text-white tracking-tight">
+                {PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId)?.title || "Secure Textbook"}
+              </h4>
+              <p className="text-xs text-slate-400">Secure e-Reader Mode — Printing, copying, and screenshots are restricted.</p>
+            </div>
+            
+            {/* High-quality page navigation buttons */}
+            <div className="flex items-center gap-4 bg-slate-950/45 px-4 py-2 rounded-2xl border border-slate-850">
+              <button
+                disabled={pdfCurrentPage <= 1 || pdfLoading}
+                onClick={() => setPdfCurrentPage(prev => Math.max(1, prev - 1))}
+                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                Previous Page
+              </button>
+              {isEditingPage ? (
+                <div className="flex items-center gap-1 min-w-[75px] justify-center">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={pageInputVal}
+                    onChange={(e) => setPageInputVal(e.target.value.replace(/\D/g, ""))}
+                    onBlur={handlePageSubmit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handlePageSubmit();
+                    }}
+                    className="w-10 bg-slate-800 text-white border border-slate-700 rounded text-center text-xs px-1 py-0.5 focus:outline-none focus:border-fuchsia-500 font-mono font-bold"
+                    autoFocus
+                  />
+                  <span className="text-xs font-mono text-slate-350 font-bold">of {pdfTotalPages || "..."}</span>
+                </div>
+              ) : (
+                <span 
+                  onClick={() => setIsEditingPage(true)}
+                  className="text-xs font-mono text-slate-350 min-w-[75px] text-center font-bold cursor-pointer hover:text-white transition-colors"
+                  title="Click to jump to page"
+                >
+                  Page {pdfCurrentPage} of {pdfTotalPages || "..."}
+                </span>
+              )}
+              <button
+                disabled={pdfCurrentPage >= pdfTotalPages || pdfLoading}
+                onClick={() => setPdfCurrentPage(prev => Math.min(pdfTotalPages, prev + 1))}
+                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+              >
+                Next Page
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={closeSecureReader}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              >
+                Close Reader
+              </button>
+            </div>
+          </div>
+
+          {/* Embedded Preview Container with relative positioning for watermark */}
+          <div className="relative flex-1 bg-zinc-100 overflow-y-auto p-8 flex justify-center items-start select-none">
+            {/* Dynamic watermark overlaid */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-[99] grid grid-cols-3 grid-rows-3 opacity-[0.12] select-none">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-center -rotate-45 text-slate-400 text-2xl font-extrabold tracking-widest uppercase whitespace-nowrap">
+                  {user?.collegeEmail || user?.mobileNumber || "Lurnexa Publication"}
+                </div>
+              ))}
+            </div>
+
+            {/* Blur warning overlay */}
+            {isReaderBlurred && (
+              <div className="absolute inset-0 bg-slate-950/90 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md">
+                <Shield className="text-fuchsia-500 mb-4 animate-bounce" size={48} />
+                <h3 className="text-xl font-bold text-white mb-2">Protected Content</h3>
+                <p className="text-sm text-slate-400 max-w-md">Content is blurred for security while the reader window is out of focus.</p>
+              </div>
+            )}
+
+            {/* Loading spinner */}
+            {pdfLoading ? (
+              <div className="flex flex-col items-center justify-center space-y-4 py-32 text-slate-350">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-fuchsia-500"></div>
+                <p className="text-sm font-medium">Securing and loading textbook page...</p>
+              </div>
+            ) : (
+              <canvas
+                id="secure-reader-canvas"
+                className="max-w-full h-auto bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none"
+                style={{ userSelect: 'none' }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {readingCaseletIndex !== null && (() => {
+        const studentBookId = user?.bookId || "1";
+        const caselets = BOOK_CASELETS[studentBookId] || [];
+        const currentCaselet = caselets[readingCaseletIndex];
+        if (!currentCaselet) return null;
+
+        return (
+          <div 
+            className="fixed inset-0 z-[9999] bg-slate-950 flex flex-col w-screen h-screen select-none overflow-hidden font-sans" 
+            style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+          >
+            {/* Print protection style tag */}
+            <style>{`
+              @media print {
+                body {
+                  display: none !important;
+                }
+              }
+            `}</style>
+
+            {/* Secure Reader Header */}
+            <div className="flex justify-between items-center px-6 py-4 bg-slate-900 border-b border-slate-800 text-white shrink-0">
+              <div>
+                <h4 className="text-lg font-bold text-white tracking-tight">
+                  {currentCaselet.title}
+                </h4>
+                <p className="text-xs text-slate-400">Secure Caselet Mode — Printing, copying, and screenshots are restricted.</p>
+              </div>
+
+              {/* High-quality page navigation buttons */}
+              <div className="flex items-center gap-4 bg-slate-950/45 px-4 py-2 rounded-2xl border border-slate-850">
+                <button
+                  disabled={pdfCurrentPage <= 1 || pdfLoading}
+                  onClick={() => setPdfCurrentPage(prev => Math.max(1, prev - 1))}
+                  className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  Previous Page
+                </button>
+                {isEditingPage ? (
+                  <div className="flex items-center gap-1 min-w-[75px] justify-center">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={pageInputVal}
+                      onChange={(e) => setPageInputVal(e.target.value.replace(/\D/g, ""))}
+                      onBlur={handlePageSubmit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handlePageSubmit();
+                      }}
+                      className="w-10 bg-slate-800 text-white border border-slate-700 rounded text-center text-xs px-1 py-0.5 focus:outline-none focus:border-fuchsia-500 font-mono font-bold"
+                      autoFocus
+                    />
+                    <span className="text-xs font-mono text-slate-350 font-bold">of {pdfTotalPages || "..."}</span>
+                  </div>
+                ) : (
+                  <span 
+                    onClick={() => setIsEditingPage(true)}
+                    className="text-xs font-mono text-slate-350 min-w-[75px] text-center font-bold cursor-pointer hover:text-white transition-colors"
+                    title="Click to jump to page"
+                  >
+                    Page {pdfCurrentPage} of {pdfTotalPages || "..."}
+                  </span>
+                )}
+                <button
+                  disabled={pdfCurrentPage >= pdfTotalPages || pdfLoading}
+                  onClick={() => setPdfCurrentPage(prev => Math.min(pdfTotalPages, prev + 1))}
+                  className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  Next Page
+                </button>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={closeSecureReader}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  Close Reader
+                </button>
+              </div>
+            </div>
+
+            {/* Content Container */}
+            <div className="relative flex-1 bg-zinc-100 overflow-y-auto p-8 flex justify-center items-start select-none">
+              {/* Dynamic watermark overlaid */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-[99] grid grid-cols-3 grid-rows-3 opacity-[0.12] select-none">
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-center -rotate-45 text-slate-400 text-2xl font-extrabold tracking-widest uppercase whitespace-nowrap">
+                    {user?.collegeEmail || user?.mobileNumber || "Lurnexa Publication"}
+                  </div>
+                ))}
+              </div>
+
+              {/* Blur warning overlay */}
+              {isReaderBlurred && (
+                <div className="absolute inset-0 bg-slate-950/90 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md">
+                  <Shield className="text-fuchsia-500 mb-4 animate-bounce" size={48} />
+                  <h3 className="text-xl font-bold text-white mb-2">Protected Content</h3>
+                  <p className="text-sm text-slate-400 max-w-md">Content is blurred for security while the reader window is out of focus.</p>
+                </div>
+              )}
+
+              {/* Loading spinner */}
+              {pdfLoading ? (
+                <div className="flex flex-col items-center justify-center space-y-4 py-32 text-slate-350">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-fuchsia-500"></div>
+                  <p className="text-sm font-medium">Securing and loading caselet page...</p>
+                </div>
+              ) : (
+                <canvas
+                  id="secure-reader-canvas"
+                  className="max-w-full h-auto bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none"
+                  style={{ userSelect: 'none' }}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <FooterSection />
     </div>

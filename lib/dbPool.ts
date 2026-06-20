@@ -173,15 +173,18 @@ function writeJSONTable(name: string, data: any[]): void {
 }
 
 // Wrapper for query execution
+let pgFailed = false;
+
 export const pool = {
   async query(sql: string, params: any[] = []): Promise<{ rows: any[] }> {
-    if (!useLocalFallback) {
+    if (!useLocalFallback && !pgFailed) {
       try {
         // Attempt real PG query
         return await pgPool.query(sql, params);
       } catch (err: any) {
-        console.error("❌ PostgreSQL query failed:", err.message || err);
-        throw err;
+        console.error("❌ PostgreSQL query failed, falling back to local JSON database:", err.message || err);
+        pgFailed = true;
+        // Fall through to local JSON fallback
       }
     }
 
@@ -219,8 +222,9 @@ export const pool = {
           payment_status,
           order_status
         ] = params;
+        const existingIdx = purchases.findIndex(p => p.order_id === order_id);
         const newRecord: PurchaseRecord & Record<string, any> = {
-          id: purchases.length > 0 ? Math.max(...purchases.map(p => p.id)) + 1 : 1,
+          id: existingIdx !== -1 ? purchases[existingIdx].id : (purchases.length > 0 ? Math.max(...purchases.map(p => p.id)) + 1 : 1),
           order_id,
           user_identifier,
           book_id,
@@ -244,10 +248,14 @@ export const pool = {
           cashfree_payment_id: cashfree_payment_id || "",
           payment_status: payment_status || "PENDING_PAYMENT",
           order_status: order_status || "PENDING_PAYMENT",
-          created_at: new Date().toISOString(),
+          created_at: existingIdx !== -1 ? purchases[existingIdx].created_at : new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
-        purchases.push(newRecord);
+        if (existingIdx !== -1) {
+          purchases[existingIdx] = newRecord;
+        } else {
+          purchases.push(newRecord);
+        }
         writePurchasesDb(purchases);
         return { rows: [newRecord] };
       }
@@ -523,16 +531,20 @@ export const pool = {
       writeJSONTable("quotation_requests", requests);
       return { rows: [] };
     }
-    if (cleanSql.includes("UPDATE QUOTATION_REQUESTS SET STATUS = 'SENT' WHERE ID = $1")) {
+    if (cleanSql.includes("UPDATE QUOTATION_REQUESTS")) {
       const requests = readJSONTable("quotation_requests");
       const idx = requests.findIndex(r => r.id === params[0]);
       if (idx !== -1) {
-        requests[idx].status = 'Sent';
+        if (cleanSql.includes("STATUS = 'SENT'") || cleanSql.includes("STATUS = 'SENT'")) {
+          requests[idx].status = 'Sent';
+        } else if (cleanSql.includes("STATUS = 'PENDING'") || cleanSql.includes("STATUS = 'PENDING'")) {
+          requests[idx].status = 'Pending';
+        }
         writeJSONTable("quotation_requests", requests);
       }
       return { rows: [] };
     }
-    if (cleanSql.includes("DELETE FROM QUOTATION_REQUESTS WHERE ID = $1")) {
+    if (cleanSql.includes("DELETE FROM QUOTATION_REQUESTS")) {
       const requests = readJSONTable("quotation_requests");
       const updated = requests.filter(r => r.id !== params[0]);
       writeJSONTable("quotation_requests", updated);
@@ -600,33 +612,60 @@ export const pool = {
       writeJSONTable("quotations", quotations);
       return { rows: [] };
     }
-    if (cleanSql.includes("UPDATE QUOTATIONS") && cleanSql.includes("SET TOTAL_AMOUNT = $1")) {
+    if (cleanSql.includes("UPDATE QUOTATIONS")) {
       const quotations = readJSONTable("quotations");
-      const [total_amount, items, sent_date, id] = params;
-      const idx = quotations.findIndex(q => q.id === id);
-      if (idx !== -1) {
-        quotations[idx].total_amount = Number(total_amount);
-        quotations[idx].items = typeof items === "string" ? JSON.parse(items) : items;
-        quotations[idx].sent_date = sent_date;
-        writeJSONTable("quotations", quotations);
+      if (cleanSql.includes("SET TOTAL_AMOUNT = $1")) {
+        const [total_amount, items, sent_date, id] = params;
+        const idx = quotations.findIndex(q => q.id === id);
+        if (idx !== -1) {
+          quotations[idx].total_amount = Number(total_amount);
+          quotations[idx].items = typeof items === "string" ? JSON.parse(items) : items;
+          quotations[idx].sent_date = sent_date;
+          writeJSONTable("quotations", quotations);
+        }
+      } else if (cleanSql.includes("SET IS_CONFIRMED = TRUE")) {
+        const idx = quotations.findIndex(q => q.id === params[2]);
+        if (idx !== -1) {
+          quotations[idx].is_confirmed = true;
+          quotations[idx].client_stamp = params[0];
+          quotations[idx].confirmed_date = params[1];
+          writeJSONTable("quotations", quotations);
+        }
+      } else if (cleanSql.includes("IS_CONFIRMED = FALSE")) {
+        const idx = quotations.findIndex(q => q.id === params[0]);
+        if (idx !== -1) {
+          quotations[idx].is_confirmed = false;
+          quotations[idx].client_stamp = null;
+          quotations[idx].confirmed_date = null;
+          writeJSONTable("quotations", quotations);
+        }
       }
       return { rows: [] };
     }
-    if (cleanSql.includes("UPDATE QUOTATIONS SET IS_CONFIRMED = TRUE")) {
+    if (cleanSql.includes("DELETE FROM QUOTATIONS")) {
       const quotations = readJSONTable("quotations");
-      const idx = quotations.findIndex(q => q.id === params[2]);
-      if (idx !== -1) {
-        quotations[idx].is_confirmed = true;
-        quotations[idx].client_stamp = params[0];
-        quotations[idx].confirmed_date = params[1];
-        writeJSONTable("quotations", quotations);
+      const updated = quotations.filter(q => q.id !== params[0]);
+      writeJSONTable("quotations", updated);
+      return { rows: [] };
+    }
+    if (cleanSql.includes("DELETE FROM QUOTATION_ORDERS")) {
+      const orders = readJSONTable("quotation_orders");
+      let updated = orders;
+      if (cleanSql.includes("QUOTATION_ID = $1")) {
+        updated = orders.filter(o => o.quotation_id !== params[0]);
+      } else {
+        updated = orders.filter(o => o.id !== params[0]);
       }
+      writeJSONTable("quotation_orders", updated);
       return { rows: [] };
     }
 
     // QUOTATION_ORDERS SELECT / INSERT
     if (cleanSql.includes("SELECT * FROM QUOTATION_ORDERS")) {
       const orders = readJSONTable("quotation_orders");
+      if (cleanSql.includes("WHERE ID = $1") || cleanSql.includes("WHERE ID::TEXT = $1")) {
+        return { rows: orders.filter(o => o.id === params[0]) };
+      }
       if (cleanSql.includes("ORDER BY ORDER_DATE DESC")) {
         orders.sort((a, b) => new Date(b.order_date).getTime() - new Date(a.order_date).getTime());
       }
@@ -680,6 +719,395 @@ export const pool = {
       const updated = resets.filter(r => r.token !== params[0]);
       writeJSONTable("quotation_password_resets", updated);
       return { rows: [] };
+    }
+
+    // === TEXTBOOKS TABLES FALLBACKS ===
+    if (cleanSql.includes("TEXTBOOKS_INTERVIEW_QUESTIONS")) {
+      const list = readJSONTable("textbooks_interview_questions");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [id, company, role, question_text, answer_text, difficulty, created_at] = params;
+        const record = { id, company, role, question_text, answer_text, difficulty, created_at };
+        const idx = list.findIndex((x: any) => x.id === id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_interview_questions", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("NOT IN")) {
+          const activeIds = params;
+          const updated = list.filter((x: any) => activeIds.includes(x.id));
+          writeJSONTable("textbooks_interview_questions", updated);
+        } else {
+          writeJSONTable("textbooks_interview_questions", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_COMPANY_UPDATES")) {
+      const list = readJSONTable("textbooks_company_updates");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [id, company, updatesVal, created_at] = params;
+        const updates = typeof updatesVal === "string" ? JSON.parse(updatesVal) : updatesVal;
+        const record = { id, company, updates, created_at };
+        const idx = list.findIndex((x: any) => x.id === id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_company_updates", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("NOT IN")) {
+          const activeIds = params;
+          const updated = list.filter((x: any) => activeIds.includes(x.id));
+          writeJSONTable("textbooks_company_updates", updated);
+        } else {
+          writeJSONTable("textbooks_company_updates", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_USERS")) {
+      const list = readJSONTable("textbooks_users");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [
+          mobile_number, name, book_id, role, college_name, college_id, faculty_id,
+          college_email, department, faculty_role, subject_teaching, is_active,
+          access_id, teaching_faculty_access_id, profile_picture, plan, purchased_books
+        ] = params;
+        const record = {
+          mobile_number, name, book_id, role, college_name, college_id, faculty_id,
+          college_email, department, faculty_role, subject_teaching, is_active,
+          access_id, teaching_faculty_access_id, profile_picture, plan,
+          purchased_books: typeof purchased_books === "string" ? JSON.parse(purchased_books) : purchased_books
+        };
+        const idx = list.findIndex((x: any) => x.mobile_number === mobile_number);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_users", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("WHERE MOBILE_NUMBER = $1")) {
+          const updated = list.filter((x: any) => x.mobile_number !== params[0]);
+          writeJSONTable("textbooks_users", updated);
+        } else if (cleanSql.includes("NOT IN")) {
+          const activeMobiles = params;
+          const updated = list.filter((x: any) => activeMobiles.includes(x.mobile_number));
+          writeJSONTable("textbooks_users", updated);
+        } else {
+          writeJSONTable("textbooks_users", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_ALLOWED_ACCESS_IDS")) {
+      const list = readJSONTable("textbooks_allowed_access_ids");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [access_id, book_id, role, assigned_to, college_code] = params;
+        const record = { access_id, book_id, role, assigned_to, college_code };
+        const idx = list.findIndex((x: any) => x.access_id === access_id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_allowed_access_ids", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("BOOK_ID = $1")) {
+          const updated = list.filter((x: any) => x.book_id !== params[0]);
+          writeJSONTable("textbooks_allowed_access_ids", updated);
+        } else if (cleanSql.includes("NOT IN")) {
+          const activeAccessIds = params;
+          const updated = list.filter((x: any) => activeAccessIds.includes(x.access_id));
+          writeJSONTable("textbooks_allowed_access_ids", updated);
+        } else {
+          writeJSONTable("textbooks_allowed_access_ids", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_COLLEGES")) {
+      const list = readJSONTable("textbooks_colleges");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [code, name] = params;
+        const record = { code, name };
+        const idx = list.findIndex((x: any) => x.code === code);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_colleges", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("CODE = $1")) {
+          const updated = list.filter((x: any) => x.code !== params[0]);
+          writeJSONTable("textbooks_colleges", updated);
+        } else if (cleanSql.includes("NOT IN")) {
+          const activeCodes = params;
+          const updated = list.filter((x: any) => activeCodes.includes(x.code));
+          writeJSONTable("textbooks_colleges", updated);
+        } else {
+          writeJSONTable("textbooks_colleges", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_TEXTBOOKS")) {
+      const list = readJSONTable("textbooks_textbooks");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [id, title, code] = params;
+        const record = { id, title, code };
+        const idx = list.findIndex((x: any) => x.id === id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_textbooks", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("ID = $1")) {
+          const updated = list.filter((x: any) => x.id !== params[0]);
+          writeJSONTable("textbooks_textbooks", updated);
+        } else if (cleanSql.includes("NOT IN")) {
+          const activeBookIds = params;
+          const updated = list.filter((x: any) => activeBookIds.includes(x.id));
+          writeJSONTable("textbooks_textbooks", updated);
+        } else {
+          writeJSONTable("textbooks_textbooks", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_COUPONS")) {
+      const list = readJSONTable("textbooks_coupons");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [code, discount_percentage, book_id, applicable_format] = params;
+        const record = { code, discount_percentage, book_id, applicable_format };
+        const idx = list.findIndex((x: any) => x.code === code);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_coupons", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("CODE = $1")) {
+          const updated = list.filter((x: any) => x.code !== params[0]);
+          writeJSONTable("textbooks_coupons", updated);
+        } else {
+          writeJSONTable("textbooks_coupons", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_QUIZZES")) {
+      const list = readJSONTable("textbooks_quizzes");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [quiz_code, title, book_id, created_by, type, duration, questions, chapters, created_at, start_time, end_time] = params;
+        const record = {
+          quiz_code, title, book_id, created_by, type, duration,
+          questions: typeof questions === "string" ? JSON.parse(questions) : questions,
+          chapters: typeof chapters === "string" ? JSON.parse(chapters) : chapters,
+          created_at, start_time, end_time
+        };
+        const idx = list.findIndex((x: any) => x.quiz_code === quiz_code);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_quizzes", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("BOOK_ID = $1")) {
+          const updated = list.filter((x: any) => x.book_id !== params[0]);
+          writeJSONTable("textbooks_quizzes", updated);
+        } else if (cleanSql.includes("NOT IN")) {
+          const activeQuizCodes = params;
+          const updated = list.filter((x: any) => activeQuizCodes.includes(x.quiz_code));
+          writeJSONTable("textbooks_quizzes", updated);
+        } else {
+          writeJSONTable("textbooks_quizzes", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_ATTEMPTS")) {
+      const list = readJSONTable("textbooks_attempts");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [id, quiz_code, student_mobile, student_name, answers, question_scores, score, total_questions, attempted_at, type, status] = params;
+        const record = {
+          id, quiz_code, student_mobile, student_name,
+          answers: typeof answers === "string" ? JSON.parse(answers) : answers,
+          question_scores: typeof question_scores === "string" ? JSON.parse(question_scores) : question_scores,
+          score, total_questions, attempted_at, type, status
+        };
+        const idx = list.findIndex((x: any) => x.id === id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_attempts", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("NOT IN")) {
+          const activeAttemptIds = params;
+          const updated = list.filter((x: any) => activeAttemptIds.includes(x.id));
+          writeJSONTable("textbooks_attempts", updated);
+        } else {
+          writeJSONTable("textbooks_attempts", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_BOOK_CHAPTERS")) {
+      const list = readJSONTable("textbooks_book_chapters");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [book_id, chapters_count] = params;
+        const record = { book_id, chapters_count };
+        const idx = list.findIndex((x: any) => x.book_id === book_id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_book_chapters", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("BOOK_ID = $1")) {
+          const updated = list.filter((x: any) => x.book_id !== params[0]);
+          writeJSONTable("textbooks_book_chapters", updated);
+        } else if (cleanSql.includes("NOT IN")) {
+          const activeBookIds = params;
+          const updated = list.filter((x: any) => activeBookIds.includes(x.book_id));
+          writeJSONTable("textbooks_book_chapters", updated);
+        } else {
+          writeJSONTable("textbooks_book_chapters", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_PRACTICE_CONFIGS")) {
+      const list = readJSONTable("textbooks_practice_configs");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [book_id, duration, question_limit] = params;
+        const record = { book_id, duration, question_limit };
+        const idx = list.findIndex((x: any) => x.book_id === book_id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_practice_configs", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("NOT IN")) {
+          const activeBookIds = params;
+          const updated = list.filter((x: any) => activeBookIds.includes(x.book_id));
+          writeJSONTable("textbooks_practice_configs", updated);
+        } else {
+          writeJSONTable("textbooks_practice_configs", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_PRACTICE_ATTEMPTS")) {
+      const list = readJSONTable("textbooks_practice_attempts");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [id, student_mobile, book_id, answers, score, total_questions, completed_at, practice_test_id] = params;
+        const record = {
+          id, student_mobile, book_id,
+          answers: typeof answers === "string" ? JSON.parse(answers) : answers,
+          score, total_questions, completed_at, practice_test_id
+        };
+        const idx = list.findIndex((x: any) => x.id === id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_practice_attempts", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("BOOK_ID = $1")) {
+          const updated = list.filter((x: any) => x.book_id !== params[0]);
+          writeJSONTable("textbooks_practice_attempts", updated);
+        } else if (cleanSql.includes("NOT IN")) {
+          const activeAttemptIds = params;
+          const updated = list.filter((x: any) => activeAttemptIds.includes(x.id));
+          writeJSONTable("textbooks_practice_attempts", updated);
+        } else {
+          writeJSONTable("textbooks_practice_attempts", []);
+        }
+        return { rows: [] };
+      }
+    }
+
+    if (cleanSql.includes("TEXTBOOKS_PRACTICE_TESTS")) {
+      const list = readJSONTable("textbooks_practice_tests");
+      if (cleanSql.startsWith("SELECT")) {
+        return { rows: list };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        const [id, title, book_id, duration, question_limit, start_time, end_time, created_at, selected_question_ids] = params;
+        const record = {
+          id, title, book_id, duration, question_limit, start_time, end_time, created_at,
+          selected_question_ids: typeof selected_question_ids === "string" ? JSON.parse(selected_question_ids) : selected_question_ids
+        };
+        const idx = list.findIndex((x: any) => x.id === id);
+        if (idx !== -1) list[idx] = record;
+        else list.push(record);
+        writeJSONTable("textbooks_practice_tests", list);
+        return { rows: [record] };
+      }
+      if (cleanSql.startsWith("DELETE")) {
+        if (cleanSql.includes("ID = $1")) {
+          const updated = list.filter((x: any) => x.id !== params[0]);
+          writeJSONTable("textbooks_practice_tests", updated);
+        } else if (cleanSql.includes("NOT IN")) {
+          const activeTestIds = params;
+          const updated = list.filter((x: any) => activeTestIds.includes(x.id));
+          writeJSONTable("textbooks_practice_tests", updated);
+        } else {
+          writeJSONTable("textbooks_practice_tests", []);
+        }
+        return { rows: [] };
+      }
     }
 
     // Catch-all empty rows

@@ -81,6 +81,10 @@ export default function GalleryPage() {
 
   // Prettify folder names for display
   const prettifyFolderName = (name: string) => {
+    if (name === "all") return name;
+    if (!/^(honorable|hon'ble)/i.test(name)) {
+      return `Honorable ${name}`;
+    }
     return name;
   };
 

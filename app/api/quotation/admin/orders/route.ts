@@ -15,21 +15,21 @@ export async function GET(request: Request) {
 
     if (orderId) {
       // 1. Fetch order
-      const orderRes = await pool.query("SELECT * FROM quotation_orders WHERE id = $1", [orderId]);
+      const orderRes = await pool.query("SELECT * FROM quotation_orders WHERE id::text = $1", [orderId]);
       if (orderRes.rows.length === 0) {
         return NextResponse.json({ error: "Order not found" }, { status: 404 });
       }
       const order = orderRes.rows[0];
 
       // 2. Fetch quotation
-      const quoteRes = await pool.query("SELECT * FROM quotations WHERE id = $1", [order.quotation_id]);
+      const quoteRes = await pool.query("SELECT * FROM quotations WHERE id::text = $1", [order.quotation_id]);
       if (quoteRes.rows.length === 0) {
         return NextResponse.json({ error: "Associated quotation not found" }, { status: 404 });
       }
       const quote = quoteRes.rows[0];
 
       // 3. Fetch request
-      const reqRes = await pool.query("SELECT * FROM quotation_requests WHERE id = $1", [quote.quotation_request_id]);
+      const reqRes = await pool.query("SELECT * FROM quotation_requests WHERE id::text = $1", [quote.quotation_request_id]);
       if (reqRes.rows.length === 0) {
         return NextResponse.json({ error: "Associated request not found" }, { status: 404 });
       }
@@ -78,3 +78,37 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const admin = await getAuthenticatedAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await request.json();
+    if (!id) {
+      return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
+    }
+
+    const orderRes = await pool.query("SELECT quotation_id FROM quotation_orders WHERE id::text = $1", [id]);
+    if (orderRes.rows.length > 0) {
+      const quotationId = orderRes.rows[0].quotation_id;
+      await pool.query(
+        "UPDATE quotations SET is_confirmed = FALSE, client_stamp = NULL, confirmed_date = NULL WHERE id::text = $1",
+        [quotationId]
+      );
+    }
+
+    await pool.query("DELETE FROM quotation_orders WHERE id::text = $1", [id]);
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("❌ Delete Confirmed Order Error:", error);
+    return NextResponse.json(
+      { error: "Internal server error", details: error.message },
+      { status: 500 }
+    );
+  }
+}
+

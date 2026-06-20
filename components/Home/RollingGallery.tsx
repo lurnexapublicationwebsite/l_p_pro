@@ -11,6 +11,15 @@ interface GalleryData {
 export default function RollingGallery() {
   const [images, setImages] = useState<{ url: string; category: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const prettifyFolderName = (name: string) => {
+    if (name === "all") return name;
+    if (!/^(honorable|hon'ble)/i.test(name)) {
+      return `Honorable ${name}`;
+    }
+    return name;
+  };
 
   useEffect(() => {
     async function fetchGallery() {
@@ -19,13 +28,18 @@ export default function RollingGallery() {
         if (res.ok) {
           const data: GalleryData = await res.json();
           const flat: { url: string; category: string }[] = [];
-          Object.entries(data.folders).forEach(([folderName, imgUrls]) => {
-            imgUrls.forEach((url) => {
-              flat.push({ url, category: folderName });
+          
+          const folders = Object.entries(data.folders);
+          const maxImages = Math.max(...folders.map(([_, urls]) => urls.length), 0);
+          
+          for (let i = 0; i < maxImages; i++) {
+            folders.forEach(([folderName, imgUrls]) => {
+              if (i < imgUrls.length) {
+                flat.push({ url: imgUrls[i], category: folderName });
+              }
             });
-          });
-          // Limit to 8 images on the homepage to avoid heavy DOM rendering and lag
-          setImages(flat.slice(0, 8));
+          }
+          setImages(flat);
         }
       } catch (err) {
         console.error("Error fetching gallery for home page:", err);
@@ -36,12 +50,28 @@ export default function RollingGallery() {
     fetchGallery();
   }, []);
 
+  // Auto-advance every 10 seconds
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [images]);
+
   if (loading || images.length === 0) {
     return null;
   }
 
-  // Duplicate the list of images to ensure seamless infinite scroll loop
-  const duplicatedImages = [...images, ...images, ...images];
+  const handlePrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
 
   return (
     <section className="py-12 md:py-20 bg-slate-50 overflow-hidden relative border-t border-b border-slate-100">
@@ -57,54 +87,77 @@ export default function RollingGallery() {
         </p>
       </div>
 
-      {/* Rolling Marquee Container */}
-      <div className="relative w-full overflow-hidden select-none py-2 md:py-4">
-        <div className="flex w-max gap-4 md:gap-6 animate-marquee hover:[animation-play-state:paused] cursor-pointer">
-          {duplicatedImages.map((image, idx) => (
-            <Link
-              href="/gallery"
-              key={`${image.url}-${idx}`}
-              className="w-48 md:w-80 flex-shrink-0 group block"
-            >
-              <div className="relative aspect-[4/3] rounded-xl md:rounded-2xl overflow-hidden shadow-lg md:shadow-xl border border-slate-200 bg-slate-50 transition-all duration-300 group-hover:scale-[1.02] group-hover:border-orange-500/50">
+      {/* Single Photo Slideshow Container */}
+      <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6">
+        <Link href="/gallery" className="block group">
+          <div className="relative aspect-[4/3] w-full rounded-2xl md:rounded-3xl overflow-hidden shadow-xl md:shadow-2xl border border-slate-200/80 bg-slate-100 transition-all duration-300 group-hover:scale-[1.01] group-hover:border-orange-500/40">
+            {images.map((image, idx) => (
+              <div
+                key={`${image.url}-${idx}`}
+                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                  idx === currentIndex ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+                }`}
+              >
                 <Image
                   src={image.url}
-                  alt={image.category}
+                  alt={prettifyFolderName(image.category)}
                   fill
-                  sizes="(max-width: 768px) 192px, 320px"
-                  className="object-cover transform transition-transform duration-500 group-hover:scale-105"
-                  priority={idx < 4}
+                  sizes="(max-width: 768px) 100vw, 768px"
+                  className="object-cover transform transition-transform duration-700 group-hover:scale-105"
+                  priority={idx === 0}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent opacity-80 group-hover:opacity-95 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
                 
                 {/* Content Overlay */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 text-white z-10">
-                  <span className="inline-block px-2 py-0.5 text-[9px] md:text-[10px] font-bold tracking-wider bg-orange-600/80 uppercase rounded-full mb-1">
-                    {image.category}
+                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 text-white z-20">
+                  <span className="inline-block px-3 py-1 text-xs md:text-sm font-bold tracking-wider bg-orange-600 uppercase rounded-full mb-2">
+                    {prettifyFolderName(image.category)}
                   </span>
                 </div>
               </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+            ))}
 
-      {/* Styled self-contained animation keyframes */}
-      <style suppressHydrationWarning>{`
-        @keyframes marquee {
-          0% {
-            transform: translate3d(0, 0, 0);
-          }
-          100% {
-            transform: translate3d(-33.33333%, 0, 0);
-          }
-        }
-        .animate-marquee {
-          animation: marquee 100s linear infinite;
-          will-change: transform;
-          backface-visibility: hidden;
-        }
-      `}</style>
+            {/* Manual Controls - Prev Button */}
+            <button
+              onClick={handlePrev}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-white/20 hover:bg-white/40 active:scale-95 text-white hover:text-orange-50 p-2 md:p-3 rounded-full backdrop-blur-md transition-all duration-200 cursor-pointer border border-white/10"
+              aria-label="Previous image"
+            >
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            {/* Manual Controls - Next Button */}
+            <button
+              onClick={handleNext}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-white/20 hover:bg-white/40 active:scale-95 text-white hover:text-orange-50 p-2 md:p-3 rounded-full backdrop-blur-md transition-all duration-200 cursor-pointer border border-white/10"
+              aria-label="Next image"
+            >
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            {/* Navigation Dots Indicator */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex space-x-2 bg-slate-950/40 backdrop-blur-md py-1.5 px-3 rounded-full border border-white/10">
+              {images.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCurrentIndex(idx);
+                  }}
+                  className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                    idx === currentIndex ? "w-6 bg-orange-500" : "w-2 bg-white/60 hover:bg-white"
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+        </Link>
+      </div>
     </section>
   );
 }

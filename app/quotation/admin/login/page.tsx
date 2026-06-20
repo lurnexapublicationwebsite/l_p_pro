@@ -11,8 +11,10 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     document.title = "Book Quotation System - Login";
   }, []);
 
@@ -42,6 +44,10 @@ export default function AdminLoginPage() {
       setLoading(false);
     }
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <>

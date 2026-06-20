@@ -85,6 +85,8 @@ export async function POST(req: Request) {
       const country = tags.country || "India";
       const quantity = Number(tags.quantity || 1);
       const subtotal = Number(tags.subtotal || amount);
+      const accessId = tags.access_id || "";
+      const plan = tags.purchase_plan || "physical";
 
       const orderObj = {
         order_id: orderId,
@@ -109,7 +111,10 @@ export async function POST(req: Request) {
         cashfree_order_id: orderId,
         cashfree_payment_id: transactionId,
         payment_status: "PAID",
-        order_status: "CONFIRMED"
+        order_status: "CONFIRMED",
+        purchase_format: tags.purchase_format || (shippingAddress === "Soft Copy Access" ? "soft" : "physical"),
+        purchase_plan: tags.purchase_plan || "physical",
+        access_id: tags.access_id || ""
       };
 
       // Create order ONLY AFTER successful payment verification
@@ -147,6 +152,23 @@ export async function POST(req: Request) {
           orderObj.order_status
         ]
       );
+
+      if (tags.purchase_format === "upgrade" || tags.purchase_plan === "complete") {
+        await pool.query(
+          `UPDATE textbooks_users SET plan = 'complete' WHERE mobile_number = $1`,
+          [customerPhone]
+        );
+      }
+
+      if (accessId) {
+        // Pre-approve the access ID (unassigned)
+        await pool.query(
+          `INSERT INTO textbooks_allowed_access_ids (access_id, book_id, role, assigned_to, plan)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (access_id) DO UPDATE SET plan = EXCLUDED.plan`,
+          [accessId, bookId, 'student', null, plan]
+        );
+      }
 
       // Dispatch order confirmation email notifications
       sendOrderConfirmationEmails(orderObj).catch(err => {
