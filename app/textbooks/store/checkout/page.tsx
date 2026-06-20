@@ -1469,7 +1469,18 @@ function CheckoutContent() {
                   </div>
                   <div className="space-y-1.5 flex-grow">
                     <span className="text-[9px] text-fuchsia-600 font-bold uppercase tracking-wider bg-fuchsia-50 px-2 py-0.5 rounded border border-fuchsia-200/50 inline-block">
-                      Physical Printed Book
+                      {format === "soft" ? 
+                        (plan === "book_only" ? "Soft Copy (Book Only)" :
+                         plan === "caselet" ? "Soft Copy (Caselet Only)" :
+                         plan === "book_caselet" ? "Soft Copy (Book + Caselet)" :
+                         plan === "book_portal" ? "Soft Copy (Book + Portal)" :
+                         plan === "book_caselet_portal" ? "Soft Copy (Book + Caselet + Portal)" :
+                         plan === "complete" ? "Portal (Complete Access)" :
+                         plan === "placements" ? "Portal (Placements Feature)" :
+                         plan === "practice" ? "Portal (Practice Questions)" :
+                         "Soft Copy Access")
+                        : "Physical Printed Book"
+                      }
                     </span>
                     <h4 className="text-xs font-bold text-[#0F172A] line-clamp-1 leading-tight">{item.title}</h4>
                     <p className="text-[10px] text-[#64748B] font-semibold">ISBN: {item.isbn}</p>
