@@ -134,11 +134,21 @@ export async function POST(req: Request) {
         ]
       );
 
-      if (tags.purchase_format === "upgrade" || tags.purchase_plan === "complete") {
+      // Always update user's plan and add the purchased book to their profile if they have an account
+      const userCheck = await pool.query(
+        "SELECT plan, purchased_books FROM textbooks_users WHERE mobile_number = $1",
+        [customerPhone]
+      );
+      if (userCheck.rows.length > 0) {
+        const currentUser = userCheck.rows[0];
+        let pBooks = Array.isArray(currentUser.purchased_books) ? currentUser.purchased_books : [];
+        if (!pBooks.includes(bookId)) {
+          pBooks.push(bookId);
+        }
         const targetPlan = tags.purchase_plan || "complete";
         await pool.query(
-          `UPDATE textbooks_users SET plan = $1 WHERE mobile_number = $2`,
-          [targetPlan, customerPhone]
+          `UPDATE textbooks_users SET plan = $1, purchased_books = $2 WHERE mobile_number = $3`,
+          [targetPlan, JSON.stringify(pBooks), customerPhone]
         );
       }
 
