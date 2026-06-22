@@ -573,6 +573,15 @@ export async function POST(request: Request) {
       } else if (table === "coupons") {
         const { code } = data;
         await pool.query("DELETE FROM textbooks_coupons WHERE code = $1", [code]);
+      } else if (table === "users") {
+        const { mobileNumber } = data;
+        await pool.query("DELETE FROM textbooks_users WHERE mobile_number = $1", [mobileNumber]);
+      } else if (table === "interview_questions") {
+        const { id } = data;
+        await pool.query("DELETE FROM textbooks_interview_questions WHERE id = $1", [id]);
+      } else if (table === "company_updates") {
+        const { id } = data;
+        await pool.query("DELETE FROM textbooks_company_updates WHERE id = $1", [id]);
       }
     }
 

@@ -214,75 +214,83 @@ export function getBookIdFromCode(code: string): string {
 /**
  * Initializes the database tables in IN_MEMORY_DB with default seed data
  */
+export async function syncFromServer(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const res = await fetch('/api/textbooks/db/sync');
+    const data = await res.json();
+    if (data.success) {
+      if (data.users) {
+        IN_MEMORY_DB['lurnexa_users'] = data.users;
+        try { localStorage.setItem('lurnexa_users', JSON.stringify(data.users)); } catch (e) {}
+      }
+      if (data.allowedAccessIds) {
+        IN_MEMORY_DB['lurnexa_allowed_access_ids'] = data.allowedAccessIds;
+        try { localStorage.setItem('lurnexa_allowed_access_ids', JSON.stringify(data.allowedAccessIds)); } catch (e) {}
+      }
+      if (data.colleges) {
+        IN_MEMORY_DB['lurnexa_colleges'] = data.colleges;
+        try { localStorage.setItem('lurnexa_colleges', JSON.stringify(data.colleges)); } catch (e) {}
+      }
+      if (data.textbooks) {
+        IN_MEMORY_DB['lurnexa_textbooks'] = data.textbooks;
+        try { localStorage.setItem('lurnexa_textbooks', JSON.stringify(data.textbooks)); } catch (e) {}
+      }
+      if (data.quizzes) {
+        IN_MEMORY_DB['lurnexa_quizzes'] = data.quizzes;
+        try { localStorage.setItem('lurnexa_quizzes', JSON.stringify(data.quizzes)); } catch (e) {}
+      }
+      if (data.attempts) {
+        IN_MEMORY_DB['lurnexa_attempts'] = data.attempts;
+        try { localStorage.setItem('lurnexa_attempts', JSON.stringify(data.attempts)); } catch (e) {}
+      }
+      if (data.chaptersMap) {
+        IN_MEMORY_DB['lurnexa_book_chapters'] = data.chaptersMap;
+        try { localStorage.setItem('lurnexa_book_chapters', JSON.stringify(data.chaptersMap)); } catch (e) {}
+      }
+      if (data.configsMap) {
+        IN_MEMORY_DB['lurnexa_practice_configs'] = data.configsMap;
+        try { localStorage.setItem('lurnexa_practice_configs', JSON.stringify(data.configsMap)); } catch (e) {}
+      }
+      if (data.practiceAttempts) {
+        IN_MEMORY_DB['lurnexa_practice_attempts'] = data.practiceAttempts;
+        try { localStorage.setItem('lurnexa_practice_attempts', JSON.stringify(data.practiceAttempts)); } catch (e) {}
+      }
+      if (data.practiceTests) {
+        IN_MEMORY_DB['lurnexa_practice_tests'] = data.practiceTests;
+        try { localStorage.setItem('lurnexa_practice_tests', JSON.stringify(data.practiceTests)); } catch (e) {}
+      }
+      if (data.interviewQuestions) {
+        IN_MEMORY_DB['lurnexa_interview_questions'] = data.interviewQuestions;
+        try { localStorage.setItem('lurnexa_interview_questions', JSON.stringify(data.interviewQuestions)); } catch (e) {}
+      }
+      if (data.companyUpdates) {
+        IN_MEMORY_DB['lurnexa_company_updates'] = data.companyUpdates;
+        try { localStorage.setItem('lurnexa_company_updates', JSON.stringify(data.companyUpdates)); } catch (e) {}
+      }
+      if (data.coupons) {
+        IN_MEMORY_DB['lurnexa_coupons'] = data.coupons;
+        try { localStorage.setItem('lurnexa_coupons', JSON.stringify(data.coupons)); } catch (e) {}
+      }
+      if (data.purchases) {
+        IN_MEMORY_DB['lurnexa_purchases'] = data.purchases;
+        try { localStorage.setItem('lurnexa_purchases', JSON.stringify(data.purchases)); } catch (e) {}
+      }
+      return true;
+    }
+  } catch (err) {
+    console.error("Error loading sync data from server database:", err);
+  }
+  return false;
+}
+
 export function initDb(): void {
   if (!isClient) return;
 
   // Background-sync the entire database state from PostgreSQL
   if (typeof window !== 'undefined' && !window.hasOwnProperty('__db_sync_started')) {
     (window as any).__db_sync_started = true;
-    fetch('/api/textbooks/db/sync')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          if (data.users) {
-            IN_MEMORY_DB['lurnexa_users'] = data.users;
-            try { localStorage.setItem('lurnexa_users', JSON.stringify(data.users)); } catch (e) {}
-          }
-          if (data.allowedAccessIds) {
-            IN_MEMORY_DB['lurnexa_allowed_access_ids'] = data.allowedAccessIds;
-            try { localStorage.setItem('lurnexa_allowed_access_ids', JSON.stringify(data.allowedAccessIds)); } catch (e) {}
-          }
-          if (data.colleges) {
-            IN_MEMORY_DB['lurnexa_colleges'] = data.colleges;
-            try { localStorage.setItem('lurnexa_colleges', JSON.stringify(data.colleges)); } catch (e) {}
-          }
-          if (data.textbooks) {
-            IN_MEMORY_DB['lurnexa_textbooks'] = data.textbooks;
-            try { localStorage.setItem('lurnexa_textbooks', JSON.stringify(data.textbooks)); } catch (e) {}
-          }
-          if (data.quizzes) {
-            IN_MEMORY_DB['lurnexa_quizzes'] = data.quizzes;
-            try { localStorage.setItem('lurnexa_quizzes', JSON.stringify(data.quizzes)); } catch (e) {}
-          }
-          if (data.attempts) {
-            IN_MEMORY_DB['lurnexa_attempts'] = data.attempts;
-            try { localStorage.setItem('lurnexa_attempts', JSON.stringify(data.attempts)); } catch (e) {}
-          }
-          if (data.chaptersMap) {
-            IN_MEMORY_DB['lurnexa_book_chapters'] = data.chaptersMap;
-            try { localStorage.setItem('lurnexa_book_chapters', JSON.stringify(data.chaptersMap)); } catch (e) {}
-          }
-          if (data.configsMap) {
-            IN_MEMORY_DB['lurnexa_practice_configs'] = data.configsMap;
-            try { localStorage.setItem('lurnexa_practice_configs', JSON.stringify(data.configsMap)); } catch (e) {}
-          }
-          if (data.practiceAttempts) {
-            IN_MEMORY_DB['lurnexa_practice_attempts'] = data.practiceAttempts;
-            try { localStorage.setItem('lurnexa_practice_attempts', JSON.stringify(data.practiceAttempts)); } catch (e) {}
-          }
-          if (data.practiceTests) {
-            IN_MEMORY_DB['lurnexa_practice_tests'] = data.practiceTests;
-            try { localStorage.setItem('lurnexa_practice_tests', JSON.stringify(data.practiceTests)); } catch (e) {}
-          }
-          if (data.interviewQuestions) {
-            IN_MEMORY_DB['lurnexa_interview_questions'] = data.interviewQuestions;
-            try { localStorage.setItem('lurnexa_interview_questions', JSON.stringify(data.interviewQuestions)); } catch (e) {}
-          }
-          if (data.companyUpdates) {
-            IN_MEMORY_DB['lurnexa_company_updates'] = data.companyUpdates;
-            try { localStorage.setItem('lurnexa_company_updates', JSON.stringify(data.companyUpdates)); } catch (e) {}
-          }
-          if (data.coupons) {
-            IN_MEMORY_DB['lurnexa_coupons'] = data.coupons;
-            try { localStorage.setItem('lurnexa_coupons', JSON.stringify(data.coupons)); } catch (e) {}
-          }
-          if (data.purchases) {
-            IN_MEMORY_DB['lurnexa_purchases'] = data.purchases;
-            try { localStorage.setItem('lurnexa_purchases', JSON.stringify(data.purchases)); } catch (e) {}
-          }
-        }
-      })
-      .catch(err => console.error("Error loading sync data from server database:", err));
+    syncFromServer();
   }
 
   // Purge/clean up browser's legacy localStorage to guarantee compliance
@@ -732,6 +740,13 @@ export function deleteUser(mobileNumber: string): boolean {
     }
   }
 
+  // Also delete on server database
+  fetch('/api/textbooks/db/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', table: 'users', data: { mobileNumber } })
+  }).catch(err => console.error(`Failed to delete user ${mobileNumber} on server:`, err));
+
   return true;
 }
 
@@ -970,6 +985,13 @@ export function deleteTextbook(bookId: string): void {
   const practiceAttempts = getStorageItem<PracticeAttempt[]>('lurnexa_practice_attempts', []);
   const updatedPracticeAttempts = practiceAttempts.filter(a => a.bookId !== bookId);
   setStorageItem('lurnexa_practice_attempts', updatedPracticeAttempts);
+
+  // Also delete on server database
+  fetch('/api/textbooks/db/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', table: 'textbooks', data: { bookId } })
+  }).catch(err => console.error(`Failed to delete textbook ${bookId} on server:`, err));
 }
 
 export function getPracticeAttempts(studentMobile: string, bookId: string): PracticeAttempt[] {
@@ -1041,6 +1063,13 @@ export function deletePracticeTest(id: string): void {
   const tests = getStorageItem<PracticeTest[]>('lurnexa_practice_tests', []);
   const updated = tests.filter(t => t.id !== id);
   setStorageItem('lurnexa_practice_tests', updated);
+
+  // Also delete on server database
+  fetch('/api/textbooks/db/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', table: 'practice_tests', data: { id } })
+  }).catch(err => console.error(`Failed to delete practice test ${id} on server:`, err));
 }
 
 export function updatePracticeTest(updatedTest: PracticeTest): void {
@@ -1082,6 +1111,13 @@ export function deleteCollege(code: string): void {
   const colleges = getStorageItem<College[]>('lurnexa_colleges', []);
   const updated = colleges.filter(c => c.code.toUpperCase() !== code.toUpperCase());
   setStorageItem('lurnexa_colleges', updated);
+
+  // Also delete on server database
+  fetch('/api/textbooks/db/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', table: 'colleges', data: { code } })
+  }).catch(err => console.error(`Failed to delete college ${code} on server:`, err));
 }
 
 export function getInterviewQuestions(): InterviewQuestion[] {
@@ -1108,6 +1144,13 @@ export function deleteInterviewQuestion(id: string): void {
   const list = getStorageItem<InterviewQuestion[]>('lurnexa_interview_questions', []);
   const updated = list.filter(q => q.id !== id);
   setStorageItem('lurnexa_interview_questions', updated);
+
+  // Also delete on server database
+  fetch('/api/textbooks/db/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', table: 'interview_questions', data: { id } })
+  }).catch(err => console.error(`Failed to delete interview question ${id} on server:`, err));
 }
 
 export function getCompanyUpdates(): CompanyUpdate[] {
@@ -1134,6 +1177,13 @@ export function deleteCompanyUpdate(id: string): void {
   const list = getStorageItem<CompanyUpdate[]>('lurnexa_company_updates', []);
   const updated = list.filter(u => u.id !== id);
   setStorageItem('lurnexa_company_updates', updated);
+
+  // Also delete on server database
+  fetch('/api/textbooks/db/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', table: 'company_updates', data: { id } })
+  }).catch(err => console.error(`Failed to delete company update ${id} on server:`, err));
 }
 
 export function getCoupons(): Coupon[] {

@@ -75,7 +75,8 @@ import {
   deleteCoupon,
   Coupon,
   getAllPurchases,
-  PurchaseRecord
+  PurchaseRecord,
+  syncFromServer
 } from "@/lib/dbClient";
 import { Question } from "@/lib/data/practice_questions";
 import {
@@ -1077,6 +1078,45 @@ export default function TextbookPortal({
     const intervalId = setInterval(refreshData, 2000); // Refresh every 2 seconds
     return () => clearInterval(intervalId);
   }, [user, activeTab, adminQBankBook, selectedPracticeTestId]);
+
+  // Periodically fetch database from server to keep IN_MEMORY_DB fresh
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    const interval = setInterval(async () => {
+      const synced = await syncFromServer();
+      if (synced) {
+        // Trigger state updates with newly synced data
+        if (activeTab === "users") {
+          setAdminUsers(getAllUsers());
+        }
+        if (activeTab === "accessIds") {
+          setAdminAccessIds(getAllAccessIds());
+          setColleges(getColleges());
+        }
+        if (activeTab === "colleges") {
+          setColleges(getColleges());
+        }
+        if (activeTab === "coupons") {
+          setCoupons(getCoupons());
+        }
+        if (activeTab === "payments") {
+          setAdminPurchases(getAllPurchases());
+        }
+        if (activeTab === "qbank") {
+          setAdminQuestions(getQuestionsByBook(adminQBankBook));
+          const chaptersMap: Record<string, number> = {};
+          const books = getAllTextbooks();
+          books.forEach(b => {
+            chaptersMap[b.id] = getBookChapters(b.id);
+          });
+          setAdminChaptersConfig(chaptersMap);
+          const tests = getPracticeTests(adminQBankBook);
+          setPracticeTests(tests);
+        }
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [user, activeTab, adminQBankBook]);
 
   // Periodically refresh Career Hub data to keep in sync
   useEffect(() => {
