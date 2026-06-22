@@ -183,6 +183,7 @@ export async function GET() {
     const interviewQuestionsRes = await pool.query("SELECT * FROM textbooks_interview_questions");
     const companyUpdatesRes = await pool.query("SELECT * FROM textbooks_company_updates");
     const couponsRes = await pool.query("SELECT * FROM textbooks_coupons");
+    const purchasesRes = await pool.query("SELECT * FROM textbooks_purchases ORDER BY created_at DESC");
 
     const users = usersRes.rows.map(u => ({
       name: u.name,
@@ -309,6 +310,37 @@ export async function GET() {
       applicableFormat: c.applicable_format || 'both'
     }));
 
+    const purchases = purchasesRes.rows.map(p => ({
+      id: p.id,
+      orderId: p.order_id,
+      userIdentifier: p.user_identifier,
+      bookId: p.book_id,
+      amount: Number(p.amount),
+      status: p.status,
+      customerName: p.customer_name || "",
+      customerEmail: p.customer_email || "",
+      customerPhone: p.customer_phone || "",
+      shippingAddress: p.shipping_address || "",
+      shippingPincode: p.shipping_pincode || "",
+      couponCode: p.coupon_code || "",
+      discountAmount: Number(p.discount_amount || 0),
+      gstAmount: Number(p.gst_amount || 0),
+      shippingAmount: Number(p.shipping_amount || 0),
+      city: p.city || "",
+      state: p.state || "",
+      country: p.country || "India",
+      quantity: Number(p.quantity || 1),
+      subtotal: Number(p.subtotal || p.amount),
+      cashfreeOrderId: p.cashfree_order_id || "",
+      cashfreePaymentId: p.cashfree_payment_id || "",
+      paymentStatus: p.payment_status || "PENDING_PAYMENT",
+      orderStatus: p.order_status || "PENDING_PAYMENT",
+      purchaseFormat: p.purchase_format || "",
+      purchasePlan: p.purchase_plan || "",
+      accessId: p.access_id || "",
+      createdAt: p.created_at
+    }));
+
     return NextResponse.json({
       success: true,
       users,
@@ -323,7 +355,8 @@ export async function GET() {
       practiceTests,
       interviewQuestions,
       companyUpdates,
-      coupons
+      coupons,
+      purchases
     });
   } catch (err: any) {
     console.error("❌ Sync GET Error:", err);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Inter } from "next/font/google";
@@ -73,7 +73,9 @@ import {
   getCoupons,
   saveCoupon,
   deleteCoupon,
-  Coupon
+  Coupon,
+  getAllPurchases,
+  PurchaseRecord
 } from "@/lib/dbClient";
 import { Question } from "@/lib/data/practice_questions";
 import {
@@ -285,10 +287,18 @@ export default function TextbookPortal({
   const [upgradeCost, setUpgradeCost] = useState(0);
   const [isUpgrading, setIsUpgrading] = useState(false);
 
-  // --- ADMIN STATE ---
   const [adminUsers, setAdminUsers] = useState<TextbookUser[]>([]);
   const [adminCollegeFilter, setAdminCollegeFilter] = useState("");
   const [adminRoleFilter, setAdminRoleFilter] = useState("");
+
+  // Bookstore Payments Dashboard state
+  const [adminPurchases, setAdminPurchases] = useState<PurchaseRecord[]>([]);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [purchaseSearch, setPurchaseSearch] = useState("");
+  const [purchaseStatusFilter, setPurchaseStatusFilter] = useState("all");
+  const [purchaseFormatFilter, setPurchaseFormatFilter] = useState("all");
+  const [purchaseBookFilter, setPurchaseBookFilter] = useState("all");
 
   const [usersPage, setUsersPage] = useState(1);
   const [accessIdsPage, setAccessIdsPage] = useState(1);
@@ -1038,6 +1048,9 @@ export default function TextbookPortal({
       }
       if (activeTab === "coupons") {
         setCoupons(getCoupons());
+      }
+      if (activeTab === "payments") {
+        setAdminPurchases(getAllPurchases());
       }
       if (activeTab === "qbank") {
         setAdminQuestions(getQuestionsByBook(adminQBankBook));
@@ -4109,6 +4122,15 @@ export default function TextbookPortal({
                     Career Hub
                   </button>
                   <button
+                    onClick={() => { setActiveTab("payments"); setExpandedOrderId(null); setErrorMessage(""); setSuccessMessage(""); }}
+                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
+                      activeTab === "payments" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <ShoppingBag size={16} />
+                    Bookstore Payments
+                  </button>
+                  <button
                     onClick={() => { setActiveTab("adminProfile"); setErrorMessage(""); setSuccessMessage(""); setIsEditingProfile(false); setProfileOtpSent(false); }}
                     className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "adminProfile" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
@@ -4119,7 +4141,7 @@ export default function TextbookPortal({
                   </button>
                 </div>
 
-                {activeTab !== "adminProfile" && activeTab !== "qbank" && activeTab !== "textbooks" && activeTab !== "adminCareerHub" && activeTab !== "coupons" && (
+                {activeTab !== "adminProfile" && activeTab !== "qbank" && activeTab !== "textbooks" && activeTab !== "adminCareerHub" && activeTab !== "coupons" && activeTab !== "payments" && (
                   <div className="flex flex-wrap items-center gap-4 pr-4 pb-2 sm:pb-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Filter by College:</span>
@@ -6135,7 +6157,362 @@ export default function TextbookPortal({
                   )}
                 </div>
               )}
+              {activeTab === "payments" && (
+                <div className="space-y-6">
+                  {/* Summary Cards */}
+                  {(() => {
+                    const paidOnly = adminPurchases.filter(p => p.status === "PAID");
+                    const totalRevenueAmt = paidOnly.reduce((sum, p) => sum + p.amount, 0);
+                    const paidOrders = paidOnly.length;
+                    const pendingOrders = adminPurchases.filter(p => p.status === "PENDING" || p.status === "PENDING_PAYMENT").length;
+                    const totalOrders = adminPurchases.length;
 
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200/60 rounded-3xl p-6 shadow-md relative overflow-hidden flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-2xl bg-emerald-600/10 text-emerald-700 flex items-center justify-center font-bold">
+                            ₹
+                          </div>
+                          <div>
+                            <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Total Revenue</span>
+                            <span className="text-2xl font-black text-slate-900">₹{totalRevenueAmt.toLocaleString("en-IN")}</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-200/60 rounded-3xl p-6 shadow-md relative overflow-hidden flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-2xl bg-indigo-650/10 text-indigo-600 flex items-center justify-center">
+                            <ShoppingBag size={24} />
+                          </div>
+                          <div>
+                            <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Paid Orders</span>
+                            <span className="text-2xl font-black text-slate-900">{paidOrders}</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-200/60 rounded-3xl p-6 shadow-md relative overflow-hidden flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-2xl bg-amber-600/10 text-amber-700 flex items-center justify-center">
+                            <Clock size={24} />
+                          </div>
+                          <div>
+                            <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Pending Orders</span>
+                            <span className="text-2xl font-black text-slate-900">{pendingOrders}</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-gradient-to-br from-fuchsia-50 to-fuchsia-100/50 border border-fuchsia-200/60 rounded-3xl p-6 shadow-md relative overflow-hidden flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-2xl bg-fuchsia-600/10 text-fuchsia-600 flex items-center justify-center">
+                            <List size={24} />
+                          </div>
+                          <div>
+                            <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Total Orders</span>
+                            <span className="text-2xl font-black text-slate-900">{totalOrders}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Filter and Search Section */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-md">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      {/* Search */}
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                          <Search size={16} />
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="Search name, email, order ID..."
+                          value={purchaseSearch}
+                          onChange={(e) => { setPurchaseSearch(e.target.value); setPaymentsPage(1); }}
+                          className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-all text-slate-900 placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      {/* Status Filter */}
+                      <div>
+                        <select
+                          value={purchaseStatusFilter}
+                          onChange={(e) => { setPurchaseStatusFilter(e.target.value); setPaymentsPage(1); }}
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-all text-slate-900"
+                        >
+                          <option value="all">All Payment Statuses</option>
+                          <option value="PAID">PAID</option>
+                          <option value="PENDING">PENDING</option>
+                          <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
+                        </select>
+                      </div>
+
+                      {/* Format Filter */}
+                      <div>
+                        <select
+                          value={purchaseFormatFilter}
+                          onChange={(e) => { setPurchaseFormatFilter(e.target.value); setPaymentsPage(1); }}
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-all text-slate-900"
+                        >
+                          <option value="all">All Formats</option>
+                          <option value="soft">Soft Copy (Digital)</option>
+                          <option value="physical">Hard Copy (Physical)</option>
+                          <option value="upgrade">Upgrade</option>
+                        </select>
+                      </div>
+
+                      {/* Book Filter */}
+                      <div>
+                        <select
+                          value={purchaseBookFilter}
+                          onChange={(e) => { setPurchaseBookFilter(e.target.value); setPaymentsPage(1); }}
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-all text-slate-900"
+                        >
+                          <option value="all">All Textbooks</option>
+                          <option value="1">Indian Mineral Import Policy Options</option>
+                          <option value="2">Machine Learning</option>
+                          <option value="3">Database Management Systems</option>
+                          <option value="4">Entrepreneurship Development</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payments Table */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl">
+                    <h3 className="text-xl font-bold text-slate-900 mb-4">Bookstore Payment Orders</h3>
+                    <p className="text-xs text-slate-500 mb-6">List of verified payments and pending checkouts processed via Cashfree Payment Gateway.</p>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm text-slate-700">
+                        <thead className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wider">
+                          <tr>
+                            <th className="p-4 rounded-l-xl">Order Date</th>
+                            <th className="p-4">Order ID</th>
+                            <th className="p-4">Customer Details</th>
+                            <th className="p-4">Textbook Details</th>
+                            <th className="p-4">Format / Plan</th>
+                            <th className="p-4">Amount Paid</th>
+                            <th className="p-4">Status</th>
+                            <th className="p-4 rounded-r-xl text-right">Details</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {(() => {
+                            const filtered = adminPurchases.filter(p => {
+                              const term = purchaseSearch.toLowerCase().trim();
+                              const matchesSearch = !term ||
+                                (p.customerName || "").toLowerCase().includes(term) ||
+                                (p.customerEmail || "").toLowerCase().includes(term) ||
+                                (p.customerPhone || "").toLowerCase().includes(term) ||
+                                (p.orderId || "").toLowerCase().includes(term) ||
+                                (p.cashfreePaymentId || "").toLowerCase().includes(term);
+
+                              const matchesStatus = purchaseStatusFilter === "all" || p.status === purchaseStatusFilter;
+                              const matchesFormat = purchaseFormatFilter === "all" || p.purchaseFormat === purchaseFormatFilter;
+                              const matchesBook = purchaseBookFilter === "all" || p.bookId === purchaseBookFilter;
+
+                              return matchesSearch && matchesStatus && matchesFormat && matchesBook;
+                            });
+
+                            const itemsPerPage = 8;
+                            const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+                            const startIdx = (paymentsPage - 1) * itemsPerPage;
+                            const paginated = filtered.slice(startIdx, startIdx + itemsPerPage);
+
+                            if (paginated.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={8} className="p-8 text-center text-slate-500 font-bold">
+                                    No payment records found matching the filters.
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            const bookTitlesMap: Record<string, string> = {
+                              "1": "Mineral Policy",
+                              "2": "Machine Learning",
+                              "3": "DBMS",
+                              "4": "Entrepreneurship"
+                            };
+
+                            return paginated.map(p => {
+                              const isExpanded = expandedOrderId === p.orderId;
+                              const orderDateStr = p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-IN", {
+                                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                              }) : "N/A";
+
+                              return (
+                                <React.Fragment key={p.orderId}>
+                                  <tr className="hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => setExpandedOrderId(isExpanded ? null : p.orderId)}>
+                                    <td className="p-4 text-xs font-semibold text-slate-500">{orderDateStr}</td>
+                                    <td className="p-4 font-mono font-bold text-xs text-slate-900">{p.orderId}</td>
+                                    <td className="p-4">
+                                      <div className="font-bold text-slate-900">{p.customerName || "N/A"}</div>
+                                      <div className="text-xs text-slate-500">{p.customerPhone || p.userIdentifier}</div>
+                                    </td>
+                                    <td className="p-4 text-xs font-bold text-slate-800">
+                                      {p.bookId === "CART" ? "Multiple Items (Cart)" : (bookTitlesMap[p.bookId] || `Book ID: ${p.bookId}`)}
+                                    </td>
+                                    <td className="p-4 capitalize text-xs">
+                                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                        p.purchaseFormat === "soft" ? "bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                      }`}>
+                                        {p.purchaseFormat === "soft" ? "Soft Copy" : "Hard Copy"}
+                                      </span>
+                                      {p.purchasePlan && p.purchasePlan !== "physical" && (
+                                        <div className="text-[10px] text-slate-400 font-semibold mt-1 uppercase">{(p.purchasePlan || "").replace(/_/g, " ")}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-4 font-bold text-slate-900">₹{p.amount}</td>
+                                    <td className="p-4">
+                                      <span className={`inline-flex items-center gap-1 text-xs font-bold ${
+                                        p.status === "PAID" ? "text-emerald-600" : "text-amber-500"
+                                      }`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${p.status === "PAID" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+                                        {p.status}
+                                      </span>
+                                    </td>
+                                    <td className="p-4 text-right text-fuchsia-600 font-bold text-xs">
+                                      {isExpanded ? <ChevronUp size={16} className="inline" /> : <ChevronDown size={16} className="inline" />}
+                                    </td>
+                                  </tr>
+
+                                  {isExpanded && (
+                                    <tr className="bg-slate-50/50">
+                                      <td colSpan={8} className="p-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-xs border border-slate-100 rounded-3xl p-6 bg-white shadow-sm">
+                                          {/* Customer Details Box */}
+                                          <div className="space-y-3">
+                                            <h4 className="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2">Customer & Shipping Information</h4>
+                                            <div className="grid grid-cols-3 gap-1">
+                                              <span className="text-slate-400 font-bold">Email:</span>
+                                              <span className="col-span-2 text-slate-800 font-semibold"><a href={`mailto:${p.customerEmail}`} className="underline hover:text-fuchsia-600">{p.customerEmail || "N/A"}</a></span>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-1">
+                                              <span className="text-slate-400 font-bold">Phone:</span>
+                                              <span className="col-span-2 text-slate-800 font-mono font-semibold">{p.customerPhone || "N/A"}</span>
+                                            </div>
+                                            {p.purchaseFormat !== "soft" ? (
+                                              <>
+                                                <div className="grid grid-cols-3 gap-1">
+                                                  <span className="text-slate-400 font-bold">Address:</span>
+                                                  <span className="col-span-2 text-slate-800 font-semibold leading-relaxed">{p.shippingAddress || "N/A"}</span>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-1">
+                                                  <span className="text-slate-400 font-bold">City/State:</span>
+                                                  <span className="col-span-2 text-slate-800 font-semibold">{p.city}, {p.state} - {p.shippingPincode}</span>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-1">
+                                                  <span className="text-slate-400 font-bold">Country:</span>
+                                                  <span className="col-span-2 text-slate-800 font-semibold">{p.country || "India"}</span>
+                                                </div>
+                                              </>
+                                            ) : (
+                                              <div className="bg-fuchsia-50/50 text-fuchsia-700 p-3 rounded-xl border border-fuchsia-100/50 font-bold flex items-center gap-2">
+                                                <span>💻</span>
+                                                <span>Digital Delivery. Student Access Activated instantly.</span>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Payment Details Box */}
+                                          <div className="space-y-3">
+                                            <h4 className="text-sm font-extrabold text-slate-900 border-b border-slate-100 pb-2">Order Pricing & Transaction</h4>
+                                            <div className="grid grid-cols-3 gap-1">
+                                              <span className="text-slate-400 font-bold">Subtotal:</span>
+                                              <span className="col-span-2 text-slate-800 font-semibold">₹{p.subtotal}</span>
+                                            </div>
+                                            {p.discountAmount ? (
+                                              <div className="grid grid-cols-3 gap-1">
+                                                <span className="text-slate-400 font-bold">Discount:</span>
+                                                <span className="col-span-2 text-red-500 font-bold">-₹{p.discountAmount} {p.couponCode && `(${p.couponCode})`}</span>
+                                              </div>
+                                            ) : null}
+                                            <div className="grid grid-cols-3 gap-1">
+                                              <span className="text-slate-400 font-bold">GST (18%):</span>
+                                              <span className="col-span-2 text-slate-800 font-semibold">₹{p.gstAmount || 0}</span>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-1">
+                                              <span className="text-slate-400 font-bold">Shipping:</span>
+                                              <span className="col-span-2 text-slate-800 font-semibold">₹{p.shippingAmount || 0}</span>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-1 border-t border-slate-100 pt-2 font-bold">
+                                              <span className="text-slate-900">Total Price:</span>
+                                              <span className="col-span-2 text-fuchsia-600 text-sm">₹{p.amount}</span>
+                                            </div>
+                                            
+                                            <div className="border-t border-slate-100 pt-2 space-y-1.5">
+                                              <div className="grid grid-cols-3 gap-1">
+                                                <span className="text-slate-400 font-bold">Cashfree Pay ID:</span>
+                                                <span className="col-span-2 text-slate-600 font-mono select-all font-semibold">{p.cashfreePaymentId || "N/A"}</span>
+                                              </div>
+                                              {p.accessId && (
+                                                <div className="grid grid-cols-3 gap-1">
+                                                  <span className="text-indigo-550 font-extrabold">Student Access ID:</span>
+                                                  <span className="col-span-2 text-indigo-600 font-mono select-all font-black bg-indigo-50 border border-indigo-100/50 px-2 py-0.5 rounded-md inline-block w-fit">{p.accessId}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination */}
+                    {(() => {
+                      const filtered = adminPurchases.filter(p => {
+                        const term = purchaseSearch.toLowerCase().trim();
+                        const matchesSearch = !term ||
+                          (p.customerName || "").toLowerCase().includes(term) ||
+                          (p.customerEmail || "").toLowerCase().includes(term) ||
+                          (p.customerPhone || "").toLowerCase().includes(term) ||
+                          (p.orderId || "").toLowerCase().includes(term) ||
+                          (p.cashfreePaymentId || "").toLowerCase().includes(term);
+
+                        const matchesStatus = purchaseStatusFilter === "all" || p.status === purchaseStatusFilter;
+                        const matchesFormat = purchaseFormatFilter === "all" || p.purchaseFormat === purchaseFormatFilter;
+                        const matchesBook = purchaseBookFilter === "all" || p.bookId === purchaseBookFilter;
+
+                        return matchesSearch && matchesStatus && matchesFormat && matchesBook;
+                      });
+
+                      const itemsPerPage = 8;
+                      const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+                      if (filtered.length === 0) return null;
+
+                      return (
+                        <div className="flex items-center justify-between border-t border-slate-150 pt-4 mt-4">
+                          <span className="text-xs text-slate-500 font-bold">
+                            Showing page {paymentsPage} of {totalPages} ({filtered.length} total orders)
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              disabled={paymentsPage === 1}
+                              onClick={() => setPaymentsPage(prev => Math.max(1, prev - 1))}
+                              className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-650 border border-slate-200 rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                              Prev
+                            </button>
+                            <button
+                              disabled={paymentsPage === totalPages}
+                              onClick={() => setPaymentsPage(prev => Math.min(totalPages, prev + 1))}
+                              className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-650 border border-slate-200 rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:pointer-events-none"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
               {activeTab === "adminProfile" && (
                 <div className="max-w-4xl mx-auto space-y-6">
                   <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl">

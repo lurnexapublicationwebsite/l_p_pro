@@ -24,6 +24,37 @@ export interface Coupon {
   applicableFormat: 'soft' | 'physical' | 'both';
 }
 
+export interface PurchaseRecord {
+  id: number;
+  orderId: string;
+  userIdentifier: string;
+  bookId: string;
+  amount: number;
+  status: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  shippingAddress?: string;
+  shippingPincode?: string;
+  couponCode?: string;
+  discountAmount?: number;
+  gstAmount?: number;
+  shippingAmount?: number;
+  city?: string;
+  state?: string;
+  country?: string;
+  quantity?: number;
+  subtotal?: number;
+  cashfreeOrderId?: string;
+  cashfreePaymentId?: string;
+  paymentStatus?: string;
+  orderStatus?: string;
+  purchaseFormat?: string;
+  purchasePlan?: string;
+  accessId?: string;
+  createdAt?: string;
+}
+
 export interface TextbookUser {
   name: string;
   bookId: string;
@@ -137,7 +168,8 @@ const KEY_TO_TABLE: Record<string, string> = {
   'lurnexa_practice_tests': 'practice_tests',
   'lurnexa_interview_questions': 'interview_questions',
   'lurnexa_company_updates': 'company_updates',
-  'lurnexa_coupons': 'coupons'
+  'lurnexa_coupons': 'coupons',
+  'lurnexa_purchases': 'purchases'
 };
 
 function syncKeyToServer(key: string, value: any) {
@@ -243,6 +275,10 @@ export function initDb(): void {
           if (data.coupons) {
             IN_MEMORY_DB['lurnexa_coupons'] = data.coupons;
             try { localStorage.setItem('lurnexa_coupons', JSON.stringify(data.coupons)); } catch (e) {}
+          }
+          if (data.purchases) {
+            IN_MEMORY_DB['lurnexa_purchases'] = data.purchases;
+            try { localStorage.setItem('lurnexa_purchases', JSON.stringify(data.purchases)); } catch (e) {}
           }
         }
       })
@@ -1131,6 +1167,11 @@ export function deleteCoupon(code: string): void {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'delete', table: 'coupons', data: { code } })
   }).catch(err => console.error(`Failed to delete coupon ${code} on server:`, err));
+}
+
+export function getAllPurchases(): PurchaseRecord[] {
+  initDb();
+  return getStorageItem<PurchaseRecord[]>('lurnexa_purchases', []);
 }
 
 
