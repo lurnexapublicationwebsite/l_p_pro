@@ -278,7 +278,20 @@ export default function TextbookPortal({
   const [deleteConfirmationCouponCode, setDeleteConfirmationCouponCode] = useState<string | null>(null);
 
   // Navigation / Tabs
-  const [activeTab, setActiveTab] = useState(initialView || "");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("lurnexa_portal_active_tab") || initialView || "";
+    }
+    return initialView || "";
+  });
+
+
+  // Save active tab to sessionStorage
+  useEffect(() => {
+    if (activeTab && typeof window !== "undefined") {
+      sessionStorage.setItem("lurnexa_portal_active_tab", activeTab);
+    }
+  }, [activeTab]);
 
   // Secure e-Reader & Plan Upgrade States
   const [readingBookId, setReadingBookId] = useState<string | null>(null);
@@ -720,17 +733,6 @@ export default function TextbookPortal({
       document.body.appendChild(script);
     }
 
-    // Detect back/forward cache navigation and force login
-    const handlePageShow = (e: PageTransitionEvent) => {
-      const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
-      const isBackForward = navigationEntries[0]?.type === "back_forward";
-      if (e.persisted || isBackForward) {
-        sessionStorage.removeItem("lurnexa_current_user");
-        setUser(null);
-      }
-    };
-    window.addEventListener("pageshow", handlePageShow);
-
     const savedUser = sessionStorage.getItem("lurnexa_current_user");
     if (savedUser) {
       try {
@@ -748,30 +750,33 @@ export default function TextbookPortal({
           setUser(parsed);
         }
 
-        // Set default tab based on role
-        if (parsed.role === "admin") setActiveTab(initialView || "users");
-        else if (parsed.role === "faculty") setActiveTab(initialView || "create");
-        else {
-          const plan = parsed.plan || "complete";
-          if (plan === "placements") {
-            setActiveTab(initialView || "studentCareerHub");
-          } else if (plan === "book_only" || plan === "book_caselet") {
-            setActiveTab(initialView || "mybooks");
-          } else if (plan === "caselet") {
-            setActiveTab(initialView || "caselets");
-          } else if (plan === "practice") {
-            setActiveTab(initialView || "practice");
-          } else {
-            setActiveTab(initialView || "join");
+        // Set default tab based on role (unless already saved in sessionStorage)
+        const savedTab = sessionStorage.getItem("lurnexa_portal_active_tab");
+        if (savedTab) {
+          setActiveTab(savedTab);
+        } else {
+          if (parsed.role === "admin") setActiveTab(initialView || "users");
+          else if (parsed.role === "faculty") setActiveTab(initialView || "create");
+          else {
+            const plan = parsed.plan || "complete";
+            if (plan === "placements") {
+              setActiveTab(initialView || "studentCareerHub");
+            } else if (plan === "book_only" || plan === "book_caselet") {
+              setActiveTab(initialView || "mybooks");
+            } else if (plan === "caselet") {
+              setActiveTab(initialView || "caselets");
+            } else if (plan === "practice") {
+              setActiveTab(initialView || "practice");
+            } else {
+              setActiveTab(initialView || "join");
+            }
           }
         }
       } catch (e) {
         sessionStorage.removeItem("lurnexa_current_user");
       }
     }
-    return () => {
-      window.removeEventListener("pageshow", handlePageShow);
-    };
+    return () => {};
   }, []);
 
   // Screen protection / anti-screenshot effect
@@ -1873,6 +1878,7 @@ export default function TextbookPortal({
   // Handle Logout
   const handleLogout = () => {
     sessionStorage.removeItem("lurnexa_current_user");
+    sessionStorage.removeItem("lurnexa_portal_active_tab");
     setUser(null);
     setActiveTab("");
     setOtpSent(false);
