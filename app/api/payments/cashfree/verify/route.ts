@@ -172,9 +172,11 @@ export async function POST(req: Request) {
       }
 
       // Dispatch order confirmation email notifications
-      sendOrderConfirmationEmails(orderObj).catch(err => {
+      try {
+        await sendOrderConfirmationEmails(orderObj);
+      } catch (err) {
         console.error("❌ Failed to send order emails:", err);
-      });
+      }
 
       return NextResponse.json({ 
         success: true, 

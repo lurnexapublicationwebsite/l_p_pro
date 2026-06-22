@@ -155,9 +155,11 @@ export async function POST(req: Request) {
       }
 
       // Send emails
-      sendOrderConfirmationEmails(orderObj).catch(err => {
+      try {
+        await sendOrderConfirmationEmails(orderObj);
+      } catch (err) {
         console.error("❌ Failed to send webhook order emails:", err);
-      });
+      }
       return NextResponse.json({ success: true, message: "Order processed successfully" });
     }
 
