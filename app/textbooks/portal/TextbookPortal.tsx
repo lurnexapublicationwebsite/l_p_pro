@@ -673,9 +673,9 @@ export default function TextbookPortal({
       book_only: ["mybooks"],
       caselet: ["caselets"],
       book_caselet: ["mybooks", "caselets"],
-      book_portal: ["mybooks", "join", "practice", "history"],
-      book_caselet_portal: ["mybooks", "caselets", "join", "practice", "history"],
-      complete: ["mybooks", "caselets", "join", "practice", "history", "studentCareerHub"],
+      book_portal: ["mybooks", "join", "practice", "history", "studentCareerHub"],
+      book_caselet_portal: ["mybooks", "caselets", "join", "practice", "history", "studentCareerHub"],
+      complete: ["join", "practice", "history", "studentCareerHub"],
       placements: ["studentCareerHub"],
       practice: ["practice"]
     };
