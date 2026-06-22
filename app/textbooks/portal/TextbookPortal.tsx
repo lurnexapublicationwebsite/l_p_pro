@@ -681,27 +681,17 @@ export default function TextbookPortal({
     };
 
     if (tab === "studentProfile") return true;
-    
-    // If it's a known custom plan
-    if (["book_only", "caselet", "book_caselet", "book_portal", "book_caselet_portal", "complete"].includes(plan)) {
-      const allowed = PLAN_ALLOWED_OPTIONS[plan] || [];
-      return allowed.includes(tab);
+
+    if (PLAN_ALLOWED_OPTIONS[plan]) {
+      if (tab === "mybooks") {
+        return PLAN_ALLOWED_OPTIONS[plan].includes(tab) && !!(user.bookId || (user.purchasedBooks && user.purchasedBooks.length > 0));
+      }
+      return PLAN_ALLOWED_OPTIONS[plan].includes(tab);
     }
-    
-    // Original plans checks
-    if (tab === "mybooks") {
-      return !!(user.bookId || (user.purchasedBooks && user.purchasedBooks.length > 0));
-    }
-    if (tab === "join" || tab === "practice" || tab === "history") {
-      return plan !== "placements";
-    }
-    if (tab === "studentCareerHub") {
-      return plan !== "practice";
-    }
+
     return false;
   };
 
-  // Management Form states for Admin
   const [adminCareerSubTab, setAdminCareerSubTab] = useState<"interviews" | "updates">("interviews");
   // Interview Question form
   const [editingQuestion, setEditingQuestion] = useState<InterviewQuestion | null>(null);
