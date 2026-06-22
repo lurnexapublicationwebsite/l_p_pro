@@ -690,7 +690,7 @@ export default function TextbookPortal({
     
     // Original plans checks
     if (tab === "mybooks") {
-      return !!(user.purchasedBooks && user.purchasedBooks.length > 0);
+      return !!(user.bookId || (user.purchasedBooks && user.purchasedBooks.length > 0));
     }
     if (tab === "join" || tab === "practice" || tab === "history") {
       return plan !== "placements";
@@ -1760,6 +1760,7 @@ export default function TextbookPortal({
         isActive: true,
         accessId: signupAccessId,
         plan: (detectedPlan as any) || 'complete',
+        purchasedBooks: [detectedBookId],
         ...(detectedRole === "student" 
           ? { collegeId, department, teachingFacultyAccessId: "", collegeEmail } 
           : { facultyRole, subjectTeaching, facultyId, collegeEmail })
@@ -8031,7 +8032,7 @@ export default function TextbookPortal({
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                        {PORTAL_PUBLISHED_BOOKS.filter(book => user?.purchasedBooks?.includes(book.id)).map((book) => (
+                        {PORTAL_PUBLISHED_BOOKS.filter(book => book.id === user?.bookId || user?.purchasedBooks?.includes(book.id)).map((book) => (
                           <div key={book.id} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-lg flex flex-col justify-between hover:shadow-xl transition-all">
                             <div className="space-y-4">
                               <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150">
