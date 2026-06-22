@@ -6340,7 +6340,7 @@ export default function TextbookPortal({
                               }) : "N/A";
 
                               return (
-                                <React.Fragment key={p.orderId}>
+                                <React.Fragment key={p.id}>
                                   <tr className="hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => setExpandedOrderId(isExpanded ? null : p.orderId)}>
                                     <td className="p-4 text-xs font-semibold text-slate-500">{orderDateStr}</td>
                                     <td className="p-4 font-mono font-bold text-xs text-slate-900">{p.orderId}</td>
