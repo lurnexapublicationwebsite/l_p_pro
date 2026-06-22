@@ -260,6 +260,11 @@ export const pool = {
         return { rows: [newRecord] };
       }
 
+      // SELECT FROM textbooks_purchases (all purchases)
+      if (cleanSql.includes("SELECT * FROM TEXTBOOKS_PURCHASES") && !cleanSql.includes("WHERE")) {
+        return { rows: purchases };
+      }
+
       // SELECT FROM textbooks_purchases BY user_identifier
       if (cleanSql.includes("SELECT * FROM TEXTBOOKS_PURCHASES") && cleanSql.includes("USER_IDENTIFIER = $1")) {
         const [user_identifier] = params;
