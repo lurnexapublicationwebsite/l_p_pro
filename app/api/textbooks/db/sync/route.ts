@@ -404,13 +404,18 @@ export async function POST(request: Request) {
 
       } else if (table === "allowed_access_ids") {
         for (const item of items) {
+          // Safeguard: plan values should never be stored in college_code
+          const planValues = ['complete','placements','practice','book_only','caselet','book_caselet','book_portal','book_caselet_portal'];
+          const rawCollegeCode = item.collegeCode || null;
+          const cleanCollegeCode = rawCollegeCode && planValues.includes(rawCollegeCode) ? null : rawCollegeCode;
+          const cleanPlan = item.plan || (rawCollegeCode && planValues.includes(rawCollegeCode) ? rawCollegeCode : null);
           await pool.query(`
             INSERT INTO textbooks_allowed_access_ids (access_id, book_id, role, assigned_to, college_code, plan)
             VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (access_id) DO UPDATE SET
               book_id = EXCLUDED.book_id, role = EXCLUDED.role,
               assigned_to = EXCLUDED.assigned_to, college_code = EXCLUDED.college_code, plan = EXCLUDED.plan;
-          `, [item.accessId, item.bookId, item.role, item.assignedTo || null, item.collegeCode || null, item.plan || null]);
+          `, [item.accessId, item.bookId, item.role, item.assignedTo || null, cleanCollegeCode, cleanPlan]);
         }
 
 
@@ -554,6 +559,35 @@ export async function POST(request: Request) {
               book_id = EXCLUDED.book_id,
               applicable_format = EXCLUDED.applicable_format;
           `, [c.code, c.discountPercentage, c.bookId, c.applicableFormat || 'both']);
+        }
+
+      } else if (table === "purchases") {
+        for (const p of items) {
+          await pool.query(`
+            INSERT INTO textbooks_purchases (
+              order_id, user_identifier, book_id, amount, status,
+              customer_name, customer_email, customer_phone,
+              shipping_address, shipping_pincode, coupon_code,
+              discount_amount, gst_amount, shipping_amount,
+              city, state, country, quantity, subtotal,
+              cashfree_order_id, cashfree_payment_id,
+              payment_status, order_status
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+            ON CONFLICT (order_id) DO UPDATE SET
+              status = EXCLUDED.status,
+              payment_status = EXCLUDED.payment_status,
+              order_status = EXCLUDED.order_status,
+              cashfree_payment_id = EXCLUDED.cashfree_payment_id;
+          `, [
+            p.orderId, p.userIdentifier, p.bookId, p.amount, p.status,
+            p.customerName || "", p.customerEmail || "", p.customerPhone || "",
+            p.shippingAddress || "", p.shippingPincode || "", p.couponCode || "",
+            p.discountAmount || 0, p.gstAmount || 0, p.shippingAmount || 0,
+            p.city || "", p.state || "", p.country || "India",
+            p.quantity || 1, p.subtotal || p.amount,
+            p.cashfreeOrderId || p.orderId, p.cashfreePaymentId || "",
+            p.paymentStatus || "PENDING_PAYMENT", p.orderStatus || "PENDING_PAYMENT"
+          ]);
         }
       }
     } else if (action === "delete") {

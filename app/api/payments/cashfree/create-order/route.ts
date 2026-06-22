@@ -25,7 +25,8 @@ export async function POST(req: Request) {
       subtotal,
       format,
       plan,
-      collegeCode
+      collegeCode,
+      accessId
     } = body;
 
     // Validate billing details
@@ -37,7 +38,9 @@ export async function POST(req: Request) {
 
     // Generate sequential Access ID on the server
     let finalAccessId = "";
-    if (format === "soft" || plan !== "physical") {
+    if (format === "upgrade") {
+      finalAccessId = accessId || "";
+    } else if (format === "soft" || plan !== "physical") {
       const subjectCode = getBookCode(bookId) || "GEN";
       const cleanCollegeCode = (collegeCode && collegeCode !== "others") ? collegeCode.toUpperCase() : "OT";
       const prefix = `LS${subjectCode}${cleanCollegeCode}`;
@@ -49,11 +52,13 @@ export async function POST(req: Request) {
         [`${prefix}%`]
       );
 
-      const matches = existingRes.rows.map(row => {
-        const numPart = row.access_id.slice(prefix.length);
-        const parsed = parseInt(numPart, 10);
-        return isNaN(parsed) ? 0 : parsed;
-      });
+      const matches = existingRes.rows
+        .filter(row => row.access_id.toUpperCase().startsWith(prefix.toUpperCase()))
+        .map(row => {
+          const numPart = row.access_id.slice(prefix.length);
+          const parsed = parseInt(numPart, 10);
+          return isNaN(parsed) ? 0 : parsed;
+        });
 
       const nextNum = matches.length > 0 ? Math.max(...matches) + 1 : 26001;
       finalAccessId = `${prefix}${nextNum}`;

@@ -125,9 +125,68 @@ export async function sendOrderConfirmationEmails(order: {
   };
   const bookTitle = bookTitles[order.book_id] || `Textbook ID: ${order.book_id}`;
 
+    const isUpgrade = order.purchase_format === "upgrade";
     const isSoftCopy = order.purchase_format === "soft" || order.shipping_address === "Soft Copy Access";
 
-  const customerHtml = isSoftCopy ? `
+  let customerHtml = "";
+  
+  if (isUpgrade) {
+    customerHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #cbd5e1; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: #4F46E5; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Plan Upgraded Successfully!</h2>
+          <div style="height: 4px; width: 60px; background-color: #4F46E5; margin: 0 auto; border-radius: 2px;"></div>
+        </div>
+        <p style="font-size: 15px; color: #334155; line-height: 1.6;">Dear ${order.customer_name || 'Student'},</p>
+        <p style="font-size: 15px; color: #334155; line-height: 1.6;">Great news! Your request to upgrade your access plan on the Lurnexa Student Portal has been processed successfully. Your account has been upgraded, and your expanded features are active immediately.</p>
+        
+        <div style="background-color: #f8fafc; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0;">
+          <h3 style="margin-top: 0; color: #1e293b; font-size: 16px; font-weight: 700; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;">Upgrade Summary</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569; width: 150px;">Order ID:</td>
+              <td style="padding: 8px 0; color: #0f172a; font-family: monospace; font-weight: bold;">${order.order_id}</td>
+            </tr>
+            ${order.cashfree_payment_id ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569;">Transaction ID:</td>
+              <td style="padding: 8px 0; color: #0f172a; font-family: monospace;">${order.cashfree_payment_id}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569;">Textbook:</td>
+              <td style="padding: 8px 0; color: #0f172a;">${bookTitle}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569;">New Access Plan:</td>
+              <td style="padding: 8px 0; color: #4F46E5; font-weight: bold; text-transform: uppercase;">${(order.purchase_plan || '').replace(/_/g, ' ')}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569;">Upgrade Amount Paid:</td>
+              <td style="padding: 8px 0; color: #10B981; font-weight: bold;">₹${order.amount}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background-color: #eef2ff; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #c7d2fe; text-align: center;">
+          <h3 style="margin-top: 0; color: #4338ca; font-size: 16px; font-weight: 700;">Explore Your Upgraded Access</h3>
+          <p style="margin: 0 0 15px 0; font-size: 14px; color: #1e1b4b; line-height: 1.6;">
+            Log in to the Student Portal to start reading your digital textbook, practice mock exams, take chapter-wise quizzes, and track your performance dashboard.
+          </p>
+          <a href="https://www.lurnexa.in/textbooks/portal/login" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);">Go to Student Portal</a>
+        </div>
+
+        <p style="font-size: 14px; color: #64748b; line-height: 1.5; text-align: center;">
+          If you have any questions or require support with your account access, please reach out to us at <a href="mailto:support@lurnexa.in" style="color: #4F46E5; text-decoration: none;">support@lurnexa.in</a>.
+        </p>
+
+        <p style="font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 30px; text-align: center;">
+          Lurnexa Publications &copy; 2026. All rights reserved.
+        </p>
+      </div>
+    `;
+  } else if (isSoftCopy) {
+    customerHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #cbd5e1; border-radius: 12px; background-color: #ffffff;">
         <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-top: 0;">Order Confirmed!</h2>
         <p>Dear ${order.customer_name || 'Customer'},</p>
@@ -174,7 +233,9 @@ export async function sendOrderConfirmationEmails(order: {
           Lurnexa Publications &copy; 2026. All rights reserved.
         </p>
       </div>
-    ` : `
+    `;
+  } else {
+    customerHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
         <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-top: 0;">Order Confirmed!</h2>
         <p>Dear ${order.customer_name || 'Customer'},</p>
@@ -217,17 +278,18 @@ export async function sendOrderConfirmationEmails(order: {
         </p>
       </div>
     `;
+  }
 
   const customerMailOptions = {
     from,
     to: order.customer_email,
-    subject: isSoftCopy ? `Soft Copy Order Confirmed – Lurnexa Publications` : `Order Confirmed – Lurnexa Publications`,
+    subject: isUpgrade ? `Access Plan Upgraded Successfully – Lurnexa Portal` : (isSoftCopy ? `Soft Copy Order Confirmed – Lurnexa Publications` : `Order Confirmed – Lurnexa Publications`),
     html: customerHtml
   };
 
   const adminHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 650px; margin: auto; padding: 20px; border: 1px solid #cbd5e1; border-radius: 12px; background-color: #f8fafc;">
-        <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-top: 0;">New Prepaid Order Received (${isSoftCopy ? 'Digital Access' : 'Physical Textbook'})</h2>
+        <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-top: 0;">New Prepaid Order Received (${isUpgrade ? 'Plan Upgrade' : (isSoftCopy ? 'Digital Access' : 'Physical Textbook')})</h2>
         <p>A new prepaid order has been successfully processed on the Lurnexa Bookstore via Cashfree.</p>
         
         <table style="width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; font-size: 14px; margin-bottom: 20px;">
@@ -266,7 +328,7 @@ export async function sendOrderConfirmationEmails(order: {
  
         <table style="width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; font-size: 14px;">
           <tr style="background-color: #f1f5f9;">
-            <th colspan="2" style="padding: 10px; text-align: left; font-weight: bold; color: #1e293b; border-bottom: 1px solid #e2e8f0;">${isSoftCopy ? 'Registration' : 'Shipping'} & Customer Details</th>
+            <th colspan="2" style="padding: 10px; text-align: left; font-weight: bold; color: #1e293b; border-bottom: 1px solid #e2e8f0;">${(isSoftCopy || isUpgrade) ? 'Registration' : 'Shipping'} & Customer Details</th>
           </tr>
           <tr>
             <td style="padding: 10px; font-weight: bold; color: #64748b; width: 150px; border-bottom: 1px solid #f1f5f9;">Customer Name</td>
@@ -280,7 +342,7 @@ export async function sendOrderConfirmationEmails(order: {
             <td style="padding: 10px; font-weight: bold; color: #64748b; border-bottom: 1px solid #f1f5f9;">Customer Phone</td>
             <td style="padding: 10px; color: #0f172a; border-bottom: 1px solid #f1f5f9;">${order.customer_phone}</td>
           </tr>
-          ${isSoftCopy ? `
+          ${(isSoftCopy || isUpgrade) ? `
           <tr>
             <td style="padding: 10px; font-weight: bold; color: #64748b; border-bottom: 1px solid #f1f5f9;">Access ID Generated</td>
             <td style="padding: 10px; color: #4F46E5; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${order.access_id || 'N/A'}</td>
@@ -306,7 +368,7 @@ export async function sendOrderConfirmationEmails(order: {
   const adminMailOptions = {
     from,
     to: process.env.TEXTBOOK_ADMIN_EMAIL || "lurnexatextbooks@gmail.com",
-    subject: isSoftCopy ? `New Digital Access Order Received` : `New Paid Order Received`,
+    subject: isUpgrade ? `Plan Upgrade Order Received` : (isSoftCopy ? `New Digital Access Order Received` : `New Paid Order Received`),
     html: adminHtml
   };
 

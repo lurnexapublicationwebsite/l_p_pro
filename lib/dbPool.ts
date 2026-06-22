@@ -97,6 +97,9 @@ interface PurchaseRecord {
   cashfree_payment_id?: string;
   payment_status?: string;
   order_status?: string;
+  purchase_format?: string;
+  purchase_plan?: string;
+  access_id?: string;
 }
 
 function readPurchasesDb(): PurchaseRecord[] {
@@ -172,18 +175,22 @@ function writeJSONTable(name: string, data: any[]): void {
   }
 }
 
-// Wrapper for query execution
-let pgFailed = false;
+// A flag to track PostgreSQL failure with a retry cooldown (30s)
+let pgFailedAt: number | null = null;
+const PG_RETRY_COOLDOWN_MS = 30_000;
 
 export const pool = {
   async query(sql: string, params: any[] = []): Promise<{ rows: any[] }> {
+    const pgFailed = pgFailedAt !== null && (Date.now() - pgFailedAt < PG_RETRY_COOLDOWN_MS);
     if (!useLocalFallback && !pgFailed) {
       try {
         // Attempt real PG query
-        return await pgPool.query(sql, params);
+        const result = await pgPool.query(sql, params);
+        pgFailedAt = null; // reset on success
+        return result;
       } catch (err: any) {
         console.error("❌ PostgreSQL query failed, falling back to local JSON database:", err.message || err);
-        pgFailed = true;
+        pgFailedAt = Date.now();
         // Fall through to local JSON fallback
       }
     }
@@ -220,7 +227,10 @@ export const pool = {
           cashfree_order_id,
           cashfree_payment_id,
           payment_status,
-          order_status
+          order_status,
+          purchase_format,
+          purchase_plan,
+          access_id
         ] = params;
         const existingIdx = purchases.findIndex(p => p.order_id === order_id);
         const newRecord: PurchaseRecord & Record<string, any> = {
@@ -248,6 +258,9 @@ export const pool = {
           cashfree_payment_id: cashfree_payment_id || "",
           payment_status: payment_status || "PENDING_PAYMENT",
           order_status: order_status || "PENDING_PAYMENT",
+          purchase_format: purchase_format || "",
+          purchase_plan: purchase_plan || "",
+          access_id: access_id || "",
           created_at: existingIdx !== -1 ? purchases[existingIdx].created_at : new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -1169,6 +1182,9 @@ export async function initDbTables() {
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS cashfree_payment_id VARCHAR(255);");
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'PENDING_PAYMENT';");
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS order_status VARCHAR(50) DEFAULT 'PENDING_PAYMENT';");
+    await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS purchase_format VARCHAR(50) DEFAULT '';");
+    await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS purchase_plan VARCHAR(50) DEFAULT '';");
+    await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS access_id VARCHAR(100) DEFAULT '';");
 
     // Book Quotation Tables
     await pool.query(`

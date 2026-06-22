@@ -124,8 +124,9 @@ export async function POST(req: Request) {
           customer_name, customer_email, customer_phone, shipping_address, shipping_pincode,
           coupon_code, discount_amount, gst_amount, shipping_amount,
           city, state, country, quantity, subtotal,
-          cashfree_order_id, cashfree_payment_id, payment_status, order_status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+          cashfree_order_id, cashfree_payment_id, payment_status, order_status,
+          purchase_format, purchase_plan, access_id
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
         [
           orderObj.order_id,
           orderObj.user_identifier,
@@ -149,7 +150,10 @@ export async function POST(req: Request) {
           orderObj.cashfree_order_id,
           orderObj.cashfree_payment_id,
           orderObj.payment_status,
-          orderObj.order_status
+          orderObj.order_status,
+          orderObj.purchase_format,
+          orderObj.purchase_plan,
+          orderObj.access_id
         ]
       );
 

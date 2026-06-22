@@ -127,6 +127,43 @@ const getQuizTotalMarks = (quiz: TextbookQuiz | null | undefined): number => {
   return quiz.questions.reduce((acc, q) => acc + (q.maxMarks || (quiz.type === 'written' ? 5 : 1)), 0);
 };
 
+const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  let price = 399;
+  switch (plan) {
+    case "book_only": price = 230; break;
+    case "caselet": price = 60; break;
+    case "book_caselet": price = 265; break;
+    case "book_portal": price = 399; break;
+    case "book_caselet_portal": price = 449; break;
+    case "complete": price = 200; break;
+    case "placements": price = 150; break;
+    case "practice": price = 80; break;
+    default: price = 399;
+  }
+  if (bookId === "2" || bookId === "3") {
+    if (bookId === "3") {
+      if (plan === "book_only") return 300;
+      if (plan === "book_caselet") return 335;
+      if (plan === "book_portal") return 469;
+      if (plan === "book_caselet_portal") return 519;
+    }
+    return price + 20;
+  }
+  return price;
+};
+
+const ALL_PLANS = [
+  { key: "book_only", label: "Book Only", desc: "Digital textbook reading access" },
+  { key: "caselet", label: "Caselet Only", desc: "Access to business case studies & caselets" },
+  { key: "book_caselet", label: "Book + Caselet", desc: "Digital textbook and business case studies" },
+  { key: "practice", label: "Practice Feature Only", desc: "Unlocks quizzes & practice tests" },
+  { key: "placements", label: "Placements Feature Only", desc: "Unlocks placement preparation & career resources" },
+  { key: "complete", label: "Complete Portal Access", desc: "Full portal features: Quizzes, Practice, & Placements (No book)" },
+  { key: "book_portal", label: "Book + Portal Access", desc: "Digital textbook plus full portal features (No caselets)" },
+  { key: "book_caselet_portal", label: "Book + Caselet + Portal", desc: "The ultimate tier: Digital textbook, Caselets, and all portal features" }
+];
+
+
 const PORTAL_PUBLISHED_BOOKS = [
   { id: "1", title: "Introduction to Mineral Processing", pdfFileName: "minerals.pdf", coverImg: "/portal_coverpages/minerals.jpg", author: "Dr. K. Raghavan", price: 450 },
   { id: "2", title: "Machine Learning", pdfFileName: "ml.pdf", coverImg: "/portal_coverpages/ml.png", author: "Prof. S. Balaji", price: 550 },
@@ -267,7 +304,7 @@ export default function TextbookPortal({
   const [colleges, setColleges] = useState<College[]>([]);
   const [newCollegeName, setNewCollegeName] = useState("");
   const [newCollegeCode, setNewCollegeCode] = useState("");
-  const [genIdCollege, setGenIdCollege] = useState("");
+  const [genIdCollege, setGenIdCollege] = useState("others");
   const [isCollegeAutoFilled, setIsCollegeAutoFilled] = useState(false);
 
   // --- COUPON STATE ---
@@ -297,9 +334,44 @@ export default function TextbookPortal({
   // Secure e-Reader & Plan Upgrade States
   const [readingBookId, setReadingBookId] = useState<string | null>(null);
   const [isReaderBlurred, setIsReaderBlurred] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
+      setIsMobile(mobileRegex.test(userAgent) || window.innerWidth < 768);
+    }
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isMobile) {
+      if (e.touches.length > 1) {
+        setIsReaderBlurred(true);
+      } else {
+        setIsReaderBlurred(false);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isMobile) {
+      setIsReaderBlurred(true);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isMobile) {
+      if (e.touches.length > 1) {
+        setIsReaderBlurred(true);
+      }
+    }
+  };
+
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeCost, setUpgradeCost] = useState(0);
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const [selectedUpgradePlan, setSelectedUpgradePlan] = useState<string>("");
 
   const [adminUsers, setAdminUsers] = useState<TextbookUser[]>([]);
   const [adminCollegeFilter, setAdminCollegeFilter] = useState("");
@@ -779,6 +851,13 @@ export default function TextbookPortal({
       return;
     }
 
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobileDevice) {
+      setIsReaderBlurred(true);
+    } else {
+      setIsReaderBlurred(false);
+    }
+
     // Inject high-speed blur stylesheet
     const styleEl = document.createElement("style");
     styleEl.id = "secure-blur-styles";
@@ -793,6 +872,23 @@ export default function TextbookPortal({
     `;
     document.head.appendChild(styleEl);
 
+    // Create a hidden audio element to capture volume button events
+    const audioEl = document.createElement("audio");
+    audioEl.id = "secure-volume-detector";
+    audioEl.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA=="; // Tiny silent WAV
+    audioEl.loop = true;
+    audioEl.volume = 0.5;
+    document.body.appendChild(audioEl);
+    
+    // Attempt playback so it is tied to media keys
+    audioEl.play().catch(() => {});
+
+    const handleVolumeChange = () => {
+      applyBlur();
+    };
+
+    audioEl.addEventListener("volumechange", handleVolumeChange);
+
     const preventDefault = (e: Event) => e.preventDefault();
 
     const applyBlur = () => {
@@ -802,7 +898,9 @@ export default function TextbookPortal({
 
     const removeBlur = () => {
       document.documentElement.classList.remove("force-secure-blur");
-      setIsReaderBlurred(false);
+      if (!isMobileDevice) {
+        setIsReaderBlurred(false);
+      }
     };
     
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -816,6 +914,12 @@ export default function TextbookPortal({
       if (
         e.key === "PrintScreen" || 
         e.keyCode === 44 ||
+        e.key === "VolumeUp" ||
+        e.key === "VolumeDown" ||
+        e.keyCode === 174 ||
+        e.keyCode === 175 ||
+        e.keyCode === 24 || // Android Volume Up keycode
+        e.keyCode === 25 || // Android Volume Down keycode
         (e.ctrlKey && (e.key === "p" || e.key === "P" || e.key === "s" || e.key === "S" || e.key === "u" || e.key === "U")) ||
         (e.ctrlKey && e.shiftKey && (e.key === "i" || e.key === "I" || e.key === "c" || e.key === "C" || e.key === "j" || e.key === "J")) ||
         (e.metaKey && e.shiftKey && (e.key === "s" || e.key === "S" || e.key === "3" || e.key === "4")) ||
@@ -881,6 +985,9 @@ export default function TextbookPortal({
       const el = document.getElementById("secure-blur-styles");
       if (el) el.remove();
 
+      audioEl.removeEventListener("volumechange", handleVolumeChange);
+      audioEl.remove();
+
       window.removeEventListener("contextmenu", preventDefault);
       window.removeEventListener("selectstart", preventDefault);
       window.removeEventListener("copy", preventDefault);
@@ -920,7 +1027,12 @@ export default function TextbookPortal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId })
       })
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) {
+          throw new Error(await res.text());
+        }
+        return res.json();
+      })
       .then(data => {
         if (data.success && data.status === "PAID") {
           sessionStorage.setItem(`verified_upgrade_${orderId}`, "true");
@@ -2849,15 +2961,15 @@ export default function TextbookPortal({
     }
   };
 
-  const handleUpgradePlan = async (target: 'complete', cost: number) => {
+  const handleUpgradePlan = async (targetPlan: string, cost: number) => {
     if (!user) return;
     setIsUpgrading(true);
     
-    // Resolve dynamic target plan based on current plan
-    const targetPlan = 
-      user.plan === "book_only" ? "book_portal" :
-      user.plan === "book_caselet" ? "book_caselet_portal" :
-      "complete";
+    const planLabel = ALL_PLANS.find(p => p.key === targetPlan)?.label || "Complete Portal Access";
+
+    const gstVal = Math.round(cost * 0.18);
+    const onlineFeeVal = Math.round((cost + gstVal) * 0.02);
+    const totalCost = cost + gstVal + onlineFeeVal;
 
     try {
       const res = await fetch("/api/payments/cashfree/create-order", {
@@ -2865,8 +2977,11 @@ export default function TextbookPortal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bookId: user.bookId || "1",
-          bookTitle: "Plan Upgrade to Complete Portal Access",
-          price: cost,
+          bookTitle: `Plan Upgrade to ${planLabel}`,
+          price: totalCost,
+          subtotal: cost,
+          gstAmount: gstVal,
+          shippingAmount: 0,
           customerName: user.name,
           customerEmail: user.collegeEmail || `${user.mobileNumber}@lurnexa.in`,
           customerPhone: user.mobileNumber,
@@ -2874,16 +2989,24 @@ export default function TextbookPortal({
           postalCode: "000000",
           format: "upgrade",
           plan: targetPlan,
-          collegeCode: "others"
+          collegeCode: "others",
+          accessId: user.accessId
         })
       });
 
-      const orderData = await res.json();
       if (!res.ok) {
-        showToast(orderData.error || "Failed to initialize payment.", "error");
+        const text = await res.text();
+        let errorMsg = "Failed to initialize payment.";
+        try {
+          const errData = JSON.parse(text);
+          errorMsg = errData.error || errorMsg;
+        } catch (e) {}
+        showToast(errorMsg, "error");
         setIsUpgrading(false);
         return;
       }
+
+      const orderData = await res.json();
 
       if (!(window as any).Cashfree) {
         showToast("Cashfree Payment SDK failed to load. Please refresh the page.", "error");
@@ -3583,23 +3706,16 @@ export default function TextbookPortal({
                         "Complete Portal Access"
                       }</span>
                     </span>
-                    {["practice", "placements", "book_only", "book_caselet", "caselet"].includes(user.plan || "") && (
+                    {user.plan !== "book_caselet_portal" && (
                       <button
                         onClick={() => {
-                          const bId = user.bookId || "1";
-                          let cost = 50;
-                          if (user.plan === "practice") {
-                            cost = bId === "3" ? 100 : 120;
-                          } else if (user.plan === "placements") {
-                            cost = bId === "3" ? 30 : 50;
-                          } else if (user.plan === "book_only") {
-                            cost = 169;
-                          } else if (user.plan === "book_caselet") {
-                            cost = 184;
-                          } else if (user.plan === "caselet") {
-                            cost = bId === "3" ? 120 : 140;
+                          const currentPrice = getSoftCopyPrice(user.plan || "complete", user.bookId || "1");
+                          const firstEligible = ALL_PLANS.find(p => p.key !== user.plan && getSoftCopyPrice(p.key, user.bookId || "1") > currentPrice);
+                          if (firstEligible) {
+                            setSelectedUpgradePlan(firstEligible.key);
+                          } else {
+                            setSelectedUpgradePlan("");
                           }
-                          setUpgradeCost(cost);
                           setShowUpgradeModal(true);
                         }}
                         className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-sm animate-pulse ml-2"
@@ -4388,7 +4504,7 @@ export default function TextbookPortal({
                           onChange={(e) => setGenIdCollege(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium text-sm"
                         >
-                          <option value="">-- No College (Generic) --</option>
+                          <option value="others">Others</option>
                           {colleges.map(c => (
                             <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
                           ))}
@@ -6346,6 +6462,10 @@ export default function TextbookPortal({
                               const matchesBook = purchaseBookFilter === "all" || p.bookId === purchaseBookFilter;
 
                               return matchesSearch && matchesStatus && matchesFormat && matchesBook;
+                            }).sort((a, b) => {
+                              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                              return dateB - dateA; // newest first
                             });
 
                             const itemsPerPage = 8;
@@ -9263,66 +9383,143 @@ export default function TextbookPortal({
                 </div>
               )}
 
-              {/* --- STUDENT PLAN UPGRADE MODAL --- */}
-              {showUpgradeModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
-                  <div
-                    onClick={() => setShowUpgradeModal(false)}
-                    className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-                  />
-                  <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md relative z-10 p-6 shadow-2xl flex flex-col space-y-4 animate-scaleIn">
-                    <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                      <h3 className="text-lg font-bold text-slate-900">Upgrade to Complete Access</h3>
-                      <button
-                        onClick={() => setShowUpgradeModal(false)}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <p className="text-sm text-slate-600">
-                        You are upgrading your current <strong>{user?.plan} plan</strong> to the <strong>Complete Portal Access</strong> which unlocks:
-                      </p>
-                      <ul className="text-xs text-slate-650 space-y-1.5 pl-4 list-disc font-medium">
-                        <li>All Practice Questions & Chapters</li>
-                        <li>All Placement Activities & Career Hub resources</li>
-                        <li>Active Quizzes with assigned teachers</li>
-                      </ul>
+              {showUpgradeModal && (() => {
+                const currentPrice = user ? getSoftCopyPrice(user.plan || "complete", user.bookId || "1") : 0;
+                const eligiblePlans = user ? ALL_PLANS.filter(p => p.key !== user.plan && getSoftCopyPrice(p.key, user.bookId || "1") > currentPrice) : [];
+                const currentPlanLabel = ALL_PLANS.find(p => p.key === user?.plan)?.label || user?.plan || "Unknown";
+                const selectedPlanPrice = selectedUpgradePlan ? getSoftCopyPrice(selectedUpgradePlan, user?.bookId || "1") : 0;
+                const netUpgradeCost = Math.max(0, selectedPlanPrice - currentPrice);
+                const gstVal = Math.round(netUpgradeCost * 0.18);
+                const onlineFeeVal = Math.round((netUpgradeCost + gstVal) * 0.02);
+                const totalUpgradeCost = netUpgradeCost + gstVal + onlineFeeVal;
+
+                return (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+                    <div
+                      onClick={() => setShowUpgradeModal(false)}
+                      className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                    />
+                    <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg relative z-10 p-6 shadow-2xl flex flex-col space-y-4 animate-scaleIn max-h-[90vh] overflow-y-auto">
+                      <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                        <div>
+                          <h3 className="text-base font-black text-slate-900">Upgrade Your Access Plan</h3>
+                          <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider mt-0.5">
+                            Current: {currentPlanLabel} (₹{currentPrice})
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowUpgradeModal(false)}
+                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg transition"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                       
-                      <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-center border border-slate-150">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Upgrade Fee</span>
-                        <span className="text-xl font-black text-slate-900">₹{upgradeCost}</span>
+                      {eligiblePlans.length === 0 ? (
+                        <div className="text-center py-6">
+                          <p className="text-sm font-semibold text-slate-500">You are already on the highest tier plan!</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <p className="text-xs text-slate-550 leading-relaxed">
+                            Select one of the packages below to upgrade. The pricing is computed dynamically by subtracting your current plan's store value from the target plan's store price:
+                          </p>
+
+                          <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                            {eligiblePlans.map(p => {
+                              const targetPrice = getSoftCopyPrice(p.key, user?.bookId || "1");
+                              const diffCost = targetPrice - currentPrice;
+                              const isSelected = selectedUpgradePlan === p.key;
+
+                              return (
+                                <label
+                                  key={p.key}
+                                  onClick={() => setSelectedUpgradePlan(p.key)}
+                                  className={`flex items-start gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
+                                    isSelected
+                                      ? "border-fuchsia-600 bg-fuchsia-50/20"
+                                      : "border-slate-100 bg-slate-50 hover:bg-slate-100/50 hover:border-slate-200"
+                                  }`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="upgradePlan"
+                                    value={p.key}
+                                    checked={isSelected}
+                                    onChange={() => setSelectedUpgradePlan(p.key)}
+                                    className="accent-fuchsia-600 mt-1"
+                                  />
+                                  <div className="flex-1 space-y-0.5">
+                                    <div className="flex justify-between items-baseline">
+                                      <span className="text-xs font-bold text-slate-800">{p.label}</span>
+                                      <span className="text-xs font-extrabold text-fuchsia-600">₹{diffCost}</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{p.desc}</p>
+                                    <div className="flex items-center gap-1.5 text-[9px] text-slate-400 font-semibold pt-1">
+                                      <span>Store Price: ₹{targetPrice}</span>
+                                      <span>•</span>
+                                      <span>Current Offset: -₹{currentPrice}</span>
+                                    </div>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 space-y-2">
+                            <div className="flex justify-between items-center text-xs text-slate-600 font-medium">
+                              <span>Base Upgrade Price:</span>
+                              <span className="text-slate-800 font-bold">₹{netUpgradeCost}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs text-slate-600 font-medium">
+                              <span>GST Tax (18%):</span>
+                              <span className="text-slate-800 font-bold">₹{gstVal}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs text-slate-600 font-medium">
+                              <span>Online Fee (2%):</span>
+                              <span className="text-slate-800 font-bold">₹{onlineFeeVal}</span>
+                            </div>
+                            <hr className="border-slate-200 my-1" />
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total Upgrade Fee</span>
+                                <span className="text-[10px] text-slate-500 font-medium">Secure dynamic pricing</span>
+                              </div>
+                              <span className="text-xl font-black text-slate-900">₹{totalUpgradeCost}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 pt-3">
+                        <button
+                          onClick={() => setShowUpgradeModal(false)}
+                          disabled={isUpgrading}
+                          className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm py-3 rounded-xl transition"
+                        >
+                          Cancel
+                        </button>
+                        {eligiblePlans.length > 0 && (
+                          <button
+                            onClick={() => handleUpgradePlan(selectedUpgradePlan, netUpgradeCost)}
+                            disabled={isUpgrading || !selectedUpgradePlan}
+                            className="flex-1 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2"
+                          >
+                            {isUpgrading ? (
+                              <>
+                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              "Pay & Upgrade"
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex gap-3 pt-3">
-                      <button
-                        onClick={() => setShowUpgradeModal(false)}
-                        disabled={isUpgrading}
-                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm py-3 rounded-xl transition"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => handleUpgradePlan('complete', upgradeCost)}
-                        disabled={isUpgrading}
-                        className="flex-1 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2"
-                      >
-                        {isUpgrading ? (
-                          <>
-                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          "Pay & Upgrade"
-                        )}
-                      </button>
-                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
@@ -9664,7 +9861,13 @@ export default function TextbookPortal({
           </div>
 
           {/* Embedded Preview Container with relative positioning for watermark */}
-          <div className="relative flex-1 bg-zinc-100 overflow-y-auto p-8 flex justify-center items-start select-none">
+          <div 
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            onTouchMove={handleTouchMove}
+            className="relative flex-1 bg-zinc-100 overflow-y-auto p-8 flex justify-center items-start select-none"
+          >
             {/* Dynamic watermark overlaid */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden z-[99] grid grid-cols-3 grid-rows-3 opacity-[0.12] select-none">
               {Array.from({ length: 9 }).map((_, i) => (
@@ -9676,10 +9879,14 @@ export default function TextbookPortal({
 
             {/* Blur warning overlay */}
             {isReaderBlurred && (
-              <div className="absolute inset-0 bg-slate-950/90 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md">
+              <div className="absolute inset-0 bg-slate-950/95 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md pointer-events-none select-none">
                 <Shield className="text-fuchsia-500 mb-4 animate-bounce" size={48} />
-                <h3 className="text-xl font-bold text-white mb-2">Protected Content</h3>
-                <p className="text-sm text-slate-400 max-w-md">Content is blurred for security while the reader window is out of focus.</p>
+                <h3 className="text-xl font-bold text-white mb-2">Secure Reader Mode</h3>
+                <p className="text-sm text-slate-400 max-w-md">
+                  {isMobile 
+                    ? "Press and hold down on the page area to read. Release to protect."
+                    : "Content is blurred for security while the reader window is out of focus."}
+                </p>
               </div>
             )}
 
@@ -9784,7 +9991,13 @@ export default function TextbookPortal({
             </div>
 
             {/* Content Container */}
-            <div className="relative flex-1 bg-zinc-100 overflow-y-auto p-8 flex justify-center items-start select-none">
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchEnd}
+              onTouchMove={handleTouchMove}
+              className="relative flex-1 bg-zinc-100 overflow-y-auto p-8 flex justify-center items-start select-none"
+            >
               {/* Dynamic watermark overlaid */}
               <div className="absolute inset-0 pointer-events-none overflow-hidden z-[99] grid grid-cols-3 grid-rows-3 opacity-[0.12] select-none">
                 {Array.from({ length: 9 }).map((_, i) => (
@@ -9796,10 +10009,14 @@ export default function TextbookPortal({
 
               {/* Blur warning overlay */}
               {isReaderBlurred && (
-                <div className="absolute inset-0 bg-slate-950/90 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md">
+                <div className="absolute inset-0 bg-slate-950/95 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md pointer-events-none select-none">
                   <Shield className="text-fuchsia-500 mb-4 animate-bounce" size={48} />
-                  <h3 className="text-xl font-bold text-white mb-2">Protected Content</h3>
-                  <p className="text-sm text-slate-400 max-w-md">Content is blurred for security while the reader window is out of focus.</p>
+                  <h3 className="text-xl font-bold text-white mb-2">Secure Reader Mode</h3>
+                  <p className="text-sm text-slate-400 max-w-md">
+                    {isMobile 
+                      ? "Press and hold down on the page area to read. Release to protect."
+                      : "Content is blurred for security while the reader window is out of focus."}
+                  </p>
                 </div>
               )}
 

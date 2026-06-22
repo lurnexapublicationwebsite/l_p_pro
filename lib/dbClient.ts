@@ -564,7 +564,7 @@ export function generateAccessId(bookId: string, role: 'student' | 'faculty', co
   
   const rolePrefix = role === 'faculty' ? 'LF' : 'LS';
   const bookCode = getBookCode(bookId);
-  const collegePart = collegeCode ? collegeCode.toUpperCase() : "";
+  const collegePart = collegeCode ? (collegeCode.toUpperCase() === "OTHERS" || collegeCode.toUpperCase() === "OT" ? "OT" : collegeCode.toUpperCase()) : "";
   const prefix = `${rolePrefix}${bookCode}${collegePart}`; // e.g. LSMLNC or LFMLNC
 
   // Find all existing matching prefixes to calculate count
@@ -583,7 +583,7 @@ export function generateAccessId(bookId: string, role: 'student' | 'faculty', co
     accessId: newId,
     bookId,
     role,
-    collegeCode: collegeCode || undefined
+    collegeCode: collegeCode ? (collegeCode.toUpperCase() === "OTHERS" || collegeCode.toUpperCase() === "OT" ? "OT" : collegeCode.toUpperCase()) : undefined
   });
 
   setStorageItem('lurnexa_allowed_access_ids', allowedIds);
@@ -596,7 +596,7 @@ export function generateAccessIdsBulk(bookId: string, role: 'student' | 'faculty
   
   const rolePrefix = role === 'faculty' ? 'LF' : 'LS';
   const bookCode = getBookCode(bookId);
-  const collegePart = collegeCode ? collegeCode.toUpperCase() : "";
+  const collegePart = collegeCode ? (collegeCode.toUpperCase() === "OTHERS" || collegeCode.toUpperCase() === "OT" ? "OT" : collegeCode.toUpperCase()) : "";
   const prefix = `${rolePrefix}${bookCode}${collegePart}`; // e.g. LSMLNC or LFMLNC
 
   // Find all existing matching prefixes to calculate starting count
@@ -618,7 +618,7 @@ export function generateAccessIdsBulk(bookId: string, role: 'student' | 'faculty
       accessId: newId,
       bookId,
       role,
-      collegeCode: collegeCode || undefined
+      collegeCode: collegeCode ? (collegeCode.toUpperCase() === "OTHERS" || collegeCode.toUpperCase() === "OT" ? "OT" : collegeCode.toUpperCase()) : undefined
     });
     generatedIds.push(newId);
     nextNum++;
