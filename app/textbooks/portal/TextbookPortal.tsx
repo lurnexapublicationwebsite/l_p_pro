@@ -316,6 +316,8 @@ export default function TextbookPortal({
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [newCouponCode, setNewCouponCode] = useState("");
   const [newCouponDiscount, setNewCouponDiscount] = useState("");
+  const [newCouponSoftDiscount, setNewCouponSoftDiscount] = useState("");
+  const [newCouponHardDiscount, setNewCouponHardDiscount] = useState("");
   const [newCouponBookId, setNewCouponBookId] = useState("");
   const [newCouponFormat, setNewCouponFormat] = useState<'soft' | 'physical' | 'both'>('both');
   const [deleteConfirmationCouponCode, setDeleteConfirmationCouponCode] = useState<string | null>(null);
@@ -5847,15 +5849,41 @@ export default function TextbookPortal({
                         setErrorMessage("");
                         setSuccessMessage("");
                         const cleanCode = newCouponCode.trim().toUpperCase();
-                        const percentage = parseInt(newCouponDiscount);
                         if (!cleanCode) {
                           setErrorMessage("Coupon code cannot be empty.");
                           return;
                         }
-                        if (isNaN(percentage) || percentage < 1 || percentage > 100) {
-                          setErrorMessage("Discount percentage must be between 1 and 105.");
-                          return;
+
+                        let finalDiscount = 0;
+                        let softPct: number | undefined = undefined;
+                        let hardPct: number | undefined = undefined;
+
+                        if (newCouponFormat === "both") {
+                          softPct = parseInt(newCouponSoftDiscount);
+                          hardPct = parseInt(newCouponHardDiscount);
+                          if (isNaN(softPct) || softPct < 1 || softPct > 100) {
+                            setErrorMessage("Soft Copy discount percentage must be between 1 and 100.");
+                            return;
+                          }
+                          if (isNaN(hardPct) || hardPct < 1 || hardPct > 100) {
+                            setErrorMessage("Hard Copy discount percentage must be between 1 and 100.");
+                            return;
+                          }
+                          finalDiscount = softPct; // fallback main discount
+                        } else {
+                          const percentage = parseInt(newCouponDiscount);
+                          if (isNaN(percentage) || percentage < 1 || percentage > 100) {
+                            setErrorMessage("Discount percentage must be between 1 and 100.");
+                            return;
+                          }
+                          finalDiscount = percentage;
+                          if (newCouponFormat === "soft") {
+                            softPct = percentage;
+                          } else {
+                            hardPct = percentage;
+                          }
                         }
+
                         if (!newCouponBookId) {
                           setErrorMessage("Please select an applicable textbook.");
                           return;
@@ -5869,12 +5897,16 @@ export default function TextbookPortal({
 
                         saveCoupon({
                           code: cleanCode,
-                          discountPercentage: percentage,
+                          discountPercentage: finalDiscount,
                           bookId: newCouponBookId,
-                          applicableFormat: newCouponFormat
+                          applicableFormat: newCouponFormat,
+                          softDiscountPercentage: softPct,
+                          hardDiscountPercentage: hardPct
                         });
                         setNewCouponCode("");
                         setNewCouponDiscount("");
+                        setNewCouponSoftDiscount("");
+                        setNewCouponHardDiscount("");
                         setNewCouponBookId("");
                         setNewCouponFormat("both");
                         setSuccessMessage(`Coupon "${cleanCode}" created successfully.`);
@@ -5894,17 +5926,59 @@ export default function TextbookPortal({
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Discount Percentage (%)</label>
-                        <input
-                          type="number"
-                          value={newCouponDiscount}
-                          onChange={(e) => setNewCouponDiscount(e.target.value)}
-                          placeholder="e.g. 15"
-                          min="1"
-                          max="100"
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-medium"
-                        />
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Applicable Format</label>
+                        <select
+                          value={newCouponFormat}
+                          onChange={(e) => setNewCouponFormat(e.target.value as any)}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-bold"
+                        >
+                          <option value="both">Both (Soft & Hard Copy)</option>
+                          <option value="soft">Soft Copy Only</option>
+                          <option value="physical">Hard Copy Only</option>
+                        </select>
                       </div>
+
+                      {newCouponFormat === "both" ? (
+                        <>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Soft Copy Discount (%)</label>
+                            <input
+                              type="number"
+                              value={newCouponSoftDiscount}
+                              onChange={(e) => setNewCouponSoftDiscount(e.target.value)}
+                              placeholder="e.g. 15"
+                              min="1"
+                              max="100"
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-medium"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Hard Copy Discount (%)</label>
+                            <input
+                              type="number"
+                              value={newCouponHardDiscount}
+                              onChange={(e) => setNewCouponHardDiscount(e.target.value)}
+                              placeholder="e.g. 10"
+                              min="1"
+                              max="100"
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-medium"
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Discount Percentage (%)</label>
+                          <input
+                            type="number"
+                            value={newCouponDiscount}
+                            onChange={(e) => setNewCouponDiscount(e.target.value)}
+                            placeholder="e.g. 15"
+                            min="1"
+                            max="100"
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-medium"
+                          />
+                        </div>
+                      )}
 
                       <div className="space-y-1.5">
                         <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Applicable Textbook / Subject</label>
@@ -5917,19 +5991,6 @@ export default function TextbookPortal({
                           {textbooks.map(b => (
                             <option key={b.id} value={b.id}>{b.title} ({b.code})</option>
                           ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Applicable Format</label>
-                        <select
-                          value={newCouponFormat}
-                          onChange={(e) => setNewCouponFormat(e.target.value as any)}
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-bold"
-                        >
-                          <option value="both">Both (Soft & Hard Copy)</option>
-                          <option value="soft">Soft Copy Only</option>
-                          <option value="physical">Hard Copy Only</option>
                         </select>
                       </div>
 
@@ -5983,9 +6044,16 @@ export default function TextbookPortal({
                                 <tr key={c.code} className="hover:bg-slate-50/55 transition-colors">
                                   <td className="px-5 py-3.5 font-bold text-slate-900">{c.code}</td>
                                   <td className="px-5 py-3.5">
-                                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-extrabold px-2 py-0.5 rounded text-[11px]">
-                                      {discountPercentage}% OFF
-                                    </span>
+                                    {applicableFormat === 'both' ? (
+                                      <div className="flex flex-col gap-1">
+                                        <span className="text-[10px] text-slate-500 font-bold">Soft: <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 font-extrabold px-1 py-0.2 rounded">{c.softDiscountPercentage || (c as any).soft_discount_percentage || discountPercentage}% OFF</span></span>
+                                        <span className="text-[10px] text-slate-500 font-bold">Hard: <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 font-extrabold px-1 py-0.2 rounded">{c.hardDiscountPercentage || (c as any).hard_discount_percentage || discountPercentage}% OFF</span></span>
+                                      </div>
+                                    ) : (
+                                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-extrabold px-2 py-0.5 rounded text-[11px]">
+                                        {discountPercentage}% OFF
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="px-5 py-3.5 max-w-[200px] truncate" title={book?.title || "Unknown Textbook"}>
                                     {book ? `${book.title} (${book.code})` : `Book ID: ${bookId}`}

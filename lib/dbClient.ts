@@ -22,6 +22,8 @@ export interface Coupon {
   discountPercentage: number;
   bookId: string;
   applicableFormat: 'soft' | 'physical' | 'both';
+  softDiscountPercentage?: number;
+  hardDiscountPercentage?: number;
 }
 
 export interface PurchaseRecord {

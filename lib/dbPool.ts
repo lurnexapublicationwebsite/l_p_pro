@@ -943,8 +943,8 @@ export const pool = {
         return { rows: list };
       }
       if (cleanSql.startsWith("INSERT")) {
-        const [code, discount_percentage, book_id, applicable_format] = params;
-        const record = { code, discount_percentage, book_id, applicable_format };
+        const [code, discount_percentage, book_id, applicable_format, soft_discount_percentage, hard_discount_percentage] = params;
+        const record = { code, discount_percentage, book_id, applicable_format, soft_discount_percentage, hard_discount_percentage };
         const idx = list.findIndex((x: any) => x.code === code);
         if (idx !== -1) list[idx] = record;
         else list.push(record);

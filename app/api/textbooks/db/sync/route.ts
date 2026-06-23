@@ -160,6 +160,8 @@ async function ensureTables() {
     );
   `);
   await pool.query(`ALTER TABLE textbooks_coupons ADD COLUMN IF NOT EXISTS applicable_format VARCHAR(20) DEFAULT 'both'`);
+  await pool.query(`ALTER TABLE textbooks_coupons ADD COLUMN IF NOT EXISTS soft_discount_percentage INT`);
+  await pool.query(`ALTER TABLE textbooks_coupons ADD COLUMN IF NOT EXISTS hard_discount_percentage INT`);
 }
 
 export async function GET() {
@@ -327,7 +329,9 @@ export async function GET() {
       code: c.code,
       discountPercentage: c.discount_percentage,
       bookId: c.book_id,
-      applicableFormat: c.applicable_format || 'both'
+      applicableFormat: c.applicable_format || 'both',
+      softDiscountPercentage: c.soft_discount_percentage || null,
+      hardDiscountPercentage: c.hard_discount_percentage || null
     }));
 
     const purchases = purchasesRes.rows.map(p => ({
@@ -572,13 +576,22 @@ export async function POST(request: Request) {
       } else if (table === "coupons") {
         for (const c of items) {
           await pool.query(`
-            INSERT INTO textbooks_coupons (code, discount_percentage, book_id, applicable_format)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO textbooks_coupons (code, discount_percentage, book_id, applicable_format, soft_discount_percentage, hard_discount_percentage)
+            VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (code) DO UPDATE SET
               discount_percentage = EXCLUDED.discount_percentage,
               book_id = EXCLUDED.book_id,
-              applicable_format = EXCLUDED.applicable_format;
-          `, [c.code, c.discountPercentage, c.bookId, c.applicableFormat || 'both']);
+              applicable_format = EXCLUDED.applicable_format,
+              soft_discount_percentage = EXCLUDED.soft_discount_percentage,
+              hard_discount_percentage = EXCLUDED.hard_discount_percentage;
+          `, [
+            c.code, 
+            c.discountPercentage, 
+            c.bookId, 
+            c.applicableFormat || 'both', 
+            c.softDiscountPercentage || null, 
+            c.hardDiscountPercentage || null
+          ]);
         }
 
       } else if (table === "purchases") {

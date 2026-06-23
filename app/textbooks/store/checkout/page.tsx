@@ -444,7 +444,14 @@ function CheckoutContent() {
       }
 
       setAppliedCoupon(code);
-      const discountPercentage = matchedCoupon.discountPercentage || (matchedCoupon as any).discount_percentage;
+      let discountPercentage = matchedCoupon.discountPercentage || (matchedCoupon as any).discount_percentage;
+      if (applicableFormat === 'both') {
+        if (format === 'soft') {
+          discountPercentage = matchedCoupon.softDiscountPercentage || (matchedCoupon as any).soft_discount_percentage || discountPercentage;
+        } else {
+          discountPercentage = matchedCoupon.hardDiscountPercentage || (matchedCoupon as any).hard_discount_percentage || discountPercentage;
+        }
+      }
       setCouponSuccess(`Coupon applied! ${discountPercentage}% discount on the applicable textbook.`);
       return;
     }
@@ -539,7 +546,10 @@ function CheckoutContent() {
         const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
         const targetItem = checkoutItems.find(item => item.id === targetBookId) || (isCartCheckout ? undefined : { id: bookId, quantity });
         if (targetItem) {
-          const discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+          let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+          if (dynamicCouponFormat === 'both') {
+            discountPercentage = dynamicCoupon.softDiscountPercentage || (dynamicCoupon as any).soft_discount_percentage || discountPercentage;
+          }
           discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (discountPercentage / 100));
         }
       } else {
@@ -583,7 +593,10 @@ function CheckoutContent() {
         const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
         const targetItem = checkoutItems.find(item => item.id === targetBookId);
         if (targetItem) {
-          const discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+          let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+          if (dynamicCouponFormat === 'both') {
+            discountPercentage = dynamicCoupon.hardDiscountPercentage || (dynamicCoupon as any).hard_discount_percentage || discountPercentage;
+          }
           discount = Math.round((targetItem.price * targetItem.quantity) * (discountPercentage / 100));
         }
       } else {
@@ -984,7 +997,10 @@ function CheckoutContent() {
       const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
       const targetItem = checkoutItems.find(item => item.id === targetBookId) || (isCartCheckout ? undefined : { id: bookId, quantity });
       if (targetItem) {
-        const discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+        let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+        if (dynamicCouponFormat === 'both') {
+          discountPercentage = dynamicCoupon.softDiscountPercentage || (dynamicCoupon as any).soft_discount_percentage || discountPercentage;
+        }
         discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (discountPercentage / 100));
       }
     } else {
@@ -1028,7 +1044,10 @@ function CheckoutContent() {
       const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
       const targetItem = checkoutItems.find(item => item.id === targetBookId);
       if (targetItem) {
-        const discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+        let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+        if (dynamicCouponFormat === 'both') {
+          discountPercentage = dynamicCoupon.hardDiscountPercentage || (dynamicCoupon as any).hard_discount_percentage || discountPercentage;
+        }
         discount = Math.round((targetItem.price * targetItem.quantity) * (discountPercentage / 100));
       }
     } else {
