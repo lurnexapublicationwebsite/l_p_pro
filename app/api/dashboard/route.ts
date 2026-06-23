@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { Pool } from "pg";
 
+const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  connectionString,
+  ssl: connectionString && !connectionString.includes("localhost") && !connectionString.includes("127.0.0.1")
+    ? { rejectUnauthorized: false }
+    : false,
+  connectionTimeoutMillis: 3000,
 });
 
 /* ===========================

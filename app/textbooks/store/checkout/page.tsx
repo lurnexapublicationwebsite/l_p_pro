@@ -426,14 +426,14 @@ function CheckoutContent() {
     // Dynamic Coupon Check
     const matchedCoupon = availableCoupons.find(c => c.code.toUpperCase() === code);
     if (matchedCoupon) {
-      const targetBookId = matchedCoupon.bookId;
+      const targetBookId = matchedCoupon.bookId || (matchedCoupon as any).book_id;
       const hasMatchedBook = checkoutItems.some(item => item.id === targetBookId);
       if (!hasMatchedBook) {
         setCouponError(`This coupon is only valid for a specific textbook in the store.`);
         return;
       }
 
-      const applicableFormat = matchedCoupon.applicableFormat || 'both';
+      const applicableFormat = matchedCoupon.applicableFormat || (matchedCoupon as any).applicable_format || 'both';
       if (applicableFormat === 'soft' && format !== 'soft') {
         setCouponError("This coupon code is only applicable for the Soft Copy format.");
         return;
@@ -444,7 +444,8 @@ function CheckoutContent() {
       }
 
       setAppliedCoupon(code);
-      setCouponSuccess(`Coupon applied! ${matchedCoupon.discountPercentage}% discount on the applicable textbook.`);
+      const discountPercentage = matchedCoupon.discountPercentage || (matchedCoupon as any).discount_percentage;
+      setCouponSuccess(`Coupon applied! ${discountPercentage}% discount on the applicable textbook.`);
       return;
     }
 
@@ -533,11 +534,13 @@ function CheckoutContent() {
 
       // Check dynamic coupon first
       const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
-      if (dynamicCoupon && (dynamicCoupon.applicableFormat === 'both' || dynamicCoupon.applicableFormat === 'soft')) {
-        const targetBookId = dynamicCoupon.bookId;
+      const dynamicCouponFormat = dynamicCoupon ? (dynamicCoupon.applicableFormat || (dynamicCoupon as any).applicable_format || 'both') : '';
+      if (dynamicCoupon && (dynamicCouponFormat === 'both' || dynamicCouponFormat === 'soft')) {
+        const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
         const targetItem = checkoutItems.find(item => item.id === targetBookId) || (isCartCheckout ? undefined : { id: bookId, quantity });
         if (targetItem) {
-          discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (dynamicCoupon.discountPercentage / 100));
+          const discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+          discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (discountPercentage / 100));
         }
       } else {
         const isMLCoupon = [
@@ -575,11 +578,13 @@ function CheckoutContent() {
 
       // Check dynamic coupon first
       const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
-      if (dynamicCoupon && (dynamicCoupon.applicableFormat === 'both' || dynamicCoupon.applicableFormat === 'physical')) {
-        const targetBookId = dynamicCoupon.bookId;
+      const dynamicCouponFormat = dynamicCoupon ? (dynamicCoupon.applicableFormat || (dynamicCoupon as any).applicable_format || 'both') : '';
+      if (dynamicCoupon && (dynamicCouponFormat === 'both' || dynamicCouponFormat === 'physical')) {
+        const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
         const targetItem = checkoutItems.find(item => item.id === targetBookId);
         if (targetItem) {
-          discount = Math.round((targetItem.price * targetItem.quantity) * (dynamicCoupon.discountPercentage / 100));
+          const discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+          discount = Math.round((targetItem.price * targetItem.quantity) * (discountPercentage / 100));
         }
       } else {
         const isMLCoupon = [
@@ -974,11 +979,13 @@ function CheckoutContent() {
 
     // Check dynamic coupon first
     const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
-    if (dynamicCoupon && (dynamicCoupon.applicableFormat === 'both' || dynamicCoupon.applicableFormat === 'soft')) {
-      const targetBookId = dynamicCoupon.bookId;
+    const dynamicCouponFormat = dynamicCoupon ? (dynamicCoupon.applicableFormat || (dynamicCoupon as any).applicable_format || 'both') : '';
+    if (dynamicCoupon && (dynamicCouponFormat === 'both' || dynamicCouponFormat === 'soft')) {
+      const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
       const targetItem = checkoutItems.find(item => item.id === targetBookId) || (isCartCheckout ? undefined : { id: bookId, quantity });
       if (targetItem) {
-        discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (dynamicCoupon.discountPercentage / 100));
+        const discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+        discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (discountPercentage / 100));
       }
     } else {
       const isMLCoupon = [
@@ -1016,11 +1023,13 @@ function CheckoutContent() {
 
     // Check dynamic coupon first
     const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
-    if (dynamicCoupon && (dynamicCoupon.applicableFormat === 'both' || dynamicCoupon.applicableFormat === 'physical')) {
-      const targetBookId = dynamicCoupon.bookId;
+    const dynamicCouponFormat = dynamicCoupon ? (dynamicCoupon.applicableFormat || (dynamicCoupon as any).applicable_format || 'both') : '';
+    if (dynamicCoupon && (dynamicCouponFormat === 'both' || dynamicCouponFormat === 'physical')) {
+      const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
       const targetItem = checkoutItems.find(item => item.id === targetBookId);
       if (targetItem) {
-        discount = Math.round((targetItem.price * targetItem.quantity) * (dynamicCoupon.discountPercentage / 100));
+        const discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+        discount = Math.round((targetItem.price * targetItem.quantity) * (discountPercentage / 100));
       }
     } else {
       const isMLCoupon = [

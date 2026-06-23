@@ -10,6 +10,7 @@ const pgPool = new Pool({
   ssl: connectionString && !connectionString.includes("localhost") && !connectionString.includes("127.0.0.1")
     ? { rejectUnauthorized: false }
     : false,
+  connectionTimeoutMillis: 3000,
 });
 
 // A flag to indicate whether we should fall back to JSON storage

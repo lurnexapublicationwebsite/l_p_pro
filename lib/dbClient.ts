@@ -1210,6 +1210,7 @@ export function deleteCoupon(code: string): void {
   const list = getStorageItem<Coupon[]>('lurnexa_coupons', []);
   const updated = list.filter(c => c.code.toUpperCase() !== code.toUpperCase());
   IN_MEMORY_DB['lurnexa_coupons'] = updated;
+  try { localStorage.setItem('lurnexa_coupons', JSON.stringify(updated)); } catch (e) {}
   
   // Also delete on server database
   fetch('/api/textbooks/db/sync', {

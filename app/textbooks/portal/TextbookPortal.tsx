@@ -5975,20 +5975,23 @@ export default function TextbookPortal({
                           </thead>
                           <tbody className="divide-y divide-slate-100 font-medium">
                             {coupons.map((c) => {
-                              const book = textbooks.find(b => b.id === c.bookId);
+                              const bookId = c.bookId || (c as any).book_id;
+                              const discountPercentage = c.discountPercentage || (c as any).discount_percentage;
+                              const applicableFormat = c.applicableFormat || (c as any).applicable_format || 'both';
+                              const book = textbooks.find(b => b.id === bookId);
                               return (
                                 <tr key={c.code} className="hover:bg-slate-50/55 transition-colors">
                                   <td className="px-5 py-3.5 font-bold text-slate-900">{c.code}</td>
                                   <td className="px-5 py-3.5">
                                     <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-extrabold px-2 py-0.5 rounded text-[11px]">
-                                      {c.discountPercentage}% OFF
+                                      {discountPercentage}% OFF
                                     </span>
                                   </td>
                                   <td className="px-5 py-3.5 max-w-[200px] truncate" title={book?.title || "Unknown Textbook"}>
-                                    {book ? `${book.title} (${book.code})` : `Book ID: ${c.bookId}`}
+                                    {book ? `${book.title} (${book.code})` : `Book ID: ${bookId}`}
                                   </td>
                                   <td className="px-5 py-3.5 capitalize font-semibold text-slate-600">
-                                    {c.applicableFormat === 'both' ? 'Soft & Hard' : c.applicableFormat === 'soft' ? 'Soft Copy' : 'Hard Copy'}
+                                    {applicableFormat === 'both' ? 'Soft & Hard' : applicableFormat === 'soft' ? 'Soft Copy' : 'Hard Copy'}
                                   </td>
                                   <td className="px-5 py-3.5 text-right">
                                     <button
