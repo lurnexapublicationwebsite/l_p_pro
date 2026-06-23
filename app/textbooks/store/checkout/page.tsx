@@ -426,10 +426,11 @@ function CheckoutContent() {
     // Dynamic Coupon Check
     const matchedCoupon = availableCoupons.find(c => c.code.toUpperCase() === code);
     if (matchedCoupon) {
-      const targetBookId = matchedCoupon.bookId || (matchedCoupon as any).book_id;
-      const hasMatchedBook = checkoutItems.some(item => item.id === targetBookId);
+      const targetBookIdStr = matchedCoupon.bookId || (matchedCoupon as any).book_id || "";
+      const allowedBookIds = targetBookIdStr.split(",").map((id: string) => id.trim());
+      const hasMatchedBook = checkoutItems.some(item => allowedBookIds.includes(item.id));
       if (!hasMatchedBook) {
-        setCouponError(`This coupon is only valid for a specific textbook in the store.`);
+        setCouponError(`This coupon is only valid for specific textbooks in the store.`);
         return;
       }
 
@@ -543,14 +544,20 @@ function CheckoutContent() {
       const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
       const dynamicCouponFormat = dynamicCoupon ? (dynamicCoupon.applicableFormat || (dynamicCoupon as any).applicable_format || 'both') : '';
       if (dynamicCoupon && (dynamicCouponFormat === 'both' || dynamicCouponFormat === 'soft')) {
-        const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
-        const targetItem = checkoutItems.find(item => item.id === targetBookId) || (isCartCheckout ? undefined : { id: bookId, quantity });
-        if (targetItem) {
-          let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
-          if (dynamicCouponFormat === 'both') {
-            discountPercentage = dynamicCoupon.softDiscountPercentage || (dynamicCoupon as any).soft_discount_percentage || discountPercentage;
+        const targetBookIdStr = dynamicCoupon.bookId || (dynamicCoupon as any).book_id || "";
+        const allowedBookIds = targetBookIdStr.split(",").map((id: string) => id.trim());
+        let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+        if (dynamicCouponFormat === 'both') {
+          discountPercentage = dynamicCoupon.softDiscountPercentage || (dynamicCoupon as any).soft_discount_percentage || discountPercentage;
+        }
+        discount = 0;
+        checkoutItems.forEach(item => {
+          if (allowedBookIds.includes(item.id)) {
+            discount += Math.round((getSoftCopyPrice(plan, item.id) * item.quantity) * (discountPercentage / 100));
           }
-          discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (discountPercentage / 100));
+        });
+        if (checkoutItems.length === 0 && allowedBookIds.includes(bookId)) {
+          discount = Math.round((getSoftCopyPrice(plan, bookId) * quantity) * (discountPercentage / 100));
         }
       } else {
         const isMLCoupon = [
@@ -590,15 +597,18 @@ function CheckoutContent() {
       const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
       const dynamicCouponFormat = dynamicCoupon ? (dynamicCoupon.applicableFormat || (dynamicCoupon as any).applicable_format || 'both') : '';
       if (dynamicCoupon && (dynamicCouponFormat === 'both' || dynamicCouponFormat === 'physical')) {
-        const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
-        const targetItem = checkoutItems.find(item => item.id === targetBookId);
-        if (targetItem) {
-          let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
-          if (dynamicCouponFormat === 'both') {
-            discountPercentage = dynamicCoupon.hardDiscountPercentage || (dynamicCoupon as any).hard_discount_percentage || discountPercentage;
-          }
-          discount = Math.round((targetItem.price * targetItem.quantity) * (discountPercentage / 100));
+        const targetBookIdStr = dynamicCoupon.bookId || (dynamicCoupon as any).book_id || "";
+        const allowedBookIds = targetBookIdStr.split(",").map((id: string) => id.trim());
+        let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+        if (dynamicCouponFormat === 'both') {
+          discountPercentage = dynamicCoupon.hardDiscountPercentage || (dynamicCoupon as any).hard_discount_percentage || discountPercentage;
         }
+        discount = 0;
+        checkoutItems.forEach(item => {
+          if (allowedBookIds.includes(item.id)) {
+            discount += Math.round((item.price * item.quantity) * (discountPercentage / 100));
+          }
+        });
       } else {
         const isMLCoupon = [
           "LURNEXA-ML-BL26-PALLAVI",
@@ -994,14 +1004,20 @@ function CheckoutContent() {
     const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
     const dynamicCouponFormat = dynamicCoupon ? (dynamicCoupon.applicableFormat || (dynamicCoupon as any).applicable_format || 'both') : '';
     if (dynamicCoupon && (dynamicCouponFormat === 'both' || dynamicCouponFormat === 'soft')) {
-      const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
-      const targetItem = checkoutItems.find(item => item.id === targetBookId) || (isCartCheckout ? undefined : { id: bookId, quantity });
-      if (targetItem) {
-        let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
-        if (dynamicCouponFormat === 'both') {
-          discountPercentage = dynamicCoupon.softDiscountPercentage || (dynamicCoupon as any).soft_discount_percentage || discountPercentage;
+      const targetBookIdStr = dynamicCoupon.bookId || (dynamicCoupon as any).book_id || "";
+      const allowedBookIds = targetBookIdStr.split(",").map((id: string) => id.trim());
+      let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+      if (dynamicCouponFormat === 'both') {
+        discountPercentage = dynamicCoupon.softDiscountPercentage || (dynamicCoupon as any).soft_discount_percentage || discountPercentage;
+      }
+      discount = 0;
+      checkoutItems.forEach(item => {
+        if (allowedBookIds.includes(item.id)) {
+          discount += Math.round((getSoftCopyPrice(plan, item.id) * item.quantity) * (discountPercentage / 100));
         }
-        discount = Math.round((getSoftCopyPrice(plan, targetItem.id) * targetItem.quantity) * (discountPercentage / 100));
+      });
+      if (checkoutItems.length === 0 && allowedBookIds.includes(bookId)) {
+        discount = Math.round((getSoftCopyPrice(plan, bookId) * quantity) * (discountPercentage / 100));
       }
     } else {
       const isMLCoupon = [
@@ -1041,15 +1057,18 @@ function CheckoutContent() {
     const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
     const dynamicCouponFormat = dynamicCoupon ? (dynamicCoupon.applicableFormat || (dynamicCoupon as any).applicable_format || 'both') : '';
     if (dynamicCoupon && (dynamicCouponFormat === 'both' || dynamicCouponFormat === 'physical')) {
-      const targetBookId = dynamicCoupon.bookId || (dynamicCoupon as any).book_id;
-      const targetItem = checkoutItems.find(item => item.id === targetBookId);
-      if (targetItem) {
-        let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
-        if (dynamicCouponFormat === 'both') {
-          discountPercentage = dynamicCoupon.hardDiscountPercentage || (dynamicCoupon as any).hard_discount_percentage || discountPercentage;
-        }
-        discount = Math.round((targetItem.price * targetItem.quantity) * (discountPercentage / 100));
+      const targetBookIdStr = dynamicCoupon.bookId || (dynamicCoupon as any).book_id || "";
+      const allowedBookIds = targetBookIdStr.split(",").map((id: string) => id.trim());
+      let discountPercentage = dynamicCoupon.discountPercentage || (dynamicCoupon as any).discount_percentage;
+      if (dynamicCouponFormat === 'both') {
+        discountPercentage = dynamicCoupon.hardDiscountPercentage || (dynamicCoupon as any).hard_discount_percentage || discountPercentage;
       }
+      discount = 0;
+      checkoutItems.forEach(item => {
+        if (allowedBookIds.includes(item.id)) {
+          discount += Math.round((item.price * item.quantity) * (discountPercentage / 100));
+        }
+      });
     } else {
       const isMLCoupon = [
         "LURNEXA-ML-BL26-PALLAVI",

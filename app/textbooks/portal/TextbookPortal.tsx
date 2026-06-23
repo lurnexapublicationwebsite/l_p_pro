@@ -118,6 +118,7 @@ import {
   Search,
   Filter,
   Tag,
+  Edit,
   ChevronDown,
   ChevronUp
 } from "lucide-react";
@@ -319,7 +320,9 @@ export default function TextbookPortal({
   const [newCouponSoftDiscount, setNewCouponSoftDiscount] = useState("");
   const [newCouponHardDiscount, setNewCouponHardDiscount] = useState("");
   const [newCouponBookId, setNewCouponBookId] = useState("");
+  const [newCouponBookIds, setNewCouponBookIds] = useState<string[]>([]);
   const [newCouponFormat, setNewCouponFormat] = useState<'soft' | 'physical' | 'both'>('both');
+  const [editingCouponCode, setEditingCouponCode] = useState<string | null>(null);
   const [deleteConfirmationCouponCode, setDeleteConfirmationCouponCode] = useState<string | null>(null);
 
   // Navigation / Tabs
@@ -5840,7 +5843,9 @@ export default function TextbookPortal({
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                   {/* Left Column: Form */}
                   <div className="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
-                    <h3 className="text-xl font-bold text-slate-900">Create New Coupon</h3>
+                    <h3 className="text-xl font-bold text-slate-900">
+                      {editingCouponCode ? `Edit Coupon: ${editingCouponCode}` : "Create New Coupon"}
+                    </h3>
                     <p className="text-xs text-slate-600">Configure dynamic discount codes for specific textbooks and format requirements.</p>
 
                     <form 
@@ -5869,7 +5874,7 @@ export default function TextbookPortal({
                             setErrorMessage("Hard Copy discount percentage must be between 1 and 100.");
                             return;
                           }
-                          finalDiscount = softPct; // fallback main discount
+                          finalDiscount = softPct;
                         } else {
                           const percentage = parseInt(newCouponDiscount);
                           if (isNaN(percentage) || percentage < 1 || percentage > 100) {
@@ -5884,13 +5889,13 @@ export default function TextbookPortal({
                           }
                         }
 
-                        if (!newCouponBookId) {
-                          setErrorMessage("Please select an applicable textbook.");
+                        if (newCouponBookIds.length === 0) {
+                          setErrorMessage("Please select at least one applicable textbook.");
                           return;
                         }
                         
-                        // Check duplicate
-                        if (coupons.some(c => c.code.toUpperCase() === cleanCode)) {
+                        // Check duplicate (only if not editing)
+                        if (!editingCouponCode && coupons.some(c => c.code.toUpperCase() === cleanCode)) {
                           setErrorMessage(`Coupon "${cleanCode}" already exists.`);
                           return;
                         }
@@ -5898,18 +5903,20 @@ export default function TextbookPortal({
                         saveCoupon({
                           code: cleanCode,
                           discountPercentage: finalDiscount,
-                          bookId: newCouponBookId,
+                          bookId: newCouponBookIds.join(","),
                           applicableFormat: newCouponFormat,
                           softDiscountPercentage: softPct,
                           hardDiscountPercentage: hardPct
                         });
+
                         setNewCouponCode("");
                         setNewCouponDiscount("");
                         setNewCouponSoftDiscount("");
                         setNewCouponHardDiscount("");
-                        setNewCouponBookId("");
+                        setNewCouponBookIds([]);
                         setNewCouponFormat("both");
-                        setSuccessMessage(`Coupon "${cleanCode}" created successfully.`);
+                        setEditingCouponCode(null);
+                        setSuccessMessage(editingCouponCode ? `Coupon "${cleanCode}" updated successfully.` : `Coupon "${cleanCode}" created successfully.`);
                         setCoupons(getCoupons());
                       }}
                       className="space-y-4"
@@ -5921,7 +5928,8 @@ export default function TextbookPortal({
                           value={newCouponCode}
                           onChange={(e) => setNewCouponCode(e.target.value)}
                           placeholder="e.g. SUMMER25"
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-medium"
+                          disabled={!!editingCouponCode}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       </div>
 
@@ -5981,26 +5989,54 @@ export default function TextbookPortal({
                       )}
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Applicable Textbook / Subject</label>
-                        <select
-                          value={newCouponBookId}
-                          onChange={(e) => setNewCouponBookId(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-955 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-fuchsia-500 font-bold"
-                        >
-                          <option value="">-- Select Textbook --</option>
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Applicable Textbooks / Subjects</label>
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 max-h-40 overflow-y-auto">
                           {textbooks.map(b => (
-                            <option key={b.id} value={b.id}>{b.title} ({b.code})</option>
+                            <label key={b.id} className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer hover:text-slate-950">
+                              <input
+                                type="checkbox"
+                                checked={newCouponBookIds.includes(b.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setNewCouponBookIds([...newCouponBookIds, b.id]);
+                                  } else {
+                                    setNewCouponBookIds(newCouponBookIds.filter(id => id !== b.id));
+                                  }
+                                }}
+                                className="rounded text-fuchsia-600 focus:ring-fuchsia-500 border-slate-300"
+                              />
+                              <span>{b.title} ({b.code})</span>
+                            </label>
                           ))}
-                        </select>
+                        </div>
                       </div>
 
-                      <button
-                        type="submit"
-                        className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 active:scale-98"
-                      >
-                        <Plus size={14} />
-                        <span>Create Coupon</span>
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="flex-grow bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-md flex items-center justify-center gap-1.5 active:scale-98"
+                        >
+                          {editingCouponCode ? <Check size={14} /> : <Plus size={14} />}
+                          <span>{editingCouponCode ? "Update Coupon" : "Create Coupon"}</span>
+                        </button>
+                        {editingCouponCode && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewCouponCode("");
+                              setNewCouponDiscount("");
+                              setNewCouponSoftDiscount("");
+                              setNewCouponHardDiscount("");
+                              setNewCouponBookIds([]);
+                              setNewCouponFormat("both");
+                              setEditingCouponCode(null);
+                            }}
+                            className="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs py-3 rounded-xl transition active:scale-98"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
                     </form>
                   </div>
 
@@ -6039,7 +6075,13 @@ export default function TextbookPortal({
                               const bookId = c.bookId || (c as any).book_id;
                               const discountPercentage = c.discountPercentage || (c as any).discount_percentage;
                               const applicableFormat = c.applicableFormat || (c as any).applicable_format || 'both';
-                              const book = textbooks.find(b => b.id === bookId);
+                              
+                              const allowedBookIds = bookId ? bookId.split(",").map((s: string) => s.trim()) : [];
+                              const matchedBooks = textbooks.filter(b => allowedBookIds.includes(b.id));
+                              const bookDisplayText = matchedBooks.length > 0
+                                ? matchedBooks.map(b => `${b.title} (${b.code})`).join(", ")
+                                : `Book ID: ${bookId}`;
+
                               return (
                                 <tr key={c.code} className="hover:bg-slate-50/55 transition-colors">
                                   <td className="px-5 py-3.5 font-bold text-slate-900">{c.code}</td>
@@ -6055,13 +6097,37 @@ export default function TextbookPortal({
                                       </span>
                                     )}
                                   </td>
-                                  <td className="px-5 py-3.5 max-w-[200px] truncate" title={book?.title || "Unknown Textbook"}>
-                                    {book ? `${book.title} (${book.code})` : `Book ID: ${bookId}`}
+                                  <td className="px-5 py-3.5 max-w-[200px] truncate" title={bookDisplayText}>
+                                    {bookDisplayText}
                                   </td>
                                   <td className="px-5 py-3.5 capitalize font-semibold text-slate-600">
                                     {applicableFormat === 'both' ? 'Soft & Hard' : applicableFormat === 'soft' ? 'Soft Copy' : 'Hard Copy'}
                                   </td>
-                                  <td className="px-5 py-3.5 text-right">
+                                  <td className="px-5 py-3.5 text-right space-x-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingCouponCode(c.code);
+                                        setNewCouponCode(c.code);
+                                        setNewCouponFormat(applicableFormat);
+                                        setNewCouponBookIds(allowedBookIds);
+                                        if (applicableFormat === 'both') {
+                                          setNewCouponSoftDiscount(String(c.softDiscountPercentage || (c as any).soft_discount_percentage || discountPercentage));
+                                          setNewCouponHardDiscount(String(c.hardDiscountPercentage || (c as any).hard_discount_percentage || discountPercentage));
+                                          setNewCouponDiscount("");
+                                        } else {
+                                          setNewCouponDiscount(String(discountPercentage));
+                                          setNewCouponSoftDiscount("");
+                                          setNewCouponHardDiscount("");
+                                        }
+                                        setErrorMessage("");
+                                        setSuccessMessage("");
+                                      }}
+                                      className="text-fuchsia-600 hover:text-fuchsia-850 p-1.5 rounded-lg hover:bg-fuchsia-50 transition-colors"
+                                      title="Edit Coupon"
+                                    >
+                                      <Edit size={15} />
+                                    </button>
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -6075,6 +6141,15 @@ export default function TextbookPortal({
                                           onConfirm: () => {
                                             deleteCoupon(c.code);
                                             setCoupons(getCoupons());
+                                            if (editingCouponCode === c.code) {
+                                              setNewCouponCode("");
+                                              setNewCouponDiscount("");
+                                              setNewCouponSoftDiscount("");
+                                              setNewCouponHardDiscount("");
+                                              setNewCouponBookIds([]);
+                                              setNewCouponFormat("both");
+                                              setEditingCouponCode(null);
+                                            }
                                             setConfirmModal(prev => ({ ...prev, isOpen: false }));
                                             setSuccessMessage(`Coupon "${c.code}" deleted successfully.`);
                                           }

@@ -162,6 +162,11 @@ async function ensureTables() {
   await pool.query(`ALTER TABLE textbooks_coupons ADD COLUMN IF NOT EXISTS applicable_format VARCHAR(20) DEFAULT 'both'`);
   await pool.query(`ALTER TABLE textbooks_coupons ADD COLUMN IF NOT EXISTS soft_discount_percentage INT`);
   await pool.query(`ALTER TABLE textbooks_coupons ADD COLUMN IF NOT EXISTS hard_discount_percentage INT`);
+  try {
+    await pool.query(`ALTER TABLE textbooks_coupons ALTER COLUMN book_id TYPE VARCHAR(255)`);
+  } catch (err) {
+    console.warn("⚠️ Warning: Failed to alter book_id column type:", err);
+  }
 }
 
 export async function GET() {
