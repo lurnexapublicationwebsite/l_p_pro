@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
       // Order tags are sent inside order_tags from creation payload
       const tags = order.order_tags || {};
-      const amount = order.order_amount || 499;
+      const amount = Number(order.order_amount || 499);
       const bookId = tags.book_id || "1";
       const customerDetails = order.customer_details || {};
       const customerPhone = customerDetails.customer_phone || tags.customer_phone || "9999999999";

@@ -205,14 +205,34 @@ export async function GET() {
       purchasedBooks: u.purchased_books || []
     }));
 
-    const allowedAccessIds = accessIdsRes.rows.map(a => ({
-      accessId: a.access_id,
-      bookId: a.book_id,
-      role: a.role,
-      assignedTo: a.assigned_to || undefined,
-      collegeCode: a.college_code || undefined,
-      plan: a.plan || undefined
-    }));
+    const allowedAccessIds = accessIdsRes.rows.map(a => {
+      const planValues = ['complete','placements','practice','book_only','caselet','book_caselet','book_portal','book_caselet_portal'];
+      const rawCollegeCode = a.college_code || null;
+      const cleanCollegeCode = rawCollegeCode && planValues.includes(rawCollegeCode) ? null : rawCollegeCode;
+      const cleanPlan = a.plan || (rawCollegeCode && planValues.includes(rawCollegeCode) ? rawCollegeCode : null);
+      
+      let assignedTo = a.assigned_to || undefined;
+      let finalPlan = cleanPlan || undefined;
+
+      if (!assignedTo && a.access_id) {
+        const matchedUser = users.find(u => u.accessId === a.access_id);
+        if (matchedUser) {
+          assignedTo = matchedUser.mobileNumber;
+          if (!finalPlan) {
+            finalPlan = matchedUser.plan;
+          }
+        }
+      }
+
+      return {
+        accessId: a.access_id,
+        bookId: a.book_id,
+        role: a.role,
+        assignedTo,
+        collegeCode: cleanCollegeCode || undefined,
+        plan: finalPlan
+      };
+    });
 
     const colleges = collegesRes.rows.map(c => ({
       code: c.code,

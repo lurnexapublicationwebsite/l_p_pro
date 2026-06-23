@@ -163,6 +163,11 @@ const ALL_PLANS = [
   { key: "book_caselet_portal", label: "Book + Caselet + Portal", desc: "The ultimate tier: Digital textbook, Caselets, and all portal features" }
 ];
 
+const getPlanLabel = (planKey?: string) => {
+  const match = ALL_PLANS.find(p => p.key === planKey);
+  return match ? match.label : (planKey || "N/A");
+};
+
 
 const PORTAL_PUBLISHED_BOOKS = [
   { id: "1", title: "Introduction to Mineral Processing", pdfFileName: "minerals.pdf", coverImg: "/portal_coverpages/minerals.jpg", author: "Dr. K. Raghavan", price: 450 },
@@ -4348,6 +4353,7 @@ export default function TextbookPortal({
                           <th className="p-4">Mobile</th>
                           <th className="p-4">Role</th>
                           <th className="p-4">College</th>
+                          <th className="p-4">Plan</th>
                           <th className="p-4">Status</th>
                           <th className="p-4 rounded-r-xl text-right">Actions</th>
                         </tr>
@@ -4375,6 +4381,9 @@ export default function TextbookPortal({
                                 </span>
                               </td>
                               <td className="p-4 max-w-xs truncate">{u.collegeName}</td>
+                              <td className="p-4 text-xs font-bold text-slate-800">
+                                {u.role === "student" ? getPlanLabel(u.plan) : "N/A"}
+                              </td>
                               <td className="p-4">
                                 <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${u.isActive ? "text-green-400" : "text-slate-500"}`}>
                                   <span className={`w-2 h-2 rounded-full ${u.isActive ? "bg-green-500 animate-pulse" : "bg-slate-500"}`} />
@@ -6496,6 +6505,11 @@ export default function TextbookPortal({
                                 year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                               }) : "N/A";
 
+                              const isSoftOrUpgrade = p.purchaseFormat === "soft" || p.purchaseFormat === "upgrade";
+                              const computedTotal = isSoftOrUpgrade
+                                ? ((p.subtotal || 0) - (p.discountAmount || 0) + (p.gstAmount || 0) + Math.round(((p.subtotal || 0) - (p.discountAmount || 0) + (p.gstAmount || 0)) * 0.02))
+                                : ((p.subtotal || 0) - (p.discountAmount || 0) + (p.shippingAmount || 0));
+
                               return (
                                 <React.Fragment key={p.id}>
                                   <tr className="hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => setExpandedOrderId(isExpanded ? null : p.orderId)}>
@@ -6510,15 +6524,15 @@ export default function TextbookPortal({
                                     </td>
                                     <td className="p-4 capitalize text-xs">
                                       <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                                        p.purchaseFormat === "soft" ? "bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                        isSoftOrUpgrade ? "bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
                                       }`}>
-                                        {p.purchaseFormat === "soft" ? "Soft Copy" : "Hard Copy"}
+                                        {isSoftOrUpgrade ? (p.purchaseFormat === "upgrade" ? "Upgrade" : "Soft Copy") : "Hard Copy"}
                                       </span>
                                       {p.purchasePlan && p.purchasePlan !== "physical" && (
                                         <div className="text-[10px] text-slate-400 font-semibold mt-1 uppercase">{(p.purchasePlan || "").replace(/_/g, " ")}</div>
                                       )}
                                     </td>
-                                    <td className="p-4 font-bold text-slate-900">₹{p.amount}</td>
+                                    <td className="p-4 font-bold text-slate-900">₹{computedTotal}</td>
                                     <td className="p-4">
                                       <span className={`inline-flex items-center gap-1 text-xs font-bold ${
                                         p.status === "PAID" ? "text-emerald-600" : "text-amber-500"
@@ -6547,7 +6561,7 @@ export default function TextbookPortal({
                                               <span className="text-slate-400 font-bold">Phone:</span>
                                               <span className="col-span-2 text-slate-800 font-mono font-semibold">{p.customerPhone || "N/A"}</span>
                                             </div>
-                                            {p.purchaseFormat !== "soft" ? (
+                                            {!isSoftOrUpgrade ? (
                                               <>
                                                 <div className="grid grid-cols-3 gap-1">
                                                   <span className="text-slate-400 font-bold">Address:</span>
@@ -6583,17 +6597,26 @@ export default function TextbookPortal({
                                                 <span className="col-span-2 text-red-500 font-bold">-₹{p.discountAmount} {p.couponCode && `(${p.couponCode})`}</span>
                                               </div>
                                             ) : null}
-                                            <div className="grid grid-cols-3 gap-1">
-                                              <span className="text-slate-400 font-bold">GST (18%):</span>
-                                              <span className="col-span-2 text-slate-800 font-semibold">₹{p.gstAmount || 0}</span>
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-1">
-                                              <span className="text-slate-400 font-bold">Shipping:</span>
-                                              <span className="col-span-2 text-slate-800 font-semibold">₹{p.shippingAmount || 0}</span>
-                                            </div>
+                                            {isSoftOrUpgrade ? (
+                                              <>
+                                                <div className="grid grid-cols-3 gap-1">
+                                                  <span className="text-slate-400 font-bold">GST (18%):</span>
+                                                  <span className="col-span-2 text-slate-800 font-semibold">₹{p.gstAmount || 0}</span>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-1">
+                                                  <span className="text-slate-400 font-bold">Online Charges (2%):</span>
+                                                  <span className="col-span-2 text-slate-800 font-semibold">₹{Math.round(((p.subtotal || 0) - (p.discountAmount || 0) + (p.gstAmount || 0)) * 0.02)}</span>
+                                                </div>
+                                              </>
+                                            ) : (
+                                              <div className="grid grid-cols-3 gap-1">
+                                                <span className="text-slate-400 font-bold">Shipping:</span>
+                                                <span className="col-span-2 text-slate-800 font-semibold">₹{p.shippingAmount || 0}</span>
+                                              </div>
+                                            )}
                                             <div className="grid grid-cols-3 gap-1 border-t border-slate-100 pt-2 font-bold">
                                               <span className="text-slate-900">Total Price:</span>
-                                              <span className="col-span-2 text-fuchsia-600 text-sm">₹{p.amount}</span>
+                                              <span className="col-span-2 text-fuchsia-600 text-sm">₹{computedTotal}</span>
                                             </div>
                                             
                                             <div className="border-t border-slate-100 pt-2 space-y-1.5">

@@ -837,11 +837,29 @@ export const pool = {
         return { rows: list };
       }
       if (cleanSql.startsWith("INSERT")) {
-        const [access_id, book_id, role, assigned_to, college_code] = params;
-        const record = { access_id, book_id, role, assigned_to, college_code };
+        const colStart = cleanSql.indexOf("(");
+        const colEnd = cleanSql.indexOf(")");
+        const record: Record<string, any> = {};
+        
+        if (colStart !== -1 && colEnd !== -1 && colEnd > colStart) {
+          const colsStr = cleanSql.substring(colStart + 1, colEnd);
+          const columns = colsStr.split(",").map(c => c.trim().toLowerCase());
+          
+          columns.forEach((col, idx) => {
+            record[col] = params[idx] !== undefined ? params[idx] : null;
+          });
+        } else {
+          const [access_id, book_id, role, assigned_to, college_code, plan] = params;
+          Object.assign(record, { access_id, book_id, role, assigned_to, college_code, plan });
+        }
+
+        const access_id = record.access_id;
         const idx = list.findIndex((x: any) => x.access_id === access_id);
-        if (idx !== -1) list[idx] = record;
-        else list.push(record);
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...record };
+        } else {
+          list.push(record);
+        }
         writeJSONTable("textbooks_allowed_access_ids", list);
         return { rows: [record] };
       }

@@ -69,7 +69,7 @@ export async function POST(req: Request) {
 
     if (targetStatus === "PAID") {
       // Calculate amounts
-      const amount = Number(tags.total_amount || tags.subtotal || 499);
+      const amount = Number(data.order_amount || tags.total_amount || tags.subtotal || 499);
       const bookId = tags.book_id || "1";
       const customerPhone = data.customer_details?.customer_phone || tags.customer_phone || "9999999999";
       const customerName = data.customer_details?.customer_name || tags.customer_name || "Customer";
