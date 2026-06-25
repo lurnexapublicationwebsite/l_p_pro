@@ -133,14 +133,15 @@ const  page = () => {
     },
     {
       Id:"Lurnexa_2544fm14",
-      "image":"../editorial-images/madam.jpeg",
+      "image":"/editorial-images/cims/sofia.jpeg",
         "Name": "Dr. Sofia Ahmed Sait",
         "Board": "CIMS-Finance Management",
         "Role": "Editorial Executive",
         "Department": "Department of Commerce",
         "Designation/College Name": "Assistant Professor/Loyola Academy Degree & PG College, Secunderabad ",
        "linkedinUrl": "https://www.linkedin.com/in/dr-sofia-sait-4a841626b",
-       "collegeUrl":"https://loyolaacademy.edu.in/bcom-business-analytics/"
+       "collegeUrl":"https://loyolaacademy.edu.in/wp-content/uploads/2023/04/SOFIA-NEW-FACULTY-PROFILE.pdf",
+       "mail":"sofiaahmed@loyolaacademy.edu.in"
     }
 ]
 const Operation_members = [

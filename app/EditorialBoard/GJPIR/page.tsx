@@ -125,7 +125,7 @@ const page = () => {
       "collegeUrl": "https://www.vvitguntur.com/chnsk-profile"
     }, {
       Id: "Lurnexa_2544oa22",
-      "image": "https://fbsf.wyb.ac.lk/wp-content/uploads/2023/06/Hiranya.jpg",
+      "image": "/editorial-images/gjpir/Hiranya Dissanayake.jpg",
       "Name": "Hiranya Dissanayake ",
       "Board": "GJPIR",
       "Role": "Member",

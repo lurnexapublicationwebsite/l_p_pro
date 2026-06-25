@@ -276,10 +276,8 @@ export default function ArticlePage() {
               <p className="text-slate-500 text-sm mt-1">{article.pages} • Full Article PDF</p>
             </div>
             <a
-              href={article.downloadUrl}
+              href={`/api/download-article?file=${encodeURIComponent(article.downloadUrl)}`}
               download={`${article.title.substring(0, 30)}.pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
               className="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-100 hover:-translate-y-1"
             >
               <Download size={20} /> Download Article
