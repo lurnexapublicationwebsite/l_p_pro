@@ -547,6 +547,59 @@ export async function generateClientQuotationPdf(data: ClientQuotationData): Pro
           align: "right",
         });
 
+      // Bank Details Section
+      const bankDetailsY = totalY + rowHeight + 15;
+      
+      doc
+        .font(getFont(true))
+        .fontSize(10)
+        .fillColor("#000000")
+        .text("Account Details:", 50, bankDetailsY);
+      
+      // Draw Bank Details Box
+      const boxWidth = 495;
+      const boxHeight = 70;
+      doc
+        .rect(50, bankDetailsY + 15, boxWidth, boxHeight)
+        .strokeColor("#000000")
+        .lineWidth(0.5)
+        .stroke();
+      
+      doc.strokeColor("#000000"); // Reset stroke color
+      
+      const detailsStartY = bankDetailsY + 24;
+      doc.fontSize(8.5);
+      
+      // Column 1 (Left side)
+      doc
+        .font(getFont(true)).text("Account Holder: ", 60, detailsStartY, { continued: true })
+        .font(getFont(false)).text("LURNEXA PUBLICATIONS PRIVATE LIMITED")
+        
+        .font(getFont(true)).text("Account Number: ", 60, detailsStartY + 12, { continued: true })
+        .font(getFont(false)).text("1112202568")
+        
+        .font(getFont(true)).text("Branch IFSC: ", 60, detailsStartY + 24, { continued: true })
+        .font(getFont(false)).text("KKBK0007905")
+        
+        .font(getFont(true)).text("UPI ID: ", 60, detailsStartY + 36, { continued: true })
+        .font(getFont(false)).text("lurnexa.limited89@kotak");
+
+      // Column 2 (Right side)
+      const col2X = 310;
+      doc
+        .font(getFont(true)).text("Branch Name: ", col2X, detailsStartY, { continued: true })
+        .font(getFont(false)).text("GUNTUR - GORANTLA")
+        
+        .font(getFont(true)).text("Branch Address: ", col2X, detailsStartY + 12, { continued: true })
+        .font(getFont(false)).text("KOTAK MAHINDRA BANK LTD")
+        
+        .font(getFont(false)).text("DOOR NO. 11-660, REVENUE WARD 57", col2X, detailsStartY + 24)
+        
+        .font(getFont(false)).text("Gorantla 522034", col2X, detailsStartY + 36);
+
+      // Advance doc.y to the bottom of the bank details section plus padding
+      doc.y = bankDetailsY + 85;
+
       // Signatures Area
       const sigsY = Math.max(doc.y + 60, 670);
       
