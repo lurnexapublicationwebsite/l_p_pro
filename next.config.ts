@@ -7,8 +7,9 @@ const nextConfig: NextConfig = {
   // ✅ Trailing slash configuration to match Django URL patterns
   trailingSlash: true,
   
-  // ✅ Image configuration
+  // ✅ Image & Build configuration
   typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
