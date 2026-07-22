@@ -76,6 +76,19 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     pdfFileName: "dbms.pdf",
     tag: "Staff Pick",
     stockStatus: "in-stock"
+  },
+  {
+    id: "5",
+    title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT",
+    code: "PM",
+    description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making.",
+    price: 600,
+    authors: "Dr. Aruna Kumar Dash",
+    pages: 277,
+    isbn: "978-81-685077-1-5",
+    pdfFileName: "Principles of Microeconomics for Business and Management.pdf",
+    tag: "New Release",
+    stockStatus: "in-stock"
   }
 ];
 
@@ -90,6 +103,16 @@ interface CartItem {
 }
 
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "5") {
+    if (plan === "book_only") return 370;
+    if (plan === "caselet") return 80;
+    if (plan === "book_caselet") return 405;
+    if (plan === "book_portal") return 539;
+    if (plan === "book_caselet_portal") return 589;
+    if (plan === "complete") return 200;
+    if (plan === "placements") return 150;
+    if (plan === "practice") return 80;
+  }
   let price = 399;
   switch (plan) {
     case "book_only": price = 230; break;
@@ -188,6 +211,7 @@ export default function BookstorePage() {
     let coverImg = "/portal_coverpages/minerals.jpg";
     if (book.id === "2") coverImg = "/portal_coverpages/ml.png";
     if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
+    if (book.id === "5") coverImg = "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg";
 
     const finalPrice = price !== undefined ? price : book.price;
     const planLabel = format === "physical" ? "Physical Copy" : `Soft Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
@@ -382,6 +406,7 @@ export default function BookstorePage() {
               let coverImg = "/portal_coverpages/minerals.jpg";
               if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
               if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
+              if (bookItem.id === "5") coverImg = "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg";
 
               return (
                 <div 

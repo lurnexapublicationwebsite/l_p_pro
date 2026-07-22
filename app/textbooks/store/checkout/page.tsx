@@ -48,6 +48,16 @@ const getShippingCost = (pincode: string): number => {
 };
 
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "5") {
+    if (plan === "book_only") return 370;
+    if (plan === "caselet") return 80;
+    if (plan === "book_caselet") return 405;
+    if (plan === "book_portal") return 539;
+    if (plan === "book_caselet_portal") return 589;
+    if (plan === "complete") return 200;
+    if (plan === "placements") return 150;
+    if (plan === "practice") return 80;
+  }
   let price = 399;
   switch (plan) {
     case "book_only": price = 230; break;
@@ -121,6 +131,18 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     isbn: "978-81-685077-5-3",
     coverColor: "from-sky-700 to-slate-900",
     pdfFileName: "dbms.pdf"
+  },
+  {
+    id: "5",
+    title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT",
+    code: "PM",
+    description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making.",
+    price: 600,
+    authors: "Dr. Aruna Kumar Dash",
+    pages: 277,
+    isbn: "978-81-685077-1-5",
+    coverColor: "from-amber-600 to-yellow-900",
+    pdfFileName: "Principles of Microeconomics for Business and Management.pdf"
   }
 ];
 
@@ -249,6 +271,7 @@ function CheckoutContent() {
       let coverImg = "/portal_coverpages/minerals.jpg";
       if (selected.id === "2") coverImg = "/portal_coverpages/ml.png";
       if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
+      if (selected.id === "5") coverImg = "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg";
 
       setCheckoutItems([{
         id: selected.id,

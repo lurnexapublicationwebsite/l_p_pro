@@ -48,6 +48,19 @@ export default function PublishedBooks() {
       pdfFileName: "dbms.pdf",
       publishedDate: "May 18, 2026",
       description: "This textbook provides a comprehensive and structured introduction to the fundamental concepts, design principles, and implementation techniques of Database Management Systems (DBMS). It is designed to guide learners from foundational topics such as data models and relational theory to advanced areas including SQL, schema refinement (normalization), and transaction management."
+    },
+    {
+      id: "5",
+      title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT",
+      authors: "Dr. Aruna Kumar Dash",
+      domain: "Economics / Management",
+      isbn: "978-81-685077-1-5",
+      pages: 277,
+      price: 600,
+      code: "PM",
+      pdfFileName: "Principles of Microeconomics for Business and Management.pdf",
+      publishedDate: "May 18, 2026",
+      description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making."
     }
   ];
 
@@ -58,6 +71,7 @@ export default function PublishedBooks() {
           let coverImg = "/portal_coverpages/minerals.jpg";
           if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
           if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
+          if (bookItem.id === "5") coverImg = "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg";
 
           return (
             <div 

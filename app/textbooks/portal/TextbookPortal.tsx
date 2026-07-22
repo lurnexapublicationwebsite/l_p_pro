@@ -129,6 +129,16 @@ const getQuizTotalMarks = (quiz: TextbookQuiz | null | undefined): number => {
 };
 
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "5") {
+    if (plan === "book_only") return 370;
+    if (plan === "caselet") return 80;
+    if (plan === "book_caselet") return 405;
+    if (plan === "book_portal") return 539;
+    if (plan === "book_caselet_portal") return 589;
+    if (plan === "complete") return 200;
+    if (plan === "placements") return 150;
+    if (plan === "practice") return 80;
+  }
   let price = 399;
   switch (plan) {
     case "book_only": price = 230; break;
@@ -173,7 +183,8 @@ const getPlanLabel = (planKey?: string) => {
 const PORTAL_PUBLISHED_BOOKS = [
   { id: "1", title: "Introduction to Mineral Processing", pdfFileName: "minerals.pdf", coverImg: "/portal_coverpages/minerals.jpg", author: "Dr. K. Raghavan", price: 450 },
   { id: "2", title: "Machine Learning", pdfFileName: "ml.pdf", coverImg: "/portal_coverpages/ml.png", author: "Prof. S. Balaji", price: 550 },
-  { id: "3", title: "Database Management Systems", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. V. Pallavi", price: 499 }
+  { id: "3", title: "Database Management Systems", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. V. Pallavi", price: 499 },
+  { id: "5", title: "Principles of Microeconomics for Business and Management", pdfFileName: "Principles of Microeconomics for Business and Management.pdf", coverImg: "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg", author: "Dr. Aruna Kumar Dash", price: 600 }
 ];
 
 interface Caselet {
@@ -228,6 +239,21 @@ Based on database scaling principles:
         "How does the CAP theorem apply to distributed transactional database scaling?"
       ],
       pdfFileName: "dbms.pdf"
+    }
+  ],
+  "5": [
+    {
+      title: "Caselet",
+      scenario: `A leading consumer electronics firm is planning to adjust pricing strategies for its flagship smartphone model ahead of a festive season. Market analysis indicates elastic demand in urban markets and price inelasticity in tier-2 markets.
+
+Based on microeconomics principles:
+- Evaluate the consumer surplus and price elasticity of demand across market segments.
+- Formulate an optimal pricing strategy to maximize total revenue.`,
+      questions: [
+        "How does price elasticity affect total revenue under different market demand structures?",
+        "Explain the concept of price discrimination in different customer segments."
+      ],
+      pdfFileName: "Principles of Microeconomics for Business and Management.pdf"
     }
   ]
 };
@@ -6577,6 +6603,7 @@ export default function TextbookPortal({
                           <option value="2">Machine Learning</option>
                           <option value="3">Database Management Systems</option>
                           <option value="4">Entrepreneurship Development</option>
+                          <option value="5">Principles of Microeconomics for Business and Management</option>
                         </select>
                       </div>
                     </div>

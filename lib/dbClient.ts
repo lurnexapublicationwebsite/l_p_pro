@@ -201,7 +201,8 @@ export function getBookCode(bookId: string): string {
     "1": "MP",
     "2": "ML",
     "3": "DB",
-    "4": "ED"
+    "4": "ED",
+    "5": "PM"
   };
   return fallback[bookId] || "XX";
 }
@@ -404,7 +405,8 @@ export function initDb(): void {
       "1": 5,
       "2": 5,
       "3": 5,
-      "4": 5
+      "4": 5,
+      "5": 6
     };
   }
 
@@ -414,7 +416,8 @@ export function initDb(): void {
       "1": { duration: 10, questionLimit: 5 },
       "2": { duration: 15, questionLimit: 5 },
       "3": { duration: 12, questionLimit: 5 },
-      "4": { duration: 10, questionLimit: 5 }
+      "4": { duration: 10, questionLimit: 5 },
+      "5": { duration: 12, questionLimit: 5 }
     };
   }
 
@@ -424,7 +427,8 @@ export function initDb(): void {
       { id: "1", title: "Indian Mineral Import Policy Options", code: "MP" },
       { id: "2", title: "Machine Learning: A Structured Approach", code: "ML" },
       { id: "3", title: "Database Management Systems: Concepts & Design", code: "DB" },
-      { id: "4", title: "Entrepreneurship Development: Concepts to Creation", code: "ED" }
+      { id: "4", title: "Entrepreneurship Development: Concepts to Creation", code: "ED" },
+      { id: "5", title: "Principles of Microeconomics for Business and Management", code: "PM" }
     ];
     IN_MEMORY_DB['lurnexa_textbooks'] = defaultBooks;
   }

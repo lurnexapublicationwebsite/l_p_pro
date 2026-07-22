@@ -121,7 +121,8 @@ export async function sendOrderConfirmationEmails(order: {
     "1": "Indian Mineral Import Policy Options",
     "2": "Machine Learning: A Structured Approach",
     "3": "Database Management Systems: Concepts & Design",
-    "4": "Entrepreneurship Development: Concepts to Creation"
+    "4": "Entrepreneurship Development: Concepts to Creation",
+    "5": "Principles of Microeconomics for Business and Management"
   };
   const bookTitle = bookTitles[order.book_id] || `Textbook ID: ${order.book_id}`;
 
