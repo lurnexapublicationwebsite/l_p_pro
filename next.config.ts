@@ -16,7 +16,6 @@ const nextConfig: NextConfig = {
     ],
   },
   allowedDevOrigins: ["192.168.1.39"],
-  turbopack:{},
 
   // ✅ Webpack fallback for crypto-browserify (for Cognito SECRET_HASH)
   webpack: (config) => {
