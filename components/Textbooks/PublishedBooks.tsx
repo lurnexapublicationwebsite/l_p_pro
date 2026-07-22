@@ -58,7 +58,7 @@ export default function PublishedBooks() {
       pages: 277,
       price: 600,
       code: "PM",
-      pdfFileName: "Principles of Microeconomics for Business and Management.pdf",
+      pdfFileName: "microeconomics.pdf",
       publishedDate: "May 18, 2026",
       description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making."
     }
@@ -71,7 +71,7 @@ export default function PublishedBooks() {
           let coverImg = "/portal_coverpages/minerals.jpg";
           if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
           if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-          if (bookItem.id === "5") coverImg = "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg";
+          if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
 
           return (
             <div 

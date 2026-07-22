@@ -86,7 +86,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. Aruna Kumar Dash",
     pages: 277,
     isbn: "978-81-685077-1-5",
-    pdfFileName: "Principles of Microeconomics for Business and Management.pdf",
+    pdfFileName: "microeconomics.pdf",
     tag: "New Release",
     stockStatus: "in-stock"
   }
@@ -211,7 +211,7 @@ export default function BookstorePage() {
     let coverImg = "/portal_coverpages/minerals.jpg";
     if (book.id === "2") coverImg = "/portal_coverpages/ml.png";
     if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-    if (book.id === "5") coverImg = "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg";
+    if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
 
     const finalPrice = price !== undefined ? price : book.price;
     const planLabel = format === "physical" ? "Physical Copy" : `Soft Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
@@ -406,7 +406,7 @@ export default function BookstorePage() {
               let coverImg = "/portal_coverpages/minerals.jpg";
               if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
               if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-              if (bookItem.id === "5") coverImg = "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg";
+              if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
 
               return (
                 <div 

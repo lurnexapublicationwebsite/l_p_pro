@@ -184,7 +184,7 @@ const PORTAL_PUBLISHED_BOOKS = [
   { id: "1", title: "Introduction to Mineral Processing", pdfFileName: "minerals.pdf", coverImg: "/portal_coverpages/minerals.jpg", author: "Dr. K. Raghavan", price: 450 },
   { id: "2", title: "Machine Learning", pdfFileName: "ml.pdf", coverImg: "/portal_coverpages/ml.png", author: "Prof. S. Balaji", price: 550 },
   { id: "3", title: "Database Management Systems", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. V. Pallavi", price: 499 },
-  { id: "5", title: "Principles of Microeconomics for Business and Management", pdfFileName: "Principles of Microeconomics for Business and Management.pdf", coverImg: "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg", author: "Dr. Aruna Kumar Dash", price: 600 }
+  { id: "5", title: "Principles of Microeconomics for Business and Management", pdfFileName: "microeconomics.pdf", coverImg: "/portal_coverpages/microeconomics.jpeg", author: "Dr. Aruna Kumar Dash", price: 600 }
 ];
 
 interface Caselet {
@@ -253,7 +253,7 @@ Based on microeconomics principles:
         "How does price elasticity affect total revenue under different market demand structures?",
         "Explain the concept of price discrimination in different customer segments."
       ],
-      pdfFileName: "Principles of Microeconomics for Business and Management.pdf"
+      pdfFileName: "microeconomics.pdf"
     }
   ]
 };

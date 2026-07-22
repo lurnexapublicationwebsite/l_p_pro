@@ -142,7 +142,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     pages: 277,
     isbn: "978-81-685077-1-5",
     coverColor: "from-amber-600 to-yellow-900",
-    pdfFileName: "Principles of Microeconomics for Business and Management.pdf"
+    pdfFileName: "microeconomics.pdf"
   }
 ];
 
@@ -271,7 +271,7 @@ function CheckoutContent() {
       let coverImg = "/portal_coverpages/minerals.jpg";
       if (selected.id === "2") coverImg = "/portal_coverpages/ml.png";
       if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-      if (selected.id === "5") coverImg = "/portal_coverpages/Principles of Microeconomics for Business and Management.jpeg";
+      if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
 
       setCheckoutItems([{
         id: selected.id,
