@@ -25,7 +25,8 @@ const page = () => {
     "Designation/College Name": "Dean / Lovely Professional University",
     "linkedinUrl": "https://www.linkedin.com/in/dr-anand-shukla-59342838/",
     "collegeUrl": "https://www.lpu.in/faculty/staff-profile.php?EmpCode=32898",
-     "email": "anand.shukla@lpu.co.in"
+    "address": "Jalandhar - Delhi, Grand Trunk Rd, Phagwara, Punjab 144411",
+    "email": "anand.shukla@lpu.co.in"
   },
   {
     "Id": "Lurnexa_2538c02",
@@ -183,7 +184,8 @@ Our goal is to ensure that every published study adds meaningful value to the sc
           Desgination={member['Designation/College Name']}
          college={member['Designation/College Name']}
           linkedinUrl={member.linkedinUrl}
-           collegeUrl={member.collegeUrl}
+            collegeUrl={member.collegeUrl}
+            address={(member as any).address}
             mail={member.email}
             department={member.Department}
         />

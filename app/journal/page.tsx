@@ -63,7 +63,7 @@ export default function PublicationsPage() {
                 </section>
 
                 <p className="text-gray-700 leading-relaxed">
-                  The Global Journal for Progressive Innovation & Research (GJPIR)
+                  The Global Journal for Progressive Innovation and Research (GJPIR)
                   is established as a common platform for researchers working across
                   technology, management, economics, social sciences, and
                   engineering. The journal brings together four focused sections

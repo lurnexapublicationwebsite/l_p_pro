@@ -24,6 +24,7 @@ const page = () => {
       "Designation/College Name": "Dean / Lovely Professional University",
       "linkedinUrl": "https://www.linkedin.com/in/dr-anand-shukla-59342838/",
       "collegeUrl": "https://www.lpu.in/faculty/staff-profile.php?EmpCode=32898",
+      "address": "Jalandhar - Delhi, Grand Trunk Rd, Phagwara, Punjab 144411",
       "email": "anand.shukla@lpu.co.in"
 
     },
@@ -37,6 +38,7 @@ const page = () => {
       "Designation/College Name": "Fellow, NITI Aayog, Government of India / Boston College",
       "linkedinUrl": "https://www.linkedin.com/in/badrinarayanang/",
       "collegeUrl": "https://www.bc.edu/bc-web/schools/wcas/about/faculty-research/faculty-directory-folder/badri-narayanan-gopalakrishnan.html",
+      "address": "Commonwealth Ave, Boston, MA 02215, United States",
       "email": "gopalakb@bc.edu"
     },
 
@@ -50,6 +52,7 @@ const page = () => {
       "Designation/College Name": "Associate Professor / IBS Hyderabad",
       "linkedinUrl": "https://www.linkedin.com/in/aruna-dash-62a74a19/",
       "collegeUrl": "https://www.ifheindia.org/icfai-school-of-social-sciences/Facultyprofiles/Economics/Aruna-Kumar-Dash.pdf",
+      "address": "Survey No. 156/157, IFHE-IBS Campus, Donthanapally Shankarapalli Road, Hyderabad, Telangana 501203",
       "email": "akdash@ibsindia.org "
     },
     {
@@ -63,6 +66,7 @@ const page = () => {
       "Designation/College Name": "Professor / National Institute of Technology Rourkela",
       "linkedinUrl": "https://www.linkedin.com/in/dr-umesh-c-pati-13034a20/",
       "collegeUrl": "https://www.nitrkl.ac.in/docs/Faculty/CV/1970695.pdf",
+      "address": "Sector-1, Rourkela, Odisha, India, PIN 769008",
       "email": "ucpati@nitrkl.ac.in"
     },
     {
@@ -75,6 +79,7 @@ const page = () => {
       "Designation/College Name": "Assistant Professor / Indian Institute of Management Jammu",
       "linkedinUrl": "https://www.linkedin.com/in/kapilgumte/",
       "collegeUrl": "https://www.iimj.ac.in/faculty-data4261.php?n=ODY=",
+      "address": "Jagti, Panj Garain, Jammu and Kashmir 181221",
       "email": "kapil@iimj.ac.in"
     },
     {
@@ -87,6 +92,7 @@ const page = () => {
       "Designation/College Name": "Professor / Centurion University",
       "linkedinUrl": "https://www.linkedin.com/in/dr-susanta-k-mishra-3b5a9433/?originalSubdomain=in",
       "collegeUrl": "https://faculty.cutm.ac.in/general_profilesc.php?xyz=susanta.mishra@cutm.ac.in",
+      "address": "Nagavali boys hostel, centurion university, Village, Alluri Nagar, R.Sitapur, Odisha 761211",
       "email": "susanta65@gmail.com"
     },
     {
@@ -99,6 +105,7 @@ const page = () => {
       "Designation/College Name": "Assistant Professor / IBS Hyderabad",
       "linkedinUrl": "https://www.linkedin.com/in/srikanth-p-2a06751a/",
       "collegeUrl": "https://www.ifheindia.org/FacultyImages/N3DYZbNMKEAYseOGmrIl82HhZWPoLASoqtAlM751FNF4wbU4jtHblFT5GokaxCW.pdf",
+      "address": "Survey No. 156/157, IFHE-IBS Campus, Donthanapally Shankarapalli Road, Hyderabad, Telangana 501203",
       "email": "psk@ibsindia.org"
     },
     {
@@ -111,18 +118,21 @@ const page = () => {
       "Designation/College Name": "Assistant Professor / IIM Jammu",
       "linkedinUrl": "https://www.linkedin.com/in/dr-chinmaya-kumar-swain-77b358128/",
       "collegeUrl": "https://iimj.ac.in/faculty-datae8d3.php?n=MTI0",
+      "address": "Jagti, Panj Garain, Jammu and Kashmir 181221",
       "email": "chinmaya@iimj.ac.in"
     },
     {
-      Id: "Lurnexa_2553n43",
-      "image": "https://lurnexa.s3.ap-south-1.amazonaws.com/editorial_board_photos/Lurnexa_2553n43.jpeg",
-      "Name": "Dr. CH. Naga Sai Kalyan",
+      Id: "Lurnexa_arvindsingh",
+      "image": "/editorial-images/iaees/Screenshot (41).png",
+      "Name": "Dr. Arvind R. Singh",
       "Board": "GJPIR",
-      "Role": "Advisory Member",
-      "Department": "Department of Electrical and Electronics Engineering",
-      "Designation/College Name": " M.Tech, Ph.D, Associate Professor/vvit Guntur",
-      "linkedinUrl": "",
-      "collegeUrl": "https://www.vvitguntur.com/chnsk-profile"
+      "Role": "Deputy Editor in Chief",
+      "Department": "Electronics & Communication Engineering",
+      "Designation/College Name": "Shi Yan Shi, Hubei, China",
+      "linkedinUrl": "https://cn.linkedin.com/in/dr-arvind-r-singh-smieee-99a53510b",
+      "collegeUrl": "https://pee.hjnu.edu.cn/info/1041/2531.htm",
+      "address": "18 Beijing S Rd, 18, Maojian District, Shi Yan Shi, Hubei, China, 442000",
+      "email": "arvind@hjnu.edu.cn"
     }, {
       Id: "Lurnexa_2544oa22",
       "image": "/editorial-images/gjpir/Hiranya Dissanayake.jpg",
@@ -133,6 +143,7 @@ const page = () => {
       "Designation/College Name": " Faculty of Business Studies & Finance Wayamba University of Sri Lanka Kuliyapitiya ",
       "linkedinUrl": "https://www.linkedin.com/in/hiranya-dissanayake-bb835a89",
       "collegeUrl": "https://fbsf.wyb.ac.lk/personnel/mrs-dhsw-dissanayake/",
+      "address": "Lional Jayathilake Mawatha, Kanadulla, Kuliyapitiya, 60200,Sri Lanka",
       "email": "hiranya@wyb.ac.lk "
     }
 
@@ -156,7 +167,7 @@ const page = () => {
 
             <p className="text-lg text-gray-700 leading-relaxed">
 
-              The Global Journal for Progressive Innovation & Research was created
+              The Global Journal for Progressive Innovation and Research was created
               with the intention of providing a reliable academic space where
               meaningful research can be shared and preserved. Each of our four
               sections represents an important area of study, yet together they
@@ -191,14 +202,15 @@ const page = () => {
               id={member.Id}
               key={member.Id}
               image={member.image ? `${member.image}?${version}` : ''}
-              name={member.Name}
-              role={member.Role}
+              name={member.Name || (member as any).name}
+              role={member.Role || (member as any).role}
               Desgination={member['Designation/College Name']}
               college={member['Designation/College Name']}
               linkedinUrl={member.linkedinUrl}
               collegeUrl={member.collegeUrl}
+              address={(member as any).address}
               mail={member.email}
-              department={member.Department}
+              department={member.Department || (member as any).department}
 
             />
 

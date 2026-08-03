@@ -29,7 +29,7 @@ const Skeleton = () => (
 );
 const items = [
  {
-  title: "Global Journal for Progressive Innovation & Research (GJPIR)",
+  title: "Global Journal for Progressive Innovation and Research (GJPIR)",
   description: "Explore the diverse research and innovative studies published under GJPIR.",
   header: <Skeleton />,
   className: "md:col-span-2",

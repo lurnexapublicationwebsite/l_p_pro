@@ -36,20 +36,20 @@ const Page = () => {
       "department": "Electronics & Communication Engineering",
       "Designation/College Name": "Shi Yan Shi, Hubei, China",
       "linkedinUrl": "",
-      "collegeUrl": "https://scholar.google.com/citations?user=QY5TAKcAAAAJ&hl=en&oi=sra",
+      "collegeUrl": "https://pee.hjnu.edu.cn/info/1041/2531.htm",
       "email": "arvindsinghwce@gmail.com"
     },
     {
-      Id: "Lurnexa_2553n43",
-      "image": `https://lurnexa.s3.ap-south-1.amazonaws.com/editorial_board_photos/Lurnexa_2553n43.jpeg`,
-      "name": "Dr. CH. Naga Sai Kalyan",
+      Id: "Lurnexa_2553c47",
+      "image": `https://lurnexa.s3.ap-south-1.amazonaws.com/editorial_board_photos/Lurnexa_2553c47.jpg`,
+      "name": "Dr. Chandan Nayak",
       "Board": "IAEES",
-      "role": "Associate Editor",
-      "department": "Department of Electrical and Electronics Engineering",
-      "Designation/College Name": " M.Tech, Ph.D, Associate Professor/vvit Guntur",
-      "linkedinUrl": "",
-      "collegeUrl": "https://www.vvitguntur.com/chnsk-profile",
-      "email": "kalyanchallapalli@gmail.com"
+      "role": "Associate Managing Editor",
+      "department": "Department of Electronics and Communication Engineering",
+      "Designation/College Name": "asst professor/ vit-ap",
+      "linkedinUrl": "https://www.linkedin.com/in/dr-chandan-nayak-143447128?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
+      "collegeUrl": "https://share.google/EvGjVqhAixAA2uQdH",
+      "email": "chandan.nayak@vitap.ac.in"
     },
     {
       Id: "Lurnexa_2553s45",
@@ -64,16 +64,16 @@ const Page = () => {
       "email": "srilatha.dande@gmail.com"
     },
     {
-      Id: "Lurnexa_2553c47",
-      "image": `https://lurnexa.s3.ap-south-1.amazonaws.com/editorial_board_photos/Lurnexa_2553c47.jpg`,
-      "name": "Dr. Chandan Nayak",
+      Id: "Lurnexa_2553n43",
+      "image": `https://lurnexa.s3.ap-south-1.amazonaws.com/editorial_board_photos/Lurnexa_2553n43.jpeg`,
+      "name": "Dr. CH. Naga Sai Kalyan",
       "Board": "IAEES",
-      "role": "Associate Managing Editor",
-      "department": "Department of Electronics and Communication Engineering",
-      "Designation/College Name": "asst professor/ vit-ap",
-      "linkedinUrl": "https://www.linkedin.com/in/dr-chandan-nayak-143447128?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app",
-      "collegeUrl": "https://share.google/EvGjVqhAixAA2uQdH",
-      "email": "chandan.nayak@vitap.ac.in"
+      "role": "Associate Editor",
+      "department": "Department of Electrical and Electronics Engineering",
+      "Designation/College Name": " M.Tech, Ph.D, Associate Professor/vvit Guntur",
+      "linkedinUrl": "",
+      "collegeUrl": "https://www.vvitguntur.com/chnsk-profile",
+      "email": "kalyanchallapalli@gmail.com"
     },
     // {
     //   Id: "8", // Changed to string for consistency
@@ -121,14 +121,14 @@ const Page = () => {
               key={member.Id}
               // 3. Apply the dynamic version here
               image={member.image ? `${member.image}?${version}` : ''}
-              name={member.name}
-              role={member.role}
+              name={member.name || (member as any).Name}
+              role={member.role || (member as any).Role}
               Desgination={member['Designation/College Name']}
               college={member['Designation/College Name']}
               linkedinUrl={member.linkedinUrl}
               collegeUrl={member.collegeUrl}
               mail={member.email}
-              department={member.department}
+              department={member.department || (member as any).Department}
             />
           ))}
         </div>

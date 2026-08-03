@@ -3,7 +3,7 @@ import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const WATERMARK_TEXT = 'Lurnexa Publications Vol. 01- Issue 01- April 2026';
+const WATERMARK_TEXT = 'Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR) — Vol. 01, Issue 01, April 2026';
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
       // === DIAGONAL WATERMARK ===
       const diagonal = Math.sqrt(width * width + height * height);
-      const fontSize = Math.min(diagonal / WATERMARK_TEXT.length * 1.5, 28);
+      const fontSize = Math.min((diagonal / WATERMARK_TEXT.length) * 1.35, 20);
       const textWidth = font.widthOfTextAtSize(WATERMARK_TEXT, fontSize);
 
       const angleDeg = Math.atan2(height, width) * (180 / Math.PI);
@@ -62,13 +62,13 @@ export async function GET(request: NextRequest) {
         y,
         size: fontSize,
         font: font,
-        color: rgb(0.7, 0.7, 0.7),
+        color: rgb(0.65, 0.65, 0.65),
         rotate: degrees(angleDeg),
-        opacity: 0.25,
+        opacity: 0.22,
       });
 
       // === PROFESSIONAL FOOTER LICENSE BAR ===
-      const footerMargin = 30;
+      const footerMargin = 36;
       const footerY = 22;
       const lineY = footerY + 14;
       const footerFontSize = 7.5;
@@ -78,42 +78,23 @@ export async function GET(request: NextRequest) {
         start: { x: footerMargin, y: lineY },
         end: { x: width - footerMargin, y: lineY },
         thickness: 0.5,
-        color: rgb(0.75, 0.75, 0.75),
-        opacity: 0.8,
+        color: rgb(0.8, 0.8, 0.8),
+        opacity: 0.85,
       });
 
-      // Footer text parts
-      const copyrightText = '© 2026 Lurnexa Publications.';
-      const licenseText = ' This work is licensed under Lurnexa Publications — Global Journal for Progressive Innovation & Research (GJPIR).';
-      const rightsText = ' All rights reserved.';
+      // Footer text with professional spacing, commas, and em-dash
+      const fullFooterText = 'Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR), Vol. 01, Issue 01, April 2026';
+      const footerTextWidth = footerFont.widthOfTextAtSize(fullFooterText, footerFontSize);
+      
+      // Center footer text on the page
+      const footerX = Math.max(footerMargin, (width - footerTextWidth) / 2);
 
-      // Draw copyright in bold
-      const copyrightWidth = footerFontBold.widthOfTextAtSize(copyrightText, footerFontSize);
-      page.drawText(copyrightText, {
-        x: footerMargin,
-        y: footerY,
-        size: footerFontSize,
-        font: footerFontBold,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-
-      // Draw license text in regular
-      const licenseWidth = footerFont.widthOfTextAtSize(licenseText, footerFontSize);
-      page.drawText(licenseText, {
-        x: footerMargin + copyrightWidth,
+      page.drawText(fullFooterText, {
+        x: footerX,
         y: footerY,
         size: footerFontSize,
         font: footerFont,
-        color: rgb(0.4, 0.4, 0.4),
-      });
-
-      // Draw "All rights reserved." in bold
-      page.drawText(rightsText, {
-        x: footerMargin + copyrightWidth + licenseWidth,
-        y: footerY,
-        size: footerFontSize,
-        font: footerFontBold,
-        color: rgb(0.3, 0.3, 0.3),
+        color: rgb(0.35, 0.35, 0.35),
       });
     }
 

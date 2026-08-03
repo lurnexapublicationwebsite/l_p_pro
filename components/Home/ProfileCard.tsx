@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { MdEmail } from "react-icons/md";
+import { MdEmail, MdLocationOn } from "react-icons/md";
 
 interface ProfileCardProps {
   id: number | string;
@@ -14,6 +14,7 @@ interface ProfileCardProps {
   collegeUrl?: string;
   mail?: string;
   department?: string;
+  address?: string;
 }
 
 const ProfileCard: React.FC<ProfileCardProps> = ({
@@ -26,7 +27,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   Desgination,
   collegeUrl,
   mail,
-  department
+  department,
+  address
 }) => {
   // Prevent router errors by checking if the component is mounted
   const [mounted, setMounted] = useState(false);
@@ -64,13 +66,13 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
 
         {/* --- BOTTOM HALF: CONTENT CARD --- */}
         <div 
-            className="absolute bottom-0 w-full h-[44%] bg-gray-50 z-20 texture-noise flex flex-col justify-between"
+            className="absolute bottom-0 w-full min-h-[44%] max-h-[54%] bg-gray-50 z-20 texture-noise flex flex-col justify-between"
             style={{
                 clipPath: 'polygon(0 12%, 12% 0, 100% 0, 100% 100%, 0 100%)',
                 backgroundColor: '#f9fafb' 
             }}
         >
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-3">
             
             <a href={collegeUrl || '#'} target="_blank" rel="noopener noreferrer" className="group/name mb-1">
               <h1 className="text-[#D96C36] text-lg sm:text-xl font-extrabold tracking-tight group-hover/name:text-orange-600 transition-colors leading-tight" style={{ fontFamily: '"Roboto Slab", serif' }}>
@@ -95,14 +97,25 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
               </div>
             )}
 
+            {/* Address - Simple High Contrast Text with Location Pin Icon */}
+            {address && (
+              <div 
+                className="text-slate-600 text-[10.5px] font-medium mb-1 px-3 text-center leading-tight"
+                style={{ fontFamily: '"Montserrat", sans-serif' }}
+              >
+                <MdLocationOn className="inline-block text-[#D96C36] text-sm align-sub mr-0.5" />
+                <span>{address}</span>
+              </div>
+            )}
+
             {/* Email - Simple High Contrast Link with Envelope Logo */}
             {mail && (
               <a
                 href={`mailto:${mail.trim()}`}
-                className="inline-flex items-center gap-1.5 text-slate-600 hover:text-[#D96C36] transition-colors duration-200 text-xs font-semibold mb-1"
+                className="inline-flex items-center justify-center gap-1.5 text-slate-600 hover:text-[#D96C36] transition-colors duration-200 text-xs font-semibold mb-1"
                 style={{ fontFamily: '"Montserrat", sans-serif' }}
               >
-                <MdEmail className="text-slate-500 text-sm shrink-0" />
+                <MdEmail className="text-slate-500 text-sm shrink-0 mt-[1px]" />
                 <span>{mail}</span>
               </a>
             )}
@@ -128,7 +141,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                     href={collegeUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    title={college}
+                    title={college || "University Profile"}
+                    aria-label="University Profile"
                     className="group p-1.5 rounded-full border border-gray-200 hover:border-[#D96C36] hover:bg-[#D96C36] transition-all duration-300 shadow-xs"
                   >
                     <svg className="w-4 h-4 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

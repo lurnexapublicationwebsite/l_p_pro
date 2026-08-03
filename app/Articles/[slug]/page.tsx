@@ -192,8 +192,15 @@ export default function ArticlePage() {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 flex flex-col items-center">
 
           {/* First Page Text Preview */}
-          <div className="w-full relative border-b border-slate-100 bg-white">
-            <div className="px-8 py-10 md:px-12 md:py-16">
+          <div className="w-full relative border-b border-slate-100 bg-white overflow-hidden">
+            {/* Watermark diagonal overlay */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden z-0 select-none opacity-[0.05]">
+              <div className="transform -rotate-[35deg] text-center text-slate-900 font-black text-base md:text-xl tracking-[0.2em] whitespace-normal max-w-2xl leading-loose uppercase">
+                Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR) — Vol. 01, Issue 01, April 2026
+              </div>
+            </div>
+
+            <div className="px-8 py-10 md:px-12 md:py-16 relative z-10">
               <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
                 <FileText className="text-orange-500" size={24} />
                 <h2 className="text-lg font-bold text-slate-800 uppercase tracking-widest">First Page Abstract Preview</h2>
@@ -250,6 +257,17 @@ export default function ArticlePage() {
                   )}
                 </motion.div>
               )}
+            </div>
+
+            {/* Bottom Footer Watermark Bar */}
+            <div className="w-full border-t border-slate-200/80 bg-slate-50/90 px-6 py-3.5 text-center text-[11px] md:text-xs font-semibold text-slate-500 tracking-wider z-10 relative flex items-center justify-center gap-1.5 flex-wrap">
+              <span>Lurnexa Publications</span>
+              <span className="text-slate-400 font-bold">—</span>
+              <span className="font-bold text-slate-700">Global Journal for Progressive Innovation and Research (GJPIR)</span>
+              <span className="text-slate-400 font-bold">•</span>
+              <span>Vol. 01, Issue 01</span>
+              <span className="text-slate-400 font-bold">•</span>
+              <span>April 2026</span>
             </div>
           </div>
 
