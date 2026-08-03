@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     "Techno-Management Hub",
     "Academic Excellence",
     "Digital Publishing India",
-    "Global Journal for Progressive Innovation and Research",
+    "Global Journal for Progressive Innovation and Research (GJPIR)",
     "GJPIR Journal",
     "Advanced Computational Intelligence & Emerging Technologies",
     "ACIET Journal",

@@ -83,17 +83,17 @@ const page = () => {
       "email": "kapil@iimj.ac.in"
     },
     {
-      Id: "Lurnexa_2544fs13",
-      "image": "https://lurnexa.s3.ap-south-1.amazonaws.com/editorial_board_photos/Lurnexa_2544fs13.jpg",
-      "Name": "Dr. Susanta K Mishra",
+      Id: "Lurnexa_arvindsingh",
+      "image": "/editorial-images/iaees/Screenshot (41).png",
+      "Name": "Dr. Arvind R. Singh",
       "Board": "GJPIR",
-      "Role": "Assistant Editor",
-      "Department": "Department of Management",
-      "Designation/College Name": "Professor / Centurion University",
-      "linkedinUrl": "https://www.linkedin.com/in/dr-susanta-k-mishra-3b5a9433/?originalSubdomain=in",
-      "collegeUrl": "https://faculty.cutm.ac.in/general_profilesc.php?xyz=susanta.mishra@cutm.ac.in",
-      "address": "Nagavali boys hostel, centurion university, Village, Alluri Nagar, R.Sitapur, Odisha 761211",
-      "email": "susanta65@gmail.com"
+      "Role": "Sr. Assistant Editor",
+      "Department": "Electronics & Communication Engineering",
+      "Designation/College Name": "Shi Yan Shi, Hubei, China",
+      "linkedinUrl": "https://cn.linkedin.com/in/dr-arvind-r-singh-smieee-99a53510b",
+      "collegeUrl": "https://pee.hjnu.edu.cn/info/1041/2531.htm",
+      "address": "18 Beijing S Rd, 18, Maojian District, Shi Yan Shi, Hubei, China, 442000",
+      "email": "arvind@hjnu.edu.cn"
     },
     {
       Id: "Lurnexa_2544fs12",
@@ -122,17 +122,17 @@ const page = () => {
       "email": "chinmaya@iimj.ac.in"
     },
     {
-      Id: "Lurnexa_arvindsingh",
-      "image": "/editorial-images/iaees/Screenshot (41).png",
-      "Name": "Dr. Arvind R. Singh",
+       Id: "Lurnexa_2544fs13",
+      "image": "https://lurnexa.s3.ap-south-1.amazonaws.com/editorial_board_photos/Lurnexa_2544fs13.jpg",
+      "Name": "Dr. Susanta K Mishra",
       "Board": "GJPIR",
-      "Role": "Deputy Editor in Chief",
-      "Department": "Electronics & Communication Engineering",
-      "Designation/College Name": "Shi Yan Shi, Hubei, China",
-      "linkedinUrl": "https://cn.linkedin.com/in/dr-arvind-r-singh-smieee-99a53510b",
-      "collegeUrl": "https://pee.hjnu.edu.cn/info/1041/2531.htm",
-      "address": "18 Beijing S Rd, 18, Maojian District, Shi Yan Shi, Hubei, China, 442000",
-      "email": "arvind@hjnu.edu.cn"
+      "Role": "Assistant Editor",
+      "Department": "Department of Management",
+      "Designation/College Name": "Professor / Centurion University",
+      "linkedinUrl": "https://www.linkedin.com/in/dr-susanta-k-mishra-3b5a9433/?originalSubdomain=in",
+      "collegeUrl": "https://faculty.cutm.ac.in/general_profilesc.php?xyz=susanta.mishra@cutm.ac.in",
+      "address": "Nagavali boys hostel, centurion university, Village, Alluri Nagar, R.Sitapur, Odisha 761211",
+      "email": "susanta65@gmail.com"
     }, {
       Id: "Lurnexa_2544oa22",
       "image": "/editorial-images/gjpir/Hiranya Dissanayake.jpg",
@@ -167,7 +167,7 @@ const page = () => {
 
             <p className="text-lg text-gray-700 leading-relaxed">
 
-              The Global Journal for Progressive Innovation and Research was created
+              The Global Journal for Progressive Innovation and Research (GJPIR) was created
               with the intention of providing a reliable academic space where
               meaningful research can be shared and preserved. Each of our four
               sections represents an important area of study, yet together they

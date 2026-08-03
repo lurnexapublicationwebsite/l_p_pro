@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: 'Meet the distinguished members of the Editorial Board for Lurnexa Publications flagship Global Journal for Progressive Innovation and Research (GJPIR), featuring Dr. Anand Shukla (Editor-in-Chief, LPU) and Dr. Badri Narayanan Gopalakrishnan (Co-Editor-in-Chief, NITI Aayog / Boston College).',
   keywords: [
     'GJPIR Editorial Board',
-    'Global Journal for Progressive Innovation and Research Editorial',
+    'Global Journal for Progressive Innovation and Research (GJPIR) Editorial',
     'Dr Anand Shukla Editor in Chief',
     'Dr Badri Narayanan Gopalakrishnan',
     'NITI Aayog Fellow Lurnexa',
