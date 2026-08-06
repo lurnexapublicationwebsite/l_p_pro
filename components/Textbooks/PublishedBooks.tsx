@@ -61,6 +61,19 @@ export default function PublishedBooks() {
       pdfFileName: "microeconomics.pdf",
       publishedDate: "May 18, 2026",
       description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making."
+    },
+    {
+      id: "6",
+      title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS",
+      authors: "Lurnexa Academic Authors",
+      domain: "CSE / Artificial Intelligence",
+      isbn: "978-81-685077-9-1",
+      pages: 265,
+      price: 499,
+      code: "AI",
+      pdfFileName: "ai.pdf",
+      publishedDate: "August 6, 2026",
+      description: "This book provides a comprehensive foundation in Artificial Intelligence, exploring intelligent agents, state-space search algorithms, knowledge representation, machine learning paradigms, reasoning systems, and ethical AI implications for next-generation intelligent applications."
     }
   ];
 
@@ -72,6 +85,7 @@ export default function PublishedBooks() {
           if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
           if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
           if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
+          if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpg";
 
           return (
             <div 

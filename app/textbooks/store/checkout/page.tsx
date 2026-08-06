@@ -48,6 +48,17 @@ const getShippingCost = (pincode: string): number => {
 };
 
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "6") {
+    if (plan === "book_only") return 259;
+    if (plan === "caselet") return 60;
+    if (plan === "book_caselet") return 295;
+    if (plan === "book_portal") return 259;
+    if (plan === "book_caselet_portal") return 329;
+    if (plan === "complete") return 200;
+    if (plan === "placements") return 150;
+    if (plan === "practice") return 80;
+    return 259;
+  }
   if (bookId === "5") {
     if (plan === "book_only") return 370;
     if (plan === "caselet") return 80;
@@ -143,6 +154,18 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     isbn: "978-81-685077-1-5",
     coverColor: "from-amber-600 to-yellow-900",
     pdfFileName: "microeconomics.pdf"
+  },
+  {
+    id: "6",
+    title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS",
+    code: "AI",
+    description: "This book provides a comprehensive foundation in Artificial Intelligence, exploring intelligent agents, state-space search algorithms, knowledge representation, machine learning paradigms, reasoning systems, and ethical AI implications for next-generation intelligent applications.",
+    price: 499,
+    authors: "Lurnexa Academic Authors",
+    pages: 265,
+    isbn: "978-81-685077-9-1",
+    coverColor: "from-emerald-600 to-teal-950",
+    pdfFileName: "ai.pdf"
   }
 ];
 
@@ -272,6 +295,7 @@ function CheckoutContent() {
       if (selected.id === "2") coverImg = "/portal_coverpages/ml.png";
       if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
       if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
+      if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpg";
 
       setCheckoutItems([{
         id: selected.id,

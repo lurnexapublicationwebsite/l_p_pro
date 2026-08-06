@@ -122,7 +122,8 @@ export async function sendOrderConfirmationEmails(order: {
     "2": "Machine Learning: A Structured Approach",
     "3": "Database Management Systems: Concepts & Design",
     "4": "Entrepreneurship Development: Concepts to Creation",
-    "5": "Principles of Microeconomics for Business and Management"
+    "5": "Principles of Microeconomics for Business and Management",
+    "6": "Foundations of Artificial Intelligence: Concepts, Techniques and Applications"
   };
   const bookTitle = bookTitles[order.book_id] || `Textbook ID: ${order.book_id}`;
 

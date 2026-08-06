@@ -129,6 +129,17 @@ const getQuizTotalMarks = (quiz: TextbookQuiz | null | undefined): number => {
 };
 
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "6") {
+    if (plan === "book_only") return 259;
+    if (plan === "caselet") return 60;
+    if (plan === "book_caselet") return 295;
+    if (plan === "book_portal") return 259;
+    if (plan === "book_caselet_portal") return 329;
+    if (plan === "complete") return 200;
+    if (plan === "placements") return 150;
+    if (plan === "practice") return 80;
+    return 259;
+  }
   if (bookId === "5") {
     if (plan === "book_only") return 370;
     if (plan === "caselet") return 80;
@@ -184,7 +195,8 @@ const PORTAL_PUBLISHED_BOOKS = [
   { id: "1", title: "Introduction to Mineral Processing", pdfFileName: "minerals.pdf", coverImg: "/portal_coverpages/minerals.jpg", author: "Dr. K. Raghavan", price: 450 },
   { id: "2", title: "Machine Learning", pdfFileName: "ml.pdf", coverImg: "/portal_coverpages/ml.png", author: "Prof. S. Balaji", price: 550 },
   { id: "3", title: "Database Management Systems", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. V. Pallavi", price: 499 },
-  { id: "5", title: "Principles of Microeconomics for Business and Management", pdfFileName: "microeconomics.pdf", coverImg: "/portal_coverpages/microeconomics.jpeg", author: "Dr. Aruna Kumar Dash", price: 600 }
+  { id: "5", title: "Principles of Microeconomics for Business and Management", pdfFileName: "microeconomics.pdf", coverImg: "/portal_coverpages/microeconomics.jpeg", author: "Dr. Aruna Kumar Dash", price: 600 },
+  { id: "6", title: "Foundations of Artificial Intelligence: Concepts, Techniques and Applications", pdfFileName: "ai.pdf", coverImg: "/portal_coverpages/ai.jpg", author: "Lurnexa Academic Authors", price: 499 }
 ];
 
 interface Caselet {
@@ -254,6 +266,21 @@ Based on microeconomics principles:
         "Explain the concept of price discrimination in different customer segments."
       ],
       pdfFileName: "microeconomics.pdf"
+    }
+  ],
+  "6": [
+    {
+      title: "Caselet",
+      scenario: `An autonomous intelligent agent is deployed in a dynamic medical diagnosis environment. The system must navigate complex decision trees, state-space search paths, and uncertain knowledge representations to provide real-time recommendations.
+
+Based on Foundations of Artificial Intelligence:
+- Evaluate informed vs uninformed search algorithms (e.g., A* search vs BFS/DFS) for optimal pathfinding.
+- Propose logic representation and machine learning techniques to handle uncertainty and ethical constraints in AI decision-making.`,
+      questions: [
+        "How do heuristic functions influence optimality and completeness in state-space search algorithms?",
+        "Discuss ethical perspectives and safety guardrails required when deploying autonomous AI agents."
+      ],
+      pdfFileName: "ai.pdf"
     }
   ]
 };
