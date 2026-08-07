@@ -96,9 +96,9 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     code: "AI",
     description: "This book provides a comprehensive foundation in Artificial Intelligence, exploring intelligent agents, state-space search algorithms, knowledge representation, machine learning paradigms, reasoning systems, and ethical AI implications for next-generation intelligent applications.",
     price: 499,
-    authors: "Lurnexa Academic Authors",
-    pages: 265,
-    isbn: "978-81-685077-9-1",
+    authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
+    pages: 142,
+    isbn: "978-81-685077-4-6",
     pdfFileName: "ai.pdf",
     tag: "New Release",
     stockStatus: "in-stock"

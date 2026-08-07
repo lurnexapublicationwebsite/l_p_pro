@@ -65,10 +65,10 @@ export default function PublishedBooks() {
     {
       id: "6",
       title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS",
-      authors: "Lurnexa Academic Authors",
+      authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
       domain: "CSE / Artificial Intelligence",
-      isbn: "978-81-685077-9-1",
-      pages: 265,
+      isbn: "978-81-685077-4-6",
+      pages: 142,
       price: 499,
       code: "AI",
       pdfFileName: "ai.pdf",

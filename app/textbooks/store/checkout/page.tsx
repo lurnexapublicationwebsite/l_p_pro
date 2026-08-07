@@ -161,9 +161,9 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     code: "AI",
     description: "This book provides a comprehensive foundation in Artificial Intelligence, exploring intelligent agents, state-space search algorithms, knowledge representation, machine learning paradigms, reasoning systems, and ethical AI implications for next-generation intelligent applications.",
     price: 499,
-    authors: "Lurnexa Academic Authors",
-    pages: 265,
-    isbn: "978-81-685077-9-1",
+    authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
+    pages: 142,
+    isbn: "978-81-685077-4-6",
     coverColor: "from-emerald-600 to-teal-950",
     pdfFileName: "ai.pdf"
   }
@@ -1260,8 +1260,9 @@ function CheckoutContent() {
                   </label>
                   <input
                     type="tel"
+                    maxLength={10}
                     value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
+                    onChange={(e) => setFormPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="10-digit mobile number"
                     className={`w-full bg-white border ${formErrors.phone ? 'border-red-400 focus:border-red-500' : 'border-[#E2E8F0] focus:border-fuchsia-500'} text-[#0F172A] rounded-xl px-4 py-3 text-sm focus:outline-none shadow-sm`}
                   />

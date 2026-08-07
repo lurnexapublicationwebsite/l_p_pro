@@ -196,7 +196,7 @@ const PORTAL_PUBLISHED_BOOKS = [
   { id: "2", title: "Machine Learning", pdfFileName: "ml.pdf", coverImg: "/portal_coverpages/ml.png", author: "Prof. S. Balaji", price: 550 },
   { id: "3", title: "Database Management Systems", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. V. Pallavi", price: 499 },
   { id: "5", title: "Principles of Microeconomics for Business and Management", pdfFileName: "microeconomics.pdf", coverImg: "/portal_coverpages/microeconomics.jpeg", author: "Dr. Aruna Kumar Dash", price: 600 },
-  { id: "6", title: "Foundations of Artificial Intelligence: Concepts, Techniques and Applications", pdfFileName: "ai.pdf", coverImg: "/portal_coverpages/ai.jpg", author: "Lurnexa Academic Authors", price: 499 }
+  { id: "6", title: "Foundations of Artificial Intelligence: Concepts, Techniques and Applications", pdfFileName: "ai.pdf", coverImg: "/portal_coverpages/ai.jpg", author: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy", price: 499 }
 ];
 
 interface Caselet {
