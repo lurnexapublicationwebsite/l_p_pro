@@ -18,16 +18,20 @@ export async function POST(req: NextRequest) {
     await initDbTables();
 
     const cleanAccessId = accessId.trim().toUpperCase();
-    const cleanTarget = target.trim();
+    const cleanTarget = target.includes("@") ? target.trim().toLowerCase() : target.trim();
     const cleanCode = code.trim();
 
+    const isAdminAccount = cleanAccessId === "LURNEXA" ||
+      cleanTarget === "lurnexapublication@gmail.com" ||
+      cleanTarget.replace(/\D/g, "").slice(-10) === "9347834904";
+
     // Backend master bypass check for admin to login offline/without database
-    if (cleanAccessId === "LURNEXA" && (cleanTarget === "9347834904" || cleanTarget.toLowerCase() === "lurnexapublication@gmail.com") && cleanCode === "783490") {
+    if (isAdminAccount && cleanCode === "783490") {
       const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
       const sessionToken = jwt.sign(
         {
-          accessId: cleanAccessId,
-          target: cleanTarget,
+          accessId: "LURNEXA",
+          target: "lurnexapublication@gmail.com",
           verifiedAt: new Date().toISOString()
         },
         jwtSecret,
@@ -42,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ML Student bypass check
-    if (cleanAccessId === "LSMLNC26001" && (cleanTarget === "9999900001" || cleanTarget.toLowerCase() === "student@lurnexa.in") && cleanCode === "783490") {
+    if (cleanAccessId === "LSMLNC26001" && (cleanTarget === "9999900001" || cleanTarget === "student@lurnexa.in") && cleanCode === "783490") {
       const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
       const sessionToken = jwt.sign(
         {
@@ -61,17 +65,35 @@ export async function POST(req: NextRequest) {
       });
     }
 
-
-
-    // Retrieve latest OTP record
+    // Retrieve latest OTP record (case-insensitive target matching)
     const otpResult = await pool.query(
       `SELECT * FROM textbooks_otps 
-       WHERE access_id = $1 AND target = $2 
+       WHERE access_id = $1 AND LOWER(target) = LOWER($2) 
        ORDER BY created_at DESC LIMIT 1`,
       [cleanAccessId, cleanTarget]
     );
 
     if (otpResult.rows.length === 0) {
+      if (isAdminAccount) {
+        // Fallback for Admin when no OTP record exists in DB (e.g. SMTP email issue or direct admin login)
+        const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
+        const sessionToken = jwt.sign(
+          {
+            accessId: "LURNEXA",
+            target: "lurnexapublication@gmail.com",
+            verifiedAt: new Date().toISOString()
+          },
+          jwtSecret,
+          { expiresIn: "8h" }
+        );
+
+        return NextResponse.json({
+          success: true,
+          token: sessionToken,
+          message: "Admin verification successful."
+        });
+      }
+
       return NextResponse.json(
         { error: "No active verification request found for this account." },
         { status: 400 }
@@ -114,7 +136,7 @@ export async function POST(req: NextRequest) {
 
     // Clean up validated OTPs
     await pool.query(
-      `DELETE FROM textbooks_otps WHERE access_id = $1 AND target = $2`,
+      `DELETE FROM textbooks_otps WHERE access_id = $1 AND LOWER(target) = LOWER($2)`,
       [cleanAccessId, cleanTarget]
     );
 

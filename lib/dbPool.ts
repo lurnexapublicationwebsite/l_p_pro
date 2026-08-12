@@ -320,10 +320,12 @@ export const pool = {
     // 2. INSERT
     if (cleanSql.startsWith("INSERT INTO TEXTBOOKS_OTPS")) {
       const [access_id, target, otp_hash, expires_at, ip_address, device_info] = params;
+      const cleanAccessId = String(access_id).trim().toUpperCase();
+      const cleanTarget = String(target).trim().toLowerCase();
       const newRecord: OtpRecord = {
         id: db.length > 0 ? Math.max(...db.map(r => r.id)) + 1 : 1,
-        access_id,
-        target,
+        access_id: cleanAccessId,
+        target: cleanTarget,
         otp_hash,
         created_at: new Date().toISOString(),
         expires_at: new Date(expires_at).toISOString(),
@@ -337,20 +339,24 @@ export const pool = {
     }
 
     // 3. SELECT (COOLDOWN) - ORDER BY created_at DESC LIMIT 1
-    if (cleanSql.includes("SELECT CREATED_AT FROM TEXTBOOKS_OTPS") && cleanSql.includes("ACCESS_ID = $1 OR TARGET = $2")) {
+    if (cleanSql.includes("SELECT CREATED_AT FROM TEXTBOOKS_OTPS")) {
       const [access_id, target] = params;
+      const cleanAccessId = String(access_id).trim().toUpperCase();
+      const cleanTarget = String(target).trim().toLowerCase();
       const filtered = db
-        .filter(r => r.access_id === access_id || r.target === target)
+        .filter(r => r.access_id.toUpperCase() === cleanAccessId && r.target.trim().toLowerCase() === cleanTarget)
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       return { rows: filtered.slice(0, 1) };
     }
 
     // 4. SELECT (VERIFY / RETRIEVE LATEST)
-    if (cleanSql.includes("SELECT * FROM TEXTBOOKS_OTPS") && cleanSql.includes("ACCESS_ID = $1 AND TARGET = $2")) {
+    if (cleanSql.includes("SELECT * FROM TEXTBOOKS_OTPS")) {
       const [access_id, target] = params;
+      const cleanAccessId = String(access_id).trim().toUpperCase();
+      const cleanTarget = String(target).trim().toLowerCase();
       const filtered = db
-        .filter(r => r.access_id === access_id && r.target === target)
+        .filter(r => r.access_id.toUpperCase() === cleanAccessId && r.target.trim().toLowerCase() === cleanTarget)
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       return { rows: filtered.slice(0, 1) };
@@ -362,7 +368,6 @@ export const pool = {
       const index = db.findIndex(r => r.id === id);
       if (index !== -1) {
         db[index].attempts += 1;
-        db[index].attempts += 1;
         writeLocalDb(db);
         return { rows: [db[index]] };
       }
@@ -370,9 +375,11 @@ export const pool = {
     }
 
     // 6. DELETE (CLEAN UP / EXPIRE)
-    if (cleanSql.includes("DELETE FROM TEXTBOOKS_OTPS WHERE ACCESS_ID = $1 AND TARGET = $2")) {
+    if (cleanSql.includes("DELETE FROM TEXTBOOKS_OTPS")) {
       const [access_id, target] = params;
-      const updated = db.filter(r => !(r.access_id === access_id && r.target === target));
+      const cleanAccessId = String(access_id).trim().toUpperCase();
+      const cleanTarget = String(target).trim().toLowerCase();
+      const updated = db.filter(r => !(r.access_id.toUpperCase() === cleanAccessId && r.target.trim().toLowerCase() === cleanTarget));
       writeLocalDb(updated);
       return { rows: [] };
     }
