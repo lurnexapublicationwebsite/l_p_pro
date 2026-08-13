@@ -340,15 +340,64 @@ export function initDb(): void {
     IN_MEMORY_DB['lurnexa_db_purge_v5'] = 'true';
   }
 
-  // Initialize Access IDs Registry as empty (no default seeded IDs)
+  // Initialize Access IDs Registry with default demo IDs if not present
   if (!IN_MEMORY_DB['lurnexa_allowed_access_ids']) {
     IN_MEMORY_DB['lurnexa_allowed_access_ids'] = [];
   }
   let allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
+  
+  const DEMO_ALLOWED_IDS: AllowedAccessId[] = [
+    { accessId: "LSMPNC26001", bookId: "1", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900001" },
+    { accessId: "LFMPNC26001", bookId: "1", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900002" },
+    { accessId: "LSMLNC26001", bookId: "2", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900003" },
+    { accessId: "LFMLNC26001", bookId: "2", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900004" },
+    { accessId: "LSDBNC26001", bookId: "3", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900005" },
+    { accessId: "LFDBNC26001", bookId: "3", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900006" },
+    { accessId: "LSEDNC26001", bookId: "4", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900007" },
+    { accessId: "LFEDNC26001", bookId: "4", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900008" },
+    { accessId: "LSPMNC26001", bookId: "5", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900009" },
+    { accessId: "LFPMNC26001", bookId: "5", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900010" },
+    { accessId: "LSAINC26001", bookId: "6", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900011" },
+    { accessId: "LFAINC26001", bookId: "6", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900012" }
+  ];
 
-  // Initialize Users (Seed Admin user)
+  let allowedModified = false;
+  DEMO_ALLOWED_IDS.forEach(demoId => {
+    if (!allowedIds.some(a => a.accessId.toUpperCase() === demoId.accessId)) {
+      allowedIds.push(demoId);
+      allowedModified = true;
+    }
+  });
+  if (allowedModified) {
+    IN_MEMORY_DB['lurnexa_allowed_access_ids'] = allowedIds;
+    try { localStorage.setItem('lurnexa_allowed_access_ids', JSON.stringify(allowedIds)); } catch (e) {}
+  }
+
+  // Initialize Users (Seed Admin user & Demo Users for all textbooks)
   let users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
   let usersModified = false;
+
+  const DEMO_USERS: TextbookUser[] = [
+    { name: "Demo Student (Mineral Processing)", bookId: "1", mobileNumber: "9999900001", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.mp@lurnexa.in", accessId: "LSMPNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Faculty (Mineral Processing)", bookId: "1", mobileNumber: "9999900002", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.mp@lurnexa.in", accessId: "LFMPNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Student (Machine Learning)", bookId: "2", mobileNumber: "9999900003", role: "student", collegeName: "Narayana College", collegeEmail: "student@lurnexa.in", accessId: "LSMLNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Faculty (Machine Learning)", bookId: "2", mobileNumber: "9999900004", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.ml@lurnexa.in", accessId: "LFMLNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Student (DBMS)", bookId: "3", mobileNumber: "9999900005", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.db@lurnexa.in", accessId: "LSDBNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Faculty (DBMS)", bookId: "3", mobileNumber: "9999900006", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.db@lurnexa.in", accessId: "LFDBNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Student (Entrepreneurship)", bookId: "4", mobileNumber: "9999900007", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.ed@lurnexa.in", accessId: "LSEDNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Faculty (Entrepreneurship)", bookId: "4", mobileNumber: "9999900008", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.ed@lurnexa.in", accessId: "LFEDNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Student (Microeconomics)", bookId: "5", mobileNumber: "9999900009", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.pm@lurnexa.in", accessId: "LSPMNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Faculty (Microeconomics)", bookId: "5", mobileNumber: "9999900010", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.pm@lurnexa.in", accessId: "LFPMNC26001", isActive: true, plan: "complete" },
+    { name: "Demo Student (Artificial Intelligence)", bookId: "6", mobileNumber: "9999900011", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.ai@lurnexa.in", accessId: "LSAINC26001", isActive: true, plan: "complete" },
+    { name: "Demo Faculty (Artificial Intelligence)", bookId: "6", mobileNumber: "9999900012", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.ai@lurnexa.in", accessId: "LFAINC26001", isActive: true, plan: "complete" }
+  ];
+
+  DEMO_USERS.forEach(demoUser => {
+    if (!users.some(u => u.accessId.toUpperCase() === demoUser.accessId)) {
+      users.push(demoUser);
+      usersModified = true;
+    }
+  });
   
   // Enforce exactly 1 admin user matching the new required credentials
   const otherAdmins = users.filter(u => u.role === 'admin' && (u.mobileNumber !== '9347834904' || u.accessId.toUpperCase() !== 'LURNEXA'));
@@ -369,19 +418,18 @@ export function initDb(): void {
       collegeEmail: "lurnexapublication@gmail.com",
       accessId: "LURNEXA"
     });
-    IN_MEMORY_DB['lurnexa_users'] = users;
-    try { localStorage.setItem('lurnexa_users', JSON.stringify(users)); } catch (e) {}
-  } else if (usersModified) {
-    IN_MEMORY_DB['lurnexa_users'] = users;
-    try { localStorage.setItem('lurnexa_users', JSON.stringify(users)); } catch (e) {}
+    usersModified = true;
   } else {
-    // If multiple duplicate admins of the correct credentials exist, keep exactly one
     const admins = users.filter(u => u.role === 'admin');
     if (admins.length > 1) {
       users = users.filter(u => u.role !== 'admin' || u.mobileNumber === '9347834904');
-      IN_MEMORY_DB['lurnexa_users'] = users;
-      try { localStorage.setItem('lurnexa_users', JSON.stringify(users)); } catch (e) {}
+      usersModified = true;
     }
+  }
+
+  if (usersModified) {
+    IN_MEMORY_DB['lurnexa_users'] = users;
+    try { localStorage.setItem('lurnexa_users', JSON.stringify(users)); } catch (e) {}
   }
 
   // Initialize Question Bank (Seed Default practice questions)
@@ -715,10 +763,15 @@ export function updateUserStatus(mobileNumber: string, isActive: boolean): boole
   return false;
 }
 
-export function updateUser(mobileNumber: string, updatedFields: Partial<TextbookUser>): boolean {
+export function updateUser(identifierKey: string, updatedFields: Partial<TextbookUser>): boolean {
   initDb();
   const users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
-  const index = users.findIndex(u => u.mobileNumber === mobileNumber);
+  const cleanKey = identifierKey.trim();
+  const index = users.findIndex(u => 
+    u.mobileNumber === cleanKey || 
+    (u.accessId && u.accessId.toUpperCase() === cleanKey.toUpperCase()) ||
+    (u.collegeEmail && u.collegeEmail.toLowerCase() === cleanKey.toLowerCase())
+  );
   if (index !== -1) {
     users[index] = { ...users[index], ...updatedFields };
     setStorageItem('lurnexa_users', users);

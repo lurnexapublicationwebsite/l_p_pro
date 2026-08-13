@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+import { copyToClipboard } from "@/lib/utils";
+
 interface RequestItem {
   id: string;
   institution_name: string;
@@ -60,8 +62,8 @@ export default function PendingRequestsPage() {
     }
   }
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(clientLink);
+  const handleCopy = async () => {
+    await copyToClipboard(clientLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

@@ -205,6 +205,11 @@ export default function BookstorePage() {
     if (selectedBookForPurchase?.id === "6") {
       setSelectedSoftOption("book_only");
     }
+    if (selectedBookForPurchase?.id === "2") {
+      if (["caselet", "book_caselet", "book_caselet_portal"].includes(selectedSoftOption)) {
+        setSelectedSoftOption("book_portal");
+      }
+    }
   }, [selectedBookForPurchase]);
 
   const saveCartToStorage = (updatedCart: CartItem[]) => {
@@ -797,11 +802,11 @@ export default function BookstorePage() {
 
       {/* 5. BUY OPTIONS SELECTION MODAL */}
       {selectedBookForPurchase && (
-        <div className="fixed inset-0 z-50 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-[#E2E8F0] rounded-3xl w-full max-w-xl shadow-2xl p-6 relative animate-scaleIn space-y-6">
+        <div className="fixed inset-0 z-50 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white border border-[#E2E8F0] rounded-3xl w-full max-w-xl shadow-2xl p-6 relative animate-scaleIn flex flex-col max-h-[90vh]">
             
             {/* Header */}
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100 shrink-0">
               <div>
                 <h3 className="text-lg font-black text-slate-900">Choose Purchase Option</h3>
                 <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-0.5">{selectedBookForPurchase.title}</p>
@@ -817,59 +822,60 @@ export default function BookstorePage() {
               </button>
             </div>
 
-            {/* Selector Card Choice */}
-            <div className={`grid gap-4 ${selectedBookForPurchase?.id === "1" ? "grid-cols-1 max-w-xs mx-auto" : "grid-cols-2"}`}>
-              <div
-                onClick={() => setPurchaseFormat("physical")}
-                className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
-                  purchaseFormat === "physical"
-                    ? "border-fuchsia-600 bg-fuchsia-50/20"
-                    : "border-slate-200"
-                }`}
-              >
-                <ShoppingBag size={24} className={purchaseFormat === "physical" ? "text-fuchsia-600" : "text-slate-400"} />
-                <span className="text-xs font-bold text-slate-900">Physical Copy</span>
-                <span className="text-[10px] text-slate-500 font-medium text-center">Printed textbook delivered by parcel. Shipping charges apply.</span>
-              </div>
-
-              {selectedBookForPurchase?.id !== "1" && (
+            {/* Scrollable Content Body */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1">
+              {/* Selector Card Choice */}
+              <div className={`grid gap-4 ${selectedBookForPurchase?.id === "1" ? "grid-cols-1 max-w-xs mx-auto" : "grid-cols-2"}`}>
                 <div
-                  onClick={() => setPurchaseFormat("soft")}
+                  onClick={() => setPurchaseFormat("physical")}
                   className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
-                    purchaseFormat === "soft"
+                    purchaseFormat === "physical"
                       ? "border-fuchsia-600 bg-fuchsia-50/20"
                       : "border-slate-200"
                   }`}
                 >
-                  <BookOpen size={24} className={purchaseFormat === "soft" ? "text-fuchsia-600" : "text-slate-400"} />
-                  <span className="text-xs font-bold text-slate-900">Soft Copy & Portal</span>
-                  <span className="text-[10px] text-slate-500 font-medium text-center">Read online in student portal with screenshot blocking. GST & online fees apply.</span>
+                  <ShoppingBag size={24} className={purchaseFormat === "physical" ? "text-fuchsia-600" : "text-slate-400"} />
+                  <span className="text-xs font-bold text-slate-900">Physical Copy</span>
+                  <span className="text-[10px] text-slate-500 font-medium text-center">Printed textbook delivered by parcel. Shipping charges apply.</span>
                 </div>
-              )}
-            </div>
 
-            {/* Soft Copy Sub-plans */}
-            {purchaseFormat === "soft" && (
-              <div className="space-y-4 bg-slate-50/70 p-4 border border-slate-100 rounded-2xl animate-fadeIn">
-                <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Plan Package</span>
-                
-                <div className="space-y-2.5">
-                  <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
-                    <input
-                      type="radio"
-                      name="softPlan"
-                      checked={selectedSoftOption === "book_only" || selectedBookForPurchase?.id === "6"}
-                      onChange={() => setSelectedSoftOption("book_only")}
-                      className="accent-fuchsia-600"
-                    />
-                    <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                      <span>Book Only</span>
-                      <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_only", selectedBookForPurchase?.id)}</span>
-                    </div>
-                  </label>
+                {selectedBookForPurchase?.id !== "1" && (
+                  <div
+                    onClick={() => setPurchaseFormat("soft")}
+                    className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
+                      purchaseFormat === "soft"
+                        ? "border-fuchsia-600 bg-fuchsia-50/20"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <BookOpen size={24} className={purchaseFormat === "soft" ? "text-fuchsia-600" : "text-slate-400"} />
+                    <span className="text-xs font-bold text-slate-900">Soft Copy & Portal</span>
+                    <span className="text-[10px] text-slate-500 font-medium text-center">Read online in student portal with screenshot blocking. GST & online fees apply.</span>
+                  </div>
+                )}
+              </div>
 
-                  {selectedBookForPurchase?.id !== "6" && (
-                    <>
+              {/* Soft Copy Sub-plans */}
+              {purchaseFormat === "soft" && (
+                <div className="space-y-4 bg-slate-50/70 p-4 border border-slate-100 rounded-2xl animate-fadeIn">
+                  <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Plan Package</span>
+                  
+                  <div className="space-y-2.5">
+                    <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
+                      <input
+                        type="radio"
+                        name="softPlan"
+                        checked={selectedSoftOption === "book_only" || selectedBookForPurchase?.id === "6"}
+                        onChange={() => setSelectedSoftOption("book_only")}
+                        className="accent-fuchsia-600"
+                      />
+                      <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
+                        <span>Book Only</span>
+                        <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_only", selectedBookForPurchase?.id)}</span>
+                      </div>
+                    </label>
+
+                    {selectedBookForPurchase?.id !== "6" && selectedBookForPurchase?.id !== "2" && (
                       <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
                         <input
                           type="radio"
@@ -883,7 +889,9 @@ export default function BookstorePage() {
                           <span className="text-fuchsia-600">₹{getSoftCopyPrice("caselet", selectedBookForPurchase?.id)}</span>
                         </div>
                       </label>
+                    )}
 
+                    {selectedBookForPurchase?.id !== "6" && selectedBookForPurchase?.id !== "2" && (
                       <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
                         <input
                           type="radio"
@@ -897,7 +905,9 @@ export default function BookstorePage() {
                           <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_caselet", selectedBookForPurchase?.id)}</span>
                         </div>
                       </label>
+                    )}
 
+                    {selectedBookForPurchase?.id !== "6" && (
                       <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
                         <input
                           type="radio"
@@ -911,21 +921,9 @@ export default function BookstorePage() {
                           <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_portal", selectedBookForPurchase?.id)}</span>
                         </div>
                       </label>
+                    )}
 
-                      <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
-                        <input
-                          type="radio"
-                          name="softPlan"
-                          checked={selectedSoftOption === "book_caselet_portal"}
-                          onChange={() => setSelectedSoftOption("book_caselet_portal")}
-                          className="accent-fuchsia-600"
-                        />
-                        <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                          <span>Book + Caselet + Portal</span>
-                          <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_caselet_portal", selectedBookForPurchase?.id)}</span>
-                        </div>
-                      </label>
-
+                    {selectedBookForPurchase?.id !== "6" && (
                       <div className="border-t border-slate-200 pt-2.5">
                         <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
                           <input
@@ -941,58 +939,58 @@ export default function BookstorePage() {
                           </div>
                         </label>
 
-                        {selectedSoftOption === "only_portal" && (
-                          <div className="mt-2 pl-6 space-y-2 animate-fadeIn bg-white/70 p-3 rounded-2xl border border-slate-100/80">
-                            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                              <input
-                                type="radio"
-                                name="portalOnlyType"
-                                checked={selectedPortalOnlyOption === "complete"}
-                                onChange={() => setSelectedPortalOnlyOption("complete")}
-                                className="accent-fuchsia-600"
-                              />
-                              <div className="flex-1 flex justify-between">
-                                <span>Complete Portal</span>
-                                <span className="text-fuchsia-600">₹{getSoftCopyPrice("complete", selectedBookForPurchase?.id)}</span>
-                              </div>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                              <input
-                                type="radio"
-                                name="portalOnlyType"
-                                checked={selectedPortalOnlyOption === "placements"}
-                                onChange={() => setSelectedPortalOnlyOption("placements")}
-                                className="accent-fuchsia-600"
-                              />
-                              <div className="flex-1 flex justify-between">
-                                <span>Placements Feature Only</span>
-                                <span className="text-fuchsia-600">₹{getSoftCopyPrice("placements", selectedBookForPurchase?.id)}</span>
-                              </div>
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                              <input
-                                type="radio"
-                                name="portalOnlyType"
-                                checked={selectedPortalOnlyOption === "practice"}
-                                onChange={() => setSelectedPortalOnlyOption("practice")}
-                                className="accent-fuchsia-600"
-                              />
-                              <div className="flex-1 flex justify-between">
-                                <span>Coding Practice Questions Only</span>
-                                <span className="text-fuchsia-600">₹{getSoftCopyPrice("practice", selectedBookForPurchase?.id)}</span>
-                              </div>
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
+                          {selectedSoftOption === "only_portal" && (
+                            <div className="mt-2 pl-6 space-y-2 animate-fadeIn bg-white/70 p-3 rounded-2xl border border-slate-100/80">
+                              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                                <input
+                                  type="radio"
+                                  name="portalOnlyType"
+                                  checked={selectedPortalOnlyOption === "complete"}
+                                  onChange={() => setSelectedPortalOnlyOption("complete")}
+                                  className="accent-fuchsia-600"
+                                />
+                                <div className="flex-1 flex justify-between">
+                                  <span>Complete Portal</span>
+                                  <span className="text-fuchsia-600">₹{getSoftCopyPrice("complete", selectedBookForPurchase?.id)}</span>
+                                </div>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                                <input
+                                  type="radio"
+                                  name="portalOnlyType"
+                                  checked={selectedPortalOnlyOption === "placements"}
+                                  onChange={() => setSelectedPortalOnlyOption("placements")}
+                                  className="accent-fuchsia-600"
+                                />
+                                <div className="flex-1 flex justify-between">
+                                  <span>Placements Feature Only</span>
+                                  <span className="text-fuchsia-600">₹{getSoftCopyPrice("placements", selectedBookForPurchase?.id)}</span>
+                                </div>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                                <input
+                                  type="radio"
+                                  name="portalOnlyType"
+                                  checked={selectedPortalOnlyOption === "practice"}
+                                  onChange={() => setSelectedPortalOnlyOption("practice")}
+                                  className="accent-fuchsia-600"
+                                />
+                                <div className="flex-1 flex justify-between">
+                                  <span>Coding Practice Questions Only</span>
+                                  <span className="text-fuchsia-600">₹{getSoftCopyPrice("practice", selectedBookForPurchase?.id)}</span>
+                                </div>
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Button */}
-            <div className="pt-3 border-t border-slate-100 flex gap-2">
+            {/* Footer Buttons */}
+            <div className="pt-3 border-t border-slate-100 flex gap-2 shrink-0">
               <button
                 onClick={() => {
                   setSelectedBookForPurchase(null);

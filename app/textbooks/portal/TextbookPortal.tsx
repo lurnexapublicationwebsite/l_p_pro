@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Inter } from "next/font/google";
 import NavigationPage from "@/components/Home/nav/page";
+import { safeClearClipboard, copyToClipboard } from "@/lib/utils";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -87,6 +88,7 @@ import {
   Check,
   X,
   ChevronRight,
+  ChevronLeft,
   Shield,
   Activity,
   Info,
@@ -102,6 +104,9 @@ import {
   BookOpenCheck,
   Sparkles,
   Eye,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
   CheckSquare,
   LogOut,
   Clipboard,
@@ -184,6 +189,30 @@ const ALL_PLANS = [
   { key: "book_portal", label: "Book + Portal Access", desc: "Digital textbook plus full portal features (No caselets)" },
   { key: "book_caselet_portal", label: "Book + Caselet + Portal", desc: "The ultimate tier: Digital textbook, Caselets, and all portal features" }
 ];
+
+const SOFTCOPY_PLANS = ["book_only", "book_caselet", "book_portal", "book_caselet_portal"];
+
+const isPlanAllowedForBook = (planKey: string, bookId?: string): boolean => {
+  if (bookId === "1") {
+    // Book 1 (Minerals): No softcopy available
+    if (SOFTCOPY_PLANS.includes(planKey)) return false;
+  }
+  if (bookId === "2") {
+    // Book 2 (Machine Learning): No caselets available
+    const caseletPlans = ["caselet", "book_caselet", "book_caselet_portal"];
+    if (caseletPlans.includes(planKey)) return false;
+  }
+  if (bookId === "6") {
+    // Book 6 (AI): Only book_only softcopy plan available
+    const restrictedFor6 = ["caselet", "book_caselet", "book_portal", "book_caselet_portal"];
+    if (restrictedFor6.includes(planKey)) return false;
+  }
+  return true;
+};
+
+const bookHasSoftcopy = (bookId?: string): boolean => {
+  return isPlanAllowedForBook("book_only", bookId);
+};
 
 const getPlanLabel = (planKey?: string) => {
   const match = ALL_PLANS.find(p => p.key === planKey);
@@ -408,26 +437,26 @@ export default function TextbookPortal({
   }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (isMobile) {
-      if (e.touches.length > 1) {
-        setIsReaderBlurred(true);
-      } else {
+    if (e.touches.length > 1) {
+      document.documentElement.classList.add("force-secure-blur");
+      setIsReaderBlurred(true);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length <= 1) {
+      // Keep blurred if multi-touch was active, unblur on single touch interaction
+      if (document.visibilityState === "visible") {
+        document.documentElement.classList.remove("force-secure-blur");
         setIsReaderBlurred(false);
       }
     }
   };
 
-  const handleTouchEnd = () => {
-    if (isMobile) {
-      setIsReaderBlurred(true);
-    }
-  };
-
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (isMobile) {
-      if (e.touches.length > 1) {
-        setIsReaderBlurred(true);
-      }
+    if (e.touches.length > 1) {
+      document.documentElement.classList.add("force-secure-blur");
+      setIsReaderBlurred(true);
     }
   };
 
@@ -640,26 +669,41 @@ export default function TextbookPortal({
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [readingCaseletIndex, setReadingCaseletIndex] = useState<number | null>(null);
 
+  const requestFullscreenSafe = () => {
+    try {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => {});
+      } else if ((elem as any).webkitRequestFullscreen) {
+        (elem as any).webkitRequestFullscreen();
+      } else if ((elem as any).msRequestFullscreen) {
+        (elem as any).msRequestFullscreen();
+      }
+    } catch (e) {}
+  };
+
   const openSecureBook = (bookId: string) => {
     setReadingBookId(bookId);
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(err => console.warn(err));
-    }
+    requestFullscreenSafe();
   };
 
   const openSecureCaselet = (index: number) => {
     setReadingCaseletIndex(index);
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(err => console.warn(err));
-    }
+    requestFullscreenSafe();
   };
 
   const closeSecureReader = () => {
     setReadingBookId(null);
     setReadingCaseletIndex(null);
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(err => console.warn(err));
-    }
+    try {
+      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        }
+      }
+    } catch (e) {}
   };
 
   // Native Fullscreen API Escape / Change Sync
@@ -690,6 +734,37 @@ export default function TextbookPortal({
   const [pdfLoading, setPdfLoading] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [pageInputVal, setPageInputVal] = useState("1");
+  const [pdfZoom, setPdfZoom] = useState<number>(1.0); // 1.0 = 100% fit-to-screen scale
+  const [pageFlipAnim, setPageFlipAnim] = useState<"flip-next" | "flip-prev" | "">("");
+  const activeRenderTaskRef = useRef<any>(null);
+
+  const triggerNextPage = () => {
+    if (pdfCurrentPage < pdfTotalPages && !pdfLoading) {
+      setPageFlipAnim("flip-next");
+      setPdfCurrentPage(prev => Math.min(pdfTotalPages, prev + 1));
+      setTimeout(() => setPageFlipAnim(""), 450);
+    }
+  };
+
+  const triggerPrevPage = () => {
+    if (pdfCurrentPage > 1 && !pdfLoading) {
+      setPageFlipAnim("flip-prev");
+      setPdfCurrentPage(prev => Math.max(1, prev - 1));
+      setTimeout(() => setPageFlipAnim(""), 450);
+    }
+  };
+
+  const handleZoomIn = () => {
+    setPdfZoom(prev => Math.min(3.0, Math.round((prev + 0.25) * 100) / 100));
+  };
+
+  const handleZoomOut = () => {
+    setPdfZoom(prev => Math.max(0.5, Math.round((prev - 0.25) * 100) / 100));
+  };
+
+  const handleResetZoom = () => {
+    setPdfZoom(1.0);
+  };
 
   useEffect(() => {
     setPageInputVal(String(pdfCurrentPage));
@@ -707,6 +782,7 @@ export default function TextbookPortal({
 
   const loadPdfFile = async (url: string) => {
     setPdfLoading(true);
+    setPdfZoom(1.0);
     try {
       if (!(window as any).pdfjsLib) {
         const script = document.createElement("script");
@@ -727,8 +803,16 @@ export default function TextbookPortal({
     }
   };
 
-  const renderPdfPage = async (pdfDoc: any, pageNum: number) => {
+  const renderPdfPage = async (pdfDoc: any, pageNum: number, currentZoom: number = 1.0) => {
     if (!pdfDoc) return;
+
+    if (activeRenderTaskRef.current) {
+      try {
+        activeRenderTaskRef.current.cancel();
+      } catch (e) {}
+      activeRenderTaskRef.current = null;
+    }
+
     try {
       const page = await pdfDoc.getPage(pageNum);
       const canvas = document.getElementById("secure-reader-canvas") as HTMLCanvasElement;
@@ -736,17 +820,49 @@ export default function TextbookPortal({
       const context = canvas.getContext("2d");
       if (!context) return;
 
-      // Render at high resolution scale 2.0 for clear text
-      const viewport = page.getViewport({ scale: 2.0 });
+      // Calculate dynamic fit-to-screen scale based on available container dimensions & zoom level
+      const container = canvas.parentElement;
+      const rectH = container ? container.getBoundingClientRect().height : (window.innerHeight - 80);
+      const rectW = container ? container.getBoundingClientRect().width : window.innerWidth;
+      
+      const availH = Math.max(150, rectH - (currentZoom > 1.0 ? 24 : 8));
+      const availW = Math.max(150, rectW - (currentZoom > 1.0 ? 24 : 8));
+
+      const baseViewport = page.getViewport({ scale: 1.0 });
+      const scaleX = availW / baseViewport.width;
+      const scaleY = availH / baseViewport.height;
+      const fitScale = Math.min(scaleX, scaleY);
+
+      const displayWidth = Math.round(baseViewport.width * fitScale * currentZoom);
+      const displayHeight = Math.round(baseViewport.height * fitScale * currentZoom);
+
+      const dpr = typeof window !== "undefined" ? (window.devicePixelRatio || 1) : 1;
+      const renderScale = fitScale * currentZoom * Math.max(dpr, 2.0);
+
+      const viewport = page.getViewport({ scale: renderScale });
       canvas.height = viewport.height;
       canvas.width = viewport.width;
+
+      // Set explicit inline CSS dimensions so zooming visually resizes canvas element in DOM
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
 
       const renderContext = {
         canvasContext: context,
         viewport: viewport,
       };
-      await page.render(renderContext).promise;
-    } catch (err) {
+
+      const renderTask = page.render(renderContext);
+      activeRenderTaskRef.current = renderTask;
+
+      await renderTask.promise;
+      if (activeRenderTaskRef.current === renderTask) {
+        activeRenderTaskRef.current = null;
+      }
+    } catch (err: any) {
+      if (err?.name === "RenderingCancelledException" || err?.message?.includes("cancelled")) {
+        return;
+      }
       console.error("Error rendering PDF page:", err);
     }
   };
@@ -771,14 +887,33 @@ export default function TextbookPortal({
       setPdfDocument(null);
       setPdfTotalPages(0);
       setPdfCurrentPage(1);
+      setPdfZoom(1.0);
     }
   }, [readingBookId, readingCaseletIndex]);
 
   useEffect(() => {
     if (pdfDocument) {
-      renderPdfPage(pdfDocument, pdfCurrentPage);
+      renderPdfPage(pdfDocument, pdfCurrentPage, pdfZoom);
     }
-  }, [pdfCurrentPage, pdfDocument]);
+
+    const handleResize = () => {
+      if (pdfDocument) {
+        renderPdfPage(pdfDocument, pdfCurrentPage, pdfZoom);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (activeRenderTaskRef.current) {
+        try {
+          activeRenderTaskRef.current.cancel();
+        } catch (e) {}
+        activeRenderTaskRef.current = null;
+      }
+    };
+  }, [pdfCurrentPage, pdfDocument, pdfZoom]);
 
   // Practice State
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
@@ -867,6 +1002,11 @@ export default function TextbookPortal({
           const identifier = (parsed.role === "faculty" || parsed.role === "student") ? parsed.collegeEmail : parsed.mobileNumber;
           const fresh = getUser(identifier, parsed.accessId);
           if (fresh) {
+            if (parsed.plan && parsed.plan !== fresh.plan) {
+              fresh.plan = parsed.plan;
+              updateUser(fresh.mobileNumber, { plan: parsed.plan });
+              if (fresh.accessId) updateUser(fresh.accessId, { plan: parsed.plan });
+            }
             setUser(fresh);
             sessionStorage.setItem("lurnexa_current_user", JSON.stringify(fresh));
           } else {
@@ -914,23 +1054,23 @@ export default function TextbookPortal({
       return;
     }
 
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    if (isMobileDevice) {
-      setIsReaderBlurred(true);
-    } else {
-      setIsReaderBlurred(false);
-    }
+    // Always start reader in unblurred state so content is readable
+    setIsReaderBlurred(false);
+    document.documentElement.classList.remove("force-secure-blur");
 
-    // Inject high-speed blur stylesheet
+    // Inject high-speed blur stylesheet (without blocking pointer-events)
     const styleEl = document.createElement("style");
     styleEl.id = "secure-blur-styles";
     styleEl.innerHTML = `
       .force-secure-blur {
-        filter: blur(80px) !important;
+        filter: blur(50px) !important;
         opacity: 0 !important;
-        background: #090d16 !important;
-        pointer-events: none !important;
-        transition: none !important;
+        transition: opacity 0.01s ease-out, filter 0.01s ease-out !important;
+      }
+      #secure-reader-canvas {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
       }
     `;
     document.head.appendChild(styleEl);
@@ -961,22 +1101,33 @@ export default function TextbookPortal({
 
     const removeBlur = () => {
       document.documentElement.classList.remove("force-secure-blur");
-      if (!isMobileDevice) {
-        setIsReaderBlurred(false);
-      }
+      setIsReaderBlurred(false);
     };
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Preemptively blur on Windows / Meta key press
-      if (e.key === "Meta" || e.keyCode === 91 || e.keyCode === 92) {
+      if (e.key === "ArrowRight") {
+        triggerNextPage();
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        triggerPrevPage();
+        return;
+      }
+
+      // Preemptively blur on Windows / Meta key press or PrintScreen key
+      if (
+        e.key === "PrintScreen" || 
+        e.keyCode === 44 ||
+        e.key === "Meta" || 
+        e.keyCode === 91 || 
+        e.keyCode === 92
+      ) {
         applyBlur();
-        try { navigator.clipboard.writeText(""); } catch (err) {}
+        safeClearClipboard();
         return;
       }
 
       if (
-        e.key === "PrintScreen" || 
-        e.keyCode === 44 ||
         e.key === "VolumeUp" ||
         e.key === "VolumeDown" ||
         e.keyCode === 174 ||
@@ -989,46 +1140,43 @@ export default function TextbookPortal({
         e.key === "F12"
       ) {
         e.preventDefault();
-        try { navigator.clipboard.writeText(""); } catch (err) {}
+        safeClearClipboard();
         applyBlur();
-        alert("Action not allowed: Screenshot, printing, saving, and developer tools are disabled for secure content.");
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === "PrintScreen" || e.keyCode === 44 || e.key === "Meta" || e.keyCode === 91 || e.keyCode === 92) {
-        try { navigator.clipboard.writeText(""); } catch (err) {}
+        safeClearClipboard();
         applyBlur();
       }
     };
 
     const handleWindowBlur = () => {
+      // Instantly blur screen and clear clipboard whenever window loses focus (Snipping tool, PrtScn, Win key, OS capture)
       applyBlur();
+      safeClearClipboard();
     };
 
     const handleWindowFocus = () => {
-      // Small timeout to ensure they returned from overlay
       setTimeout(() => {
-        if (document.hasFocus()) {
-          removeBlur();
-        }
-      }, 300);
+        removeBlur();
+      }, 150);
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
         applyBlur();
+        safeClearClipboard();
       } else {
         removeBlur();
       }
     };
 
-    const handleMouseLeave = () => {
-      applyBlur();
-    };
-
-    const handleMouseEnter = () => {
-      removeBlur();
+    const handleUserInteraction = () => {
+      if (document.visibilityState === "visible") {
+        removeBlur();
+      }
     };
 
     window.addEventListener("contextmenu", preventDefault);
@@ -1039,9 +1187,8 @@ export default function TextbookPortal({
     window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("blur", handleWindowBlur);
     window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("click", handleUserInteraction);
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    document.addEventListener("mouseleave", handleMouseLeave);
-    document.addEventListener("mouseenter", handleMouseEnter);
 
     return () => {
       document.documentElement.classList.remove("force-secure-blur");
@@ -1059,9 +1206,8 @@ export default function TextbookPortal({
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("blur", handleWindowBlur);
       window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("click", handleUserInteraction);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      document.removeEventListener("mouseleave", handleMouseLeave);
-      document.removeEventListener("mouseenter", handleMouseEnter);
     };
   }, [readingBookId, readingCaseletIndex]);
 
@@ -1111,12 +1257,16 @@ export default function TextbookPortal({
               sessionStorage.setItem("lurnexa_current_user", JSON.stringify(updatedUser));
               setUser(updatedUser);
               
-              // Sync with local memory database
-              const users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
-              const index = users.findIndex(u => u.mobileNumber === currentUserObj.mobileNumber);
-              if (index !== -1) {
-                users[index].plan = targetPlan;
-                setStorageItem('lurnexa_users', users);
+              // Sync with local memory database and server DB
+              updateUser(currentUserObj.mobileNumber, { plan: targetPlan });
+              if (currentUserObj.accessId) {
+                updateUser(currentUserObj.accessId, { plan: targetPlan });
+                const allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
+                const idx = allowedIds.findIndex(item => item.accessId.toUpperCase() === currentUserObj.accessId.toUpperCase());
+                if (idx !== -1) {
+                  allowedIds[idx].plan = targetPlan;
+                  setStorageItem('lurnexa_allowed_access_ids', allowedIds);
+                }
               }
             } catch (jsonErr) {
               console.error("Error parsing logged-in user for plan upgrade sync:", jsonErr);
@@ -3777,26 +3927,30 @@ export default function TextbookPortal({
                         user.plan === "book_caselet" ? "Book + Caselet" :
                         user.plan === "book_portal" ? "Book + Portal Access" :
                         user.plan === "book_caselet_portal" ? "Book + Caselet + Portal" :
-                        "Complete Portal Access"
+                        "Full Access"
                       }</span>
                     </span>
-                    {user.plan !== "book_caselet_portal" && (
-                      <button
-                        onClick={() => {
-                          const currentPrice = getSoftCopyPrice(user.plan || "complete", user.bookId || "1");
-                          const firstEligible = ALL_PLANS.find(p => p.key !== user.plan && getSoftCopyPrice(p.key, user.bookId || "1") > currentPrice);
-                          if (firstEligible) {
-                            setSelectedUpgradePlan(firstEligible.key);
-                          } else {
-                            setSelectedUpgradePlan("");
-                          }
-                          setShowUpgradeModal(true);
-                        }}
-                        className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-sm animate-pulse ml-2"
-                      >
-                        Upgrade Plan
-                      </button>
-                    )}
+                    {(() => {
+                      const currentPrice = getSoftCopyPrice(user.plan || "complete", user.bookId || "1");
+                      const eligiblePlans = ALL_PLANS.filter(p => {
+                        if (p.key === user.plan) return false;
+                        if (!isPlanAllowedForBook(p.key, user.bookId || "1")) return false;
+                        return getSoftCopyPrice(p.key, user.bookId || "1") > currentPrice;
+                      });
+                      if (eligiblePlans.length === 0) return null;
+
+                      return (
+                        <button
+                          onClick={() => {
+                            setSelectedUpgradePlan(eligiblePlans[0]?.key || "");
+                            setShowUpgradeModal(true);
+                          }}
+                          className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-sm animate-pulse ml-2"
+                        >
+                          Upgrade Plan
+                        </button>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -7454,8 +7608,8 @@ export default function TextbookPortal({
                               {publishedQuizCode}
                             </span>
                             <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(publishedQuizCode);
+                              onClick={async () => {
+                                await copyToClipboard(publishedQuizCode);
                                 showToast("Quiz code copied to clipboard!", 'success');
                               }}
                               className="p-3 bg-slate-50 hover:bg-slate-850 rounded-xl text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors"
@@ -9619,7 +9773,11 @@ export default function TextbookPortal({
 
               {showUpgradeModal && (() => {
                 const currentPrice = user ? getSoftCopyPrice(user.plan || "complete", user.bookId || "1") : 0;
-                const eligiblePlans = user ? ALL_PLANS.filter(p => p.key !== user.plan && getSoftCopyPrice(p.key, user.bookId || "1") > currentPrice) : [];
+                const eligiblePlans = user ? ALL_PLANS.filter(p => {
+                  if (p.key === user.plan) return false;
+                  if (!isPlanAllowedForBook(p.key, user.bookId || "1")) return false;
+                  return getSoftCopyPrice(p.key, user.bookId || "1") > currentPrice;
+                }) : [];
                 const currentPlanLabel = ALL_PLANS.find(p => p.key === user?.plan)?.label || user?.plan || "Unknown";
                 const selectedPlanPrice = selectedUpgradePlan ? getSoftCopyPrice(selectedUpgradePlan, user?.bookId || "1") : 0;
                 const netUpgradeCost = Math.max(0, selectedPlanPrice - currentPrice);
@@ -10032,62 +10190,97 @@ export default function TextbookPortal({
           `}</style>
 
           {/* Secure Reader Header */}
-          <div className="flex justify-between items-center px-6 py-4 bg-slate-900 border-b border-slate-800 text-white shrink-0 font-sans">
-            <div>
-              <h4 className="text-lg font-bold text-white tracking-tight">
-                {PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId)?.title || "Secure Textbook"}
-              </h4>
-              <p className="text-xs text-slate-400">Secure e-Reader Mode — Printing, copying, and screenshots are restricted.</p>
-            </div>
-            
-            {/* High-quality page navigation buttons */}
-            <div className="flex items-center gap-4 bg-slate-950/45 px-4 py-2 rounded-2xl border border-slate-850">
-              <button
-                disabled={pdfCurrentPage <= 1 || pdfLoading}
-                onClick={() => setPdfCurrentPage(prev => Math.max(1, prev - 1))}
-                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
-              >
-                Previous Page
-              </button>
-              {isEditingPage ? (
-                <div className="flex items-center gap-1 min-w-[75px] justify-center">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={pageInputVal}
-                    onChange={(e) => setPageInputVal(e.target.value.replace(/\D/g, ""))}
-                    onBlur={handlePageSubmit}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handlePageSubmit();
-                    }}
-                    className="w-10 bg-slate-800 text-white border border-slate-700 rounded text-center text-xs px-1 py-0.5 focus:outline-none focus:border-fuchsia-500 font-mono font-bold"
-                    autoFocus
-                  />
-                  <span className="text-xs font-mono text-slate-350 font-bold">of {pdfTotalPages || "..."}</span>
-                </div>
-              ) : (
-                <span 
-                  onClick={() => setIsEditingPage(true)}
-                  className="text-xs font-mono text-slate-350 min-w-[75px] text-center font-bold cursor-pointer hover:text-white transition-colors"
-                  title="Click to jump to page"
-                >
-                  Page {pdfCurrentPage} of {pdfTotalPages || "..."}
-                </span>
-              )}
-              <button
-                disabled={pdfCurrentPage >= pdfTotalPages || pdfLoading}
-                onClick={() => setPdfCurrentPage(prev => Math.min(pdfTotalPages, prev + 1))}
-                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
-              >
-                Next Page
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-2 px-3 py-2.5 md:px-6 md:py-3.5 bg-slate-900 border-b border-slate-800 text-white shrink-0 font-sans">
+            <div className="flex items-center justify-between w-full md:w-auto">
+              <div>
+                <h4 className="text-sm md:text-lg font-bold text-white tracking-tight truncate max-w-[220px] sm:max-w-md">
+                  {PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId)?.title || "Secure Textbook"}
+                </h4>
+                <p className="text-[11px] text-slate-400 hidden sm:block">Secure e-Reader Mode — Printing, copying, and screenshots are restricted.</p>
+              </div>
               <button
                 onClick={closeSecureReader}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                className="md:hidden bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0"
+              >
+                Close
+              </button>
+            </div>
+            
+            {/* High-quality page navigation & Zoom controls */}
+            <div className="flex items-center justify-between sm:justify-end w-full md:w-auto gap-2 md:gap-3 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-1.5 sm:gap-3 bg-slate-950/60 px-2.5 py-1 md:px-4 md:py-1.5 rounded-xl md:rounded-2xl border border-slate-800">
+                <button
+                  disabled={pdfCurrentPage <= 1 || pdfLoading}
+                  onClick={triggerPrevPage}
+                  className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-2 py-1 md:px-3.5 md:py-1.5 rounded-lg md:rounded-xl text-[11px] md:text-xs font-bold transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                >
+                  Prev
+                </button>
+                {isEditingPage ? (
+                  <div className="flex items-center gap-1 min-w-[55px] md:min-w-[75px] justify-center">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={pageInputVal}
+                      onChange={(e) => setPageInputVal(e.target.value.replace(/\D/g, ""))}
+                      onBlur={handlePageSubmit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handlePageSubmit();
+                      }}
+                      className="w-8 md:w-10 bg-slate-800 text-white border border-slate-700 rounded text-center text-xs px-1 py-0.5 focus:outline-none focus:border-fuchsia-500 font-mono font-bold"
+                      autoFocus
+                    />
+                    <span className="text-[11px] md:text-xs font-mono text-slate-350 font-bold">/ {pdfTotalPages || "..."}</span>
+                  </div>
+                ) : (
+                  <span 
+                    onClick={() => setIsEditingPage(true)}
+                    className="text-[11px] md:text-xs font-mono text-slate-350 min-w-[55px] md:min-w-[75px] text-center font-bold cursor-pointer hover:text-white transition-colors"
+                    title="Click to jump to page"
+                  >
+                    {pdfCurrentPage} / {pdfTotalPages || "..."}
+                  </span>
+                )}
+                <button
+                  disabled={pdfCurrentPage >= pdfTotalPages || pdfLoading}
+                  onClick={triggerNextPage}
+                  className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-2 py-1 md:px-3.5 md:py-1.5 rounded-lg md:rounded-xl text-[11px] md:text-xs font-bold transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                >
+                  Next
+                </button>
+              </div>
+
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-1 bg-slate-950/60 px-2 py-1 md:px-3 md:py-1.5 rounded-xl md:rounded-2xl border border-slate-800">
+                <button
+                  disabled={pdfZoom <= 0.5 || pdfLoading}
+                  onClick={handleZoomOut}
+                  className="p-1 hover:bg-slate-800 disabled:opacity-30 text-slate-300 hover:text-white rounded-lg transition cursor-pointer"
+                  title="Zoom Out (-)"
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <button
+                  onClick={handleResetZoom}
+                  className="text-[10px] md:text-xs font-mono font-bold text-slate-300 hover:text-white px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                  title="Click to reset zoom to 100%"
+                >
+                  {Math.round(pdfZoom * 100)}%
+                </button>
+                <button
+                  disabled={pdfZoom >= 3.0 || pdfLoading}
+                  onClick={handleZoomIn}
+                  className="p-1 hover:bg-slate-800 disabled:opacity-30 text-slate-300 hover:text-white rounded-xl transition cursor-pointer"
+                  title="Zoom In (+)"
+                >
+                  <ZoomIn size={14} />
+                </button>
+              </div>
+
+              <button
+                onClick={closeSecureReader}
+                className="hidden md:flex bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition items-center gap-1.5 shrink-0"
               >
                 Close Reader
               </button>
@@ -10100,27 +10293,116 @@ export default function TextbookPortal({
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
             onTouchMove={handleTouchMove}
-            className="relative flex-1 bg-zinc-100 overflow-y-auto p-8 flex justify-center items-start select-none"
+            className={`relative flex-1 bg-zinc-100/90 ${pdfZoom > 1.0 ? "overflow-auto items-start p-6" : "overflow-hidden items-center p-2 md:p-3"} flex justify-center select-none h-full max-h-[calc(100vh-68px)]`}
           >
+            {/* Page flip 3D rotation animation style */}
+            <style>{`
+              @keyframes pageFlipNext {
+                0% {
+                  transform: perspective(1400px) rotateY(-28deg) scale(0.96);
+                  opacity: 0.8;
+                  transform-origin: left center;
+                }
+                50% {
+                  transform: perspective(1400px) rotateY(-12deg) scale(0.98);
+                  opacity: 0.95;
+                }
+                100% {
+                  transform: perspective(1400px) rotateY(0deg) scale(1);
+                  opacity: 1;
+                }
+              }
+
+              @keyframes pageFlipPrev {
+                0% {
+                  transform: perspective(1400px) rotateY(28deg) scale(0.96);
+                  opacity: 0.8;
+                  transform-origin: right center;
+                }
+                50% {
+                  transform: perspective(1400px) rotateY(12deg) scale(0.98);
+                  opacity: 0.95;
+                }
+                100% {
+                  transform: perspective(1400px) rotateY(0deg) scale(1);
+                  opacity: 1;
+                }
+              }
+
+              .animate-page-flip-next {
+                animation: pageFlipNext 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+              }
+
+              .animate-page-flip-prev {
+                animation: pageFlipPrev 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+              }
+            `}</style>
+
+            {/* Interactive Left Side Touch / Click Zone (Previous Page) */}
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerPrevPage();
+              }}
+              className={`absolute left-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-start pl-6 group transition-all select-none ${
+                pdfCurrentPage <= 1 ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
+              }`}
+              title="Click / Tap left side for Previous Page"
+            >
+              <div className="opacity-0 group-hover:opacity-100 transition-all bg-slate-900/90 text-white p-3.5 rounded-full shadow-2xl backdrop-blur-md border border-slate-700/60 group-hover:scale-110 transform">
+                <ChevronLeft size={28} />
+              </div>
+            </div>
+
+            {/* Interactive Right Side Touch / Click Zone (Next Page) */}
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerNextPage();
+              }}
+              className={`absolute right-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-end pr-6 group transition-all select-none ${
+                pdfCurrentPage >= pdfTotalPages ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
+              }`}
+              title="Click / Tap right side for Next Page"
+            >
+              <div className="opacity-0 group-hover:opacity-100 transition-all bg-slate-900/90 text-white p-3.5 rounded-full shadow-2xl backdrop-blur-md border border-slate-700/60 group-hover:scale-110 transform">
+                <ChevronRight size={28} />
+              </div>
+            </div>
+
             {/* Dynamic watermark overlaid */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden z-[99] grid grid-cols-3 grid-rows-3 opacity-[0.12] select-none">
-              {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-center -rotate-45 text-slate-400 text-2xl font-extrabold tracking-widest uppercase whitespace-nowrap">
-                  {user?.collegeEmail || user?.mobileNumber || "Lurnexa Publication"}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-[99] grid grid-cols-4 grid-rows-4 opacity-[0.20] select-none">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-center -rotate-35 text-slate-500 text-sm md:text-base font-extrabold tracking-widest uppercase whitespace-nowrap">
+                  {user?.collegeEmail || user?.mobileNumber || "LURNEXA PUBLICATION"}
                 </div>
               ))}
             </div>
 
             {/* Blur warning overlay */}
             {isReaderBlurred && (
-              <div className="absolute inset-0 bg-slate-950/95 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md pointer-events-none select-none">
+              <div 
+                onClick={() => {
+                  document.documentElement.classList.remove("force-secure-blur");
+                  setIsReaderBlurred(false);
+                }}
+                className="absolute inset-0 bg-slate-950/90 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md cursor-pointer select-none"
+              >
                 <Shield className="text-fuchsia-500 mb-4 animate-bounce" size={48} />
                 <h3 className="text-xl font-bold text-white mb-2">Secure Reader Mode</h3>
-                <p className="text-sm text-slate-400 max-w-md">
-                  {isMobile 
-                    ? "Press and hold down on the page area to read. Release to protect."
-                    : "Content is blurred for security while the reader window is out of focus."}
+                <p className="text-sm text-slate-400 max-w-md mb-4">
+                  Content was temporarily hidden. Click or tap anywhere to resume reading.
                 </p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    document.documentElement.classList.remove("force-secure-blur");
+                    setIsReaderBlurred(false);
+                  }}
+                  className="px-5 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold rounded-xl shadow-lg transition"
+                >
+                  Resume Reading
+                </button>
               </div>
             )}
 
@@ -10133,7 +10415,13 @@ export default function TextbookPortal({
             ) : (
               <canvas
                 id="secure-reader-canvas"
-                className="max-w-full h-auto bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none"
+                className={`bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none transition-all duration-300 shrink-0 ${
+                  pageFlipAnim === "flip-next"
+                    ? "animate-page-flip-next"
+                    : pageFlipAnim === "flip-prev"
+                    ? "animate-page-flip-prev"
+                    : ""
+                }`}
                 style={{ userSelect: 'none' }}
               />
             )}
@@ -10170,48 +10458,77 @@ export default function TextbookPortal({
                 <p className="text-xs text-slate-400">Secure Caselet Mode — Printing, copying, and screenshots are restricted.</p>
               </div>
 
-              {/* High-quality page navigation buttons */}
-              <div className="flex items-center gap-4 bg-slate-950/45 px-4 py-2 rounded-2xl border border-slate-850">
-                <button
-                  disabled={pdfCurrentPage <= 1 || pdfLoading}
-                  onClick={() => setPdfCurrentPage(prev => Math.max(1, prev - 1))}
-                  className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
-                >
-                  Previous Page
-                </button>
-                {isEditingPage ? (
-                  <div className="flex items-center gap-1 min-w-[75px] justify-center">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={pageInputVal}
-                      onChange={(e) => setPageInputVal(e.target.value.replace(/\D/g, ""))}
-                      onBlur={handlePageSubmit}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handlePageSubmit();
-                      }}
-                      className="w-10 bg-slate-800 text-white border border-slate-700 rounded text-center text-xs px-1 py-0.5 focus:outline-none focus:border-fuchsia-500 font-mono font-bold"
-                      autoFocus
-                    />
-                    <span className="text-xs font-mono text-slate-350 font-bold">of {pdfTotalPages || "..."}</span>
-                  </div>
-                ) : (
-                  <span 
-                    onClick={() => setIsEditingPage(true)}
-                    className="text-xs font-mono text-slate-350 min-w-[75px] text-center font-bold cursor-pointer hover:text-white transition-colors"
-                    title="Click to jump to page"
+              {/* High-quality page navigation & Zoom controls */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 bg-slate-950/45 px-4 py-2 rounded-2xl border border-slate-850">
+                  <button
+                    disabled={pdfCurrentPage <= 1 || pdfLoading}
+                    onClick={triggerPrevPage}
+                    className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
                   >
-                    Page {pdfCurrentPage} of {pdfTotalPages || "..."}
-                  </span>
-                )}
-                <button
-                  disabled={pdfCurrentPage >= pdfTotalPages || pdfLoading}
-                  onClick={() => setPdfCurrentPage(prev => Math.min(pdfTotalPages, prev + 1))}
-                  className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
-                >
-                  Next Page
-                </button>
+                    Previous Page
+                  </button>
+                  {isEditingPage ? (
+                    <div className="flex items-center gap-1 min-w-[75px] justify-center">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={pageInputVal}
+                        onChange={(e) => setPageInputVal(e.target.value.replace(/\D/g, ""))}
+                        onBlur={handlePageSubmit}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handlePageSubmit();
+                        }}
+                        className="w-10 bg-slate-800 text-white border border-slate-700 rounded text-center text-xs px-1 py-0.5 focus:outline-none focus:border-fuchsia-500 font-mono font-bold"
+                        autoFocus
+                      />
+                      <span className="text-xs font-mono text-slate-350 font-bold">of {pdfTotalPages || "..."}</span>
+                    </div>
+                  ) : (
+                    <span 
+                      onClick={() => setIsEditingPage(true)}
+                      className="text-xs font-mono text-slate-350 min-w-[75px] text-center font-bold cursor-pointer hover:text-white transition-colors"
+                      title="Click to jump to page"
+                    >
+                      Page {pdfCurrentPage} of {pdfTotalPages || "..."}
+                    </span>
+                  )}
+                  <button
+                    disabled={pdfCurrentPage >= pdfTotalPages || pdfLoading}
+                    onClick={triggerNextPage}
+                    className="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                  >
+                    Next Page
+                  </button>
+                </div>
+
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1.5 bg-slate-950/60 px-3 py-1.5 rounded-2xl border border-slate-800 shadow-inner">
+                  <button
+                    disabled={pdfZoom <= 0.5 || pdfLoading}
+                    onClick={handleZoomOut}
+                    className="p-1.5 hover:bg-slate-800 disabled:opacity-30 text-slate-300 hover:text-white rounded-xl transition cursor-pointer"
+                    title="Zoom Out (-)"
+                  >
+                    <ZoomOut size={16} />
+                  </button>
+                  <button
+                    onClick={handleResetZoom}
+                    className="text-xs font-mono font-bold text-slate-300 hover:text-white px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                    title="Click to reset zoom to 100%"
+                  >
+                    {Math.round(pdfZoom * 100)}%
+                  </button>
+                  <button
+                    disabled={pdfZoom >= 3.0 || pdfLoading}
+                    onClick={handleZoomIn}
+                    className="p-1.5 hover:bg-slate-800 disabled:opacity-30 text-slate-300 hover:text-white rounded-xl transition cursor-pointer"
+                    title="Zoom In (+)"
+                  >
+                    <ZoomIn size={16} />
+                  </button>
+                </div>
               </div>
               
               <div className="flex items-center gap-3">
@@ -10230,27 +10547,116 @@ export default function TextbookPortal({
               onTouchEnd={handleTouchEnd}
               onTouchCancel={handleTouchEnd}
               onTouchMove={handleTouchMove}
-              className="relative flex-1 bg-zinc-100 overflow-y-auto p-8 flex justify-center items-start select-none"
+              className={`relative flex-1 bg-zinc-100/90 ${pdfZoom > 1.0 ? "overflow-auto items-start p-6" : "overflow-hidden items-center p-2 md:p-3"} flex justify-center select-none h-full max-h-[calc(100vh-68px)]`}
             >
+              {/* Page flip 3D rotation animation style */}
+              <style>{`
+                @keyframes pageFlipNext {
+                  0% {
+                    transform: perspective(1400px) rotateY(-28deg) scale(0.96);
+                    opacity: 0.8;
+                    transform-origin: left center;
+                  }
+                  50% {
+                    transform: perspective(1400px) rotateY(-12deg) scale(0.98);
+                    opacity: 0.95;
+                  }
+                  100% {
+                    transform: perspective(1400px) rotateY(0deg) scale(1);
+                    opacity: 1;
+                  }
+                }
+
+                @keyframes pageFlipPrev {
+                  0% {
+                    transform: perspective(1400px) rotateY(28deg) scale(0.96);
+                    opacity: 0.8;
+                    transform-origin: right center;
+                  }
+                  50% {
+                    transform: perspective(1400px) rotateY(12deg) scale(0.98);
+                    opacity: 0.95;
+                  }
+                  100% {
+                    transform: perspective(1400px) rotateY(0deg) scale(1);
+                    opacity: 1;
+                  }
+                }
+
+                .animate-page-flip-next {
+                  animation: pageFlipNext 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+                }
+
+                .animate-page-flip-prev {
+                  animation: pageFlipPrev 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+                }
+              `}</style>
+
+              {/* Interactive Left Side Touch / Click Zone (Previous Page) */}
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerPrevPage();
+                }}
+                className={`absolute left-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-start pl-6 group transition-all select-none ${
+                  pdfCurrentPage <= 1 ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
+                }`}
+                title="Click / Tap left side for Previous Page"
+              >
+                <div className="opacity-0 group-hover:opacity-100 transition-all bg-slate-900/90 text-white p-3.5 rounded-full shadow-2xl backdrop-blur-md border border-slate-700/60 group-hover:scale-110 transform">
+                  <ChevronLeft size={28} />
+                </div>
+              </div>
+
+              {/* Interactive Right Side Touch / Click Zone (Next Page) */}
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerNextPage();
+                }}
+                className={`absolute right-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-end pr-6 group transition-all select-none ${
+                  pdfCurrentPage >= pdfTotalPages ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
+                }`}
+                title="Click / Tap right side for Next Page"
+              >
+                <div className="opacity-0 group-hover:opacity-100 transition-all bg-slate-900/90 text-white p-3.5 rounded-full shadow-2xl backdrop-blur-md border border-slate-700/60 group-hover:scale-110 transform">
+                  <ChevronRight size={28} />
+                </div>
+              </div>
+
               {/* Dynamic watermark overlaid */}
-              <div className="absolute inset-0 pointer-events-none overflow-hidden z-[99] grid grid-cols-3 grid-rows-3 opacity-[0.12] select-none">
-                {Array.from({ length: 9 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-center -rotate-45 text-slate-400 text-2xl font-extrabold tracking-widest uppercase whitespace-nowrap">
-                    {user?.collegeEmail || user?.mobileNumber || "Lurnexa Publication"}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-[99] grid grid-cols-4 grid-rows-4 opacity-[0.20] select-none">
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-center -rotate-35 text-slate-500 text-sm md:text-base font-extrabold tracking-widest uppercase whitespace-nowrap">
+                    {user?.collegeEmail || user?.mobileNumber || "LURNEXA PUBLICATION"}
                   </div>
                 ))}
               </div>
 
               {/* Blur warning overlay */}
               {isReaderBlurred && (
-                <div className="absolute inset-0 bg-slate-950/95 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md pointer-events-none select-none">
+                <div 
+                  onClick={() => {
+                    document.documentElement.classList.remove("force-secure-blur");
+                    setIsReaderBlurred(false);
+                  }}
+                  className="absolute inset-0 bg-slate-950/90 z-[100] flex flex-col items-center justify-center text-center p-6 backdrop-blur-md cursor-pointer select-none"
+                >
                   <Shield className="text-fuchsia-500 mb-4 animate-bounce" size={48} />
                   <h3 className="text-xl font-bold text-white mb-2">Secure Reader Mode</h3>
-                  <p className="text-sm text-slate-400 max-w-md">
-                    {isMobile 
-                      ? "Press and hold down on the page area to read. Release to protect."
-                      : "Content is blurred for security while the reader window is out of focus."}
+                  <p className="text-sm text-slate-400 max-w-md mb-4">
+                    Content was temporarily hidden. Click or tap anywhere to resume reading.
                   </p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      document.documentElement.classList.remove("force-secure-blur");
+                      setIsReaderBlurred(false);
+                    }}
+                    className="px-5 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold rounded-xl shadow-lg transition"
+                  >
+                    Resume Reading
+                  </button>
                 </div>
               )}
 
@@ -10263,7 +10669,13 @@ export default function TextbookPortal({
               ) : (
                 <canvas
                   id="secure-reader-canvas"
-                  className="max-w-full h-auto bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none"
+                  className={`bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none transition-all duration-300 shrink-0 ${
+                    pageFlipAnim === "flip-next"
+                      ? "animate-page-flip-next"
+                      : pageFlipAnim === "flip-prev"
+                      ? "animate-page-flip-prev"
+                      : ""
+                  }`}
                   style={{ userSelect: 'none' }}
                 />
               )}

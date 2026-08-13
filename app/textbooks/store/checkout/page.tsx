@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getColleges, createUser, getAllUsers, getBookCode, TextbookUser, College, getAllAccessIds, setStorageItem, AllowedAccessId, getCoupons, initDb, Coupon } from "@/lib/dbClient";
+import { copyToClipboard as copyToClipboardUtil } from "@/lib/utils";
 
 const getShippingCost = (pincode: string): number => {
   const cleanPin = (pincode || "").trim();
@@ -763,9 +764,9 @@ function CheckoutContent() {
   if (verificationSuccess && verifiedOrderDetails) {
     const isSoftCopy = format === "soft" || verifiedOrderDetails.shipping_address === "Soft Copy Access";
 
-    const copyToClipboard = () => {
+    const copyToClipboard = async () => {
       if (generatedAccessId) {
-        navigator.clipboard.writeText(generatedAccessId);
+        await copyToClipboardUtil(generatedAccessId);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }

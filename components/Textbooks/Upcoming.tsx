@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, ChevronRight, Tag, User, X, Info, GraduationCap, Calendar } from 'lucide-react';
+import { BookOpen, ChevronRight, Tag, User, X, Info, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const textbooks = [
@@ -9,7 +9,7 @@ const textbooks = [
     author: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
     domain: "Economics / Trade Policy",
     status: "In Press",
-    date: "2026-05-18",
+    date: "2026-08-30",
     isbn: "978-81-685077-7-7",
     pdfFileName: "minerals.pdf",
     aboutBook: "This study presents a comprehensive and data-driven examination of India's mineral import landscape, offering a distinctive economy-wide perspective rarely found in existing literature. By integrating long-term trade trends with advanced simulation and modelling techniques, it moves beyond conventional descriptive analysis to evaluate the real economic implications of mineral import decisions on output, employment, prices, and trade dynamics. Covering a wide spectrum of critical minerals and situating India within the global resource ecosystem, the study provides a balanced and policy-relevant framework for understanding the interplay between domestic production and strategic imports.",
@@ -18,14 +18,38 @@ const textbooks = [
   {
     id: 4,
     title: "ENTREPRENEURSHIP DEVELOPMENT: CONCEPTS TO CREATION",
-    author: "Dr. Sourav Mondal",
+    author: "Dr. V. Padmaja, Dr. Archan Mitra, Dr. C. Udaya Kumar",
     domain: "Management / Entrepreneurship",
     status: "In Press",
-    date: "2026-05-18",
-    isbn: "978-81-685077-9-1",
+    date: "2026-08-30",
+    isbn: "978-81-685077-6-0",
     pdfFileName: "Gig_Economy_Social_Security_Research_Paper.pdf",
     aboutBook: "This book provides a comprehensive and practical roadmap for aspiring entrepreneurs, students, and professionals who aim to transform ideas into successful ventures. It begins by building a strong conceptual foundation of entrepreneurship—covering key theories, traits of successful entrepreneurs, and the evolving role of innovation in today’s dynamic business environment.\n\nMoving beyond theory, the book systematically guides readers through the entrepreneurial journey—from opportunity identification and idea validation to business model development and resource mobilization. It emphasizes real-world applicability by integrating case studies, contemporary examples, and structured frameworks that help bridge the gap between academic knowledge and practical execution.",
     aboutAuthor: "Dr. Sourav Mondal is a faculty member at the Indian Institute of Management Jammu, with expertise in entrepreneurship, strategic management, and operations. He earned his Ph.D. in Entrepreneurship from the Indian Institute of Technology (ISM) Dhanbad, where his doctoral research received the Best Thesis Award. He also holds postdoctoral experience from IIT Delhi.\n\nPrior to joining IIM Jammu, he served as an Assistant Professor at the Symbiosis Centre for Management Studies, Pune. His teaching and research interests include Entrepreneurship, Supply Chain Management, and Corporate Sustainability, with a focus on ESG and the Circular Economy."
+  },
+  {
+    id: 5,
+    title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE",
+    author: "Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, Mr. Shiva Prasad Munukuntla",
+    domain: "Computer Science / Programming",
+    status: "In Press",
+    date: "2026-08-30",
+    isbn: "978-81-685077-2-2",
+    pdfFileName: "python_programming.pdf",
+    aboutBook: "This book provides a comprehensive and hands-on foundation in Python programming, designed for students, educators, and software development professionals. It covers essential syntax, core data structures, object-oriented concepts, and practical problem-solving techniques. Emphasizing real-world applications, industry coding standards, and algorithmic thinking, the text guides readers through structured examples and project-oriented learning to build proficiency in modern Python software development.",
+    aboutAuthor: ""
+  },
+  {
+    id: 6,
+    title: "DATA STREAMING AND ANALYSIS",
+    author: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P",
+    domain: "Data Science / Analytics",
+    status: "In Press",
+    date: "2026-08-30",
+    isbn: "978-81-685077-8-4",
+    pdfFileName: "data_streaming_and_analysis.pdf",
+    aboutBook: "This textbook offers an in-depth exploration of real-time data streaming architectures, processing engines, and advanced analytics methods essential for modern data-driven ecosystems. It covers foundational stream processing concepts, distributed messaging systems, event-driven architectures, and scalable analytics algorithms. Designed for computer science students, researchers, and data engineering professionals, the book combines theoretical principles with practical frameworks to solve complex challenges in continuous data ingestion, real-time decision-making, and large-scale analytical processing.",
+    aboutAuthor: ""
   },
 ];
 
@@ -190,9 +214,13 @@ export default function Upcoming() {
               {/* Modal Content */}
               <div className="p-8 overflow-y-auto space-y-8">
                 <div>
-                  <h2 className="text-3xl font-black text-slate-900 mb-6 leading-tight">
+                  <h2 className="text-3xl font-black text-slate-900 mb-3 leading-tight">
                     {selectedBook.title}
                   </h2>
+                  <p className="text-slate-600 font-semibold text-sm mb-6 flex items-center gap-2">
+                    <User size={16} className="text-fuchsia-600 shrink-0" />
+                    <span>By {selectedBook.author}</span>
+                  </p>
                   
                   <div className="flex flex-wrap gap-3 mb-8">
                     <span className="px-4 py-2 bg-slate-100 rounded-xl text-slate-600 text-xs font-bold uppercase tracking-wide flex items-center gap-2">
@@ -221,21 +249,6 @@ export default function Upcoming() {
                     <p className="text-slate-600 leading-relaxed text-lg whitespace-pre-wrap">
                       {selectedBook.aboutBook}
                     </p>
-                  </section>
-
-                  <section className="space-y-4">
-                    <div className="flex items-center gap-2 text-slate-900">
-                      <div className="p-2 bg-fuchsia-100 rounded-lg text-fuchsia-600">
-                        <GraduationCap size={18} />
-                      </div>
-                      <h4 className="font-black uppercase tracking-wider text-sm">About the Author</h4>
-                    </div>
-                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                      <p className="text-slate-900 font-bold mb-2">{selectedBook.author}</p>
-                      <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
-                        {selectedBook.aboutAuthor}
-                      </p>
-                    </div>
                   </section>
                 </div>
               </div>

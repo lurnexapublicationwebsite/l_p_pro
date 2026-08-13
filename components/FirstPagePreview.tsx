@@ -27,6 +27,7 @@ export default function FirstPagePreview({ pdfUrl }: FirstPagePreviewProps) {
 
   useEffect(() => {
     let cancelled = false;
+    let renderTask: any = null;
 
     async function render() {
       try {
@@ -58,9 +59,13 @@ export default function FirstPagePreview({ pdfUrl }: FirstPagePreviewProps) {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        renderTask = page.render({ canvasContext: ctx, viewport });
+        await renderTask.promise;
         if (!cancelled) setStatus("ready");
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === "RenderingCancelledException" || err?.message?.includes("cancelled") || cancelled) {
+          return;
+        }
         console.error("PDF preview error:", err);
         if (!cancelled) setStatus("error");
       }
@@ -73,6 +78,11 @@ export default function FirstPagePreview({ pdfUrl }: FirstPagePreviewProps) {
 
     return () => {
       cancelled = true;
+      if (renderTask) {
+        try {
+          renderTask.cancel();
+        } catch (e) {}
+      }
     };
   }, [pdfUrl, containerWidth]);
 

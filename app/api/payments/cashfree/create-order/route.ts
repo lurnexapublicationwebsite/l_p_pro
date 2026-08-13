@@ -34,6 +34,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required booking and shipping details." }, { status: 400 });
     }
 
+    // Backend restriction for ML book (id 2) and AI book (id 6) softcopy plans
+    if ((bookId === "2" || bookId === "6") && format === "soft" && ["caselet", "book_caselet", "book_caselet_portal"].includes(plan)) {
+      return NextResponse.json({ error: "Selected soft copy plan is not available for this textbook." }, { status: 400 });
+    }
+
     const orderId = `LURN_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     // Generate sequential Access ID on the server
