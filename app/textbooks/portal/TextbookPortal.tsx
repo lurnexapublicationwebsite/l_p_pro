@@ -194,8 +194,9 @@ const SOFTCOPY_PLANS = ["book_only", "book_caselet", "book_portal", "book_casele
 
 const isPlanAllowedForBook = (planKey: string, bookId?: string): boolean => {
   if (bookId === "1") {
-    // Book 1 (Minerals): No softcopy available
-    if (SOFTCOPY_PLANS.includes(planKey)) return false;
+    // Book 1 (Minerals): Only book_only softcopy plan available (no caselets)
+    const restrictedFor1 = ["caselet", "book_caselet", "book_portal", "book_caselet_portal"];
+    if (restrictedFor1.includes(planKey)) return false;
   }
   if (bookId === "2") {
     // Book 2 (Machine Learning): No caselets available
@@ -206,6 +207,11 @@ const isPlanAllowedForBook = (planKey: string, bookId?: string): boolean => {
     // Book 6 (AI): Only book_only softcopy plan available
     const restrictedFor6 = ["caselet", "book_caselet", "book_portal", "book_caselet_portal"];
     if (restrictedFor6.includes(planKey)) return false;
+  }
+  if (bookId === "7") {
+    // Book 7 (Data Streaming): Only book_only softcopy plan available
+    const restrictedFor7 = ["caselet", "book_caselet", "book_portal", "book_caselet_portal"];
+    if (restrictedFor7.includes(planKey)) return false;
   }
   return true;
 };
@@ -221,11 +227,12 @@ const getPlanLabel = (planKey?: string) => {
 
 
 const PORTAL_PUBLISHED_BOOKS = [
-  { id: "1", title: "Introduction to Mineral Processing", pdfFileName: "minerals.pdf", coverImg: "/portal_coverpages/minerals.jpg", author: "Dr. K. Raghavan", price: 450 },
-  { id: "2", title: "Machine Learning", pdfFileName: "ml.pdf", coverImg: "/portal_coverpages/ml.png", author: "Prof. S. Balaji", price: 550 },
-  { id: "3", title: "Database Management Systems", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. V. Pallavi", price: 499 },
-  { id: "5", title: "Principles of Microeconomics for Business and Management", pdfFileName: "microeconomics.pdf", coverImg: "/portal_coverpages/microeconomics.jpeg", author: "Dr. Aruna Kumar Dash", price: 600 },
-  { id: "6", title: "Foundations of Artificial Intelligence: Concepts, Techniques and Applications", pdfFileName: "ai.pdf", coverImg: "/portal_coverpages/ai.jpg", author: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy", price: 499 }
+  { id: "1", title: "INDIAN MINERAL IMPORT POLICY OPTIONS: AN ECONOMYWIDE ANALYSIS", pdfFileName: "minerals.pdf", coverImg: "/portal_coverpages/minerals.jpg", author: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar", price: 699 },
+  { id: "2", title: "MACHINE LEARNING: A STRUCTURED APPROACH TO ALGORITHMS AND INTELLIGENT SYSTEMS", pdfFileName: "ml.pdf", coverImg: "/portal_coverpages/ml.png", author: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B", price: 599 },
+  { id: "3", title: "DATABASE MANAGEMENT SYSTEMS: CONCEPTS, DESIGN AND IMPLEMENTATION", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B", price: 649 },
+  { id: "5", title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT", pdfFileName: "microeconomics.pdf", coverImg: "/portal_coverpages/microeconomics.jpg", author: "Dr. Aruna Kumar Dash", price: 599 },
+  { id: "6", title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS", pdfFileName: "ai.pdf", coverImg: "/portal_coverpages/ai.jpg", author: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy", price: 399 },
+  { id: "7", title: "DATA STREAMING AND ANALYSIS", pdfFileName: "data_streaming_and_analysis.pdf", coverImg: "/portal_coverpages/data_streaming.jpeg", author: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P", price: 449 }
 ];
 
 interface Caselet {

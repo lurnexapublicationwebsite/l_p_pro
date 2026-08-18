@@ -480,7 +480,8 @@ export function initDb(): void {
       { id: "3", title: "Database Management Systems: Concepts & Design", code: "DB" },
       { id: "4", title: "Entrepreneurship Development: Concepts to Creation", code: "ED" },
       { id: "5", title: "Principles of Microeconomics for Business and Management", code: "PM" },
-      { id: "6", title: "Foundations of Artificial Intelligence: Concepts, Techniques and Applications", code: "AI" }
+      { id: "6", title: "Foundations of Artificial Intelligence: Concepts, Techniques and Applications", code: "AI" },
+      { id: "7", title: "Data Streaming and Analysis", code: "DS" }
     ];
     IN_MEMORY_DB['lurnexa_textbooks'] = defaultBooks;
   }

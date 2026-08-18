@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { allArticles, slugify } from '@/lib/data/articles';
+import { getAllBooks } from '@/lib/data/books';
 import fs from 'fs';
 import path from 'path';
 
@@ -111,6 +112,40 @@ export default function sitemap(): MetadataRoute.Sitemap {
     });
   });
 
+  // 6. Dynamic textbook routes (Maximum priority for search engine indexing and short-keyword ranking)
+  const books = getAllBooks();
+  books.forEach((book) => {
+    // Full URL slug
+    const route = `/textbooks/${book.slug}`;
+    sitemapMap.set(route, {
+      url: `${baseUrl}${route}`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1.0,
+    });
+
+    // Short URL alias slug if exists (e.g. /textbooks/machine-learning)
+    if (book.shortSlug) {
+      const shortRoute = `/textbooks/${book.shortSlug}`;
+      sitemapMap.set(shortRoute, {
+        url: `${baseUrl}${shortRoute}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily',
+        priority: 1.0,
+      });
+
+      // Exact-match root alias (e.g. /machine-learning)
+      const rootAliasRoute = `/${book.shortSlug}`;
+      sitemapMap.set(rootAliasRoute, {
+        url: `${baseUrl}${rootAliasRoute}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily',
+        priority: 1.0,
+      });
+    }
+  });
+
   // Return the unique list of sitemap URLs as an array
   return Array.from(sitemapMap.values());
 }
+

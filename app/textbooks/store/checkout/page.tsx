@@ -24,7 +24,8 @@ import {
   Sparkles,
   Compass,
   Truck,
-  Receipt
+  Receipt,
+  FileText
 } from "lucide-react";
 import Link from "next/link";
 import { getColleges, createUser, getAllUsers, getBookCode, TextbookUser, College, getAllAccessIds, setStorageItem, AllowedAccessId, getCoupons, initDb, Coupon } from "@/lib/dbClient";
@@ -48,48 +49,60 @@ const getShippingCost = (pincode: string): number => {
   return 120; // Rest of India (North, East, West)
 };
 
+const getPhysicalPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "3") {
+    if (plan === "caselet") return 99;
+    if (plan === "book_caselet") return 739;
+    return 649;
+  }
+  if (bookId === "5") {
+    if (plan === "caselet") return 99;
+    if (plan === "book_caselet") return 689;
+    return 599;
+  }
+  const found = PUBLISHED_BOOKS.find(b => b.id === bookId);
+  return found ? found.price : 649;
+};
+
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "1") {
+    if (plan === "book_only") return 499;
+    return 499;
+  }
+  if (bookId === "3") {
+    if (plan === "book_only") return 299;
+    if (plan === "caselet") return 49;
+    if (plan === "book_caselet") return 339;
+  }
+  if (bookId === "5") {
+    if (plan === "book_only") return 299;
+    if (plan === "caselet") return 49;
+    if (plan === "book_caselet") return 339;
+  }
+  if (bookId === "2") {
+    if (plan === "book_only") return 249;
+  }
+  if (bookId === "7") {
+    if (plan === "book_only") return 219;
+    return 219;
+  }
   if (bookId === "6") {
-    if (plan === "book_only") return 259;
+    if (plan === "book_only") return 199;
     if (plan === "caselet") return 60;
     if (plan === "book_caselet") return 295;
-    if (plan === "book_portal") return 259;
-    if (plan === "book_caselet_portal") return 329;
-    if (plan === "complete") return 200;
-    if (plan === "placements") return 150;
-    if (plan === "practice") return 80;
-    return 259;
+    return 199;
   }
   if (bookId === "5") {
     if (plan === "book_only") return 370;
     if (plan === "caselet") return 80;
     if (plan === "book_caselet") return 405;
-    if (plan === "book_portal") return 539;
-    if (plan === "book_caselet_portal") return 589;
-    if (plan === "complete") return 200;
-    if (plan === "placements") return 150;
-    if (plan === "practice") return 80;
   }
   let price = 399;
   switch (plan) {
     case "book_only": price = 230; break;
     case "caselet": price = 60; break;
     case "book_caselet": price = 265; break;
-    case "book_portal": price = 399; break;
-    case "book_caselet_portal": price = 449; break;
-    case "complete": price = 200; break;
-    case "placements": price = 150; break;
-    case "practice": price = 80; break;
     default: price = 399;
-  }
-  if (bookId === "2" || bookId === "3") {
-    if (bookId === "3") {
-      if (plan === "book_only") return 300;
-      if (plan === "book_caselet") return 335;
-      if (plan === "book_portal") return 469;
-      if (plan === "book_caselet_portal") return 519;
-    }
-    return price + 20;
   }
   return price;
 };
@@ -113,7 +126,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "Indian Mineral Import Policy Options: An Economywide Analysis",
     code: "MP",
     description: "This study presents a comprehensive and data-driven examination of India's mineral import landscape, offering a distinctive economy-wide perspective. By integrating long-term trade trends with advanced simulation and modelling techniques, it evaluates the real economic implications of mineral import decisions on output, employment, prices, and trade dynamics. Covering a wide spectrum of critical minerals and situating India within the global resource ecosystem, the study provides a balanced and policy-relevant framework for understanding the interplay between domestic production and strategic imports.",
-    price: 999,
+    price: 699,
     authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
     pages: 88,
     isbn: "978-81-685077-7-7",
@@ -125,7 +138,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "MACHINE LEARNING: A STRUCTURED APPROACH TO ALGORITHMS AND INTELLIGENT SYSTEMS",
     code: "ML",
     description: "This book offers a systematic and in-depth exploration of machine learning, designed to help readers build a strong foundation while progressing toward advanced applications. It begins by introducing the core principles of machine learning, including data representation, statistical thinking, and the fundamental paradigms of supervised, unsupervised, and reinforcement learning.",
-    price: 700,
+    price: 599,
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 231,
     isbn: "978-81-685077-3-9",
@@ -137,7 +150,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "DATABASE MANAGEMENT SYSTEMS: CONCEPTS, DESIGN AND IMPLEMENTATION",
     code: "DB",
     description: "This textbook provides a comprehensive and structured introduction to the fundamental concepts, design principles, and implementation techniques of Database Management Systems (DBMS). It is designed to guide learners from foundational topics such as data models and relational theory to advanced areas including SQL, schema refinement (normalization), and transaction management.",
-    price: 750,
+    price: 649,
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 248,
     isbn: "978-81-685077-5-3",
@@ -149,7 +162,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT",
     code: "PM",
     description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making.",
-    price: 600,
+    price: 599,
     authors: "Dr. Aruna Kumar Dash",
     pages: 277,
     isbn: "978-81-685077-1-5",
@@ -161,12 +174,24 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS",
     code: "AI",
     description: "This book provides a comprehensive foundation in Artificial Intelligence, exploring intelligent agents, state-space search algorithms, knowledge representation, machine learning paradigms, reasoning systems, and ethical AI implications for next-generation intelligent applications.",
-    price: 499,
+    price: 399,
     authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
     pages: 142,
     isbn: "978-81-685077-4-6",
     coverColor: "from-emerald-600 to-teal-950",
     pdfFileName: "ai.pdf"
+  },
+  {
+    id: "7",
+    title: "DATA STREAMING AND ANALYSIS",
+    code: "DS",
+    description: "This textbook offers an in-depth exploration of real-time data streaming architectures, processing engines, and advanced analytics methods essential for modern data-driven ecosystems. It covers foundational stream processing concepts, distributed messaging systems, event-driven architectures, and scalable analytics algorithms.",
+    price: 449,
+    authors: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P",
+    pages: 199,
+    isbn: "978-81-685077-8-4",
+    coverColor: "from-cyan-600 to-blue-950",
+    pdfFileName: "data_streaming_and_analysis.pdf"
   }
 ];
 
@@ -193,6 +218,7 @@ function CheckoutContent() {
   const [verificationSuccess, setVerificationSuccess] = useState(false);
   const [verificationFailed, setVerificationFailed] = useState(false);
   const [verifiedOrderDetails, setVerifiedOrderDetails] = useState<any>(null);
+  const [generatedAccessId, setGeneratedAccessId] = useState<string>("");
 
   // Step state (1: Customer info, 2: Review, 3: Secure Payment)
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -219,9 +245,9 @@ function CheckoutContent() {
   const [collegesList, setCollegesList] = useState<College[]>([]);
   const [selectedCollegeCode, setSelectedCollegeCode] = useState("");
   const [customCollegeName, setCustomCollegeName] = useState("");
-  const [generatedAccessId, setGeneratedAccessId] = useState("");
-
-  const format = searchParams.get("format") || "physical";
+  const initialFormat = searchParams.get("format") || "physical";
+  const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft'>(initialFormat === 'soft' ? 'soft' : 'physical');
+  const format = selectedFormat;
   const plan = searchParams.get("plan") || "physical";
 
   // Coupon state
@@ -295,8 +321,9 @@ function CheckoutContent() {
       let coverImg = "/portal_coverpages/minerals.jpg";
       if (selected.id === "2") coverImg = "/portal_coverpages/ml.png";
       if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-      if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
+      if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
       if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpg";
+      if (selected.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
 
       setCheckoutItems([{
         id: selected.id,
@@ -438,16 +465,18 @@ function CheckoutContent() {
       errors.college = "Custom College Name is required.";
     }
 
-    // Address validation for all checkouts
-    if (!formAddress.trim()) errors.address = "Complete shipping address is required.";
-    if (!formCity.trim()) errors.city = "City is required.";
-    if (!formState.trim()) errors.state = "State is required.";
-    if (!formCountry.trim()) errors.country = "Country is required.";
-    if (formCountry.trim().toLowerCase() !== "india") {
-      errors.country = "Shipping is only available within India.";
-    }
-    if (!formPostalCode.trim() || !/^\d{6}$/.test(formPostalCode.trim())) {
-      errors.postalCode = "Please enter a valid 6-digit Postal/Pincode.";
+    // Address validation ONLY for physical paperback delivery
+    if (selectedFormat === "physical") {
+      if (!formAddress.trim()) errors.address = "Complete shipping address is required for paperback delivery.";
+      if (!formCity.trim()) errors.city = "City is required.";
+      if (!formState.trim()) errors.state = "State is required.";
+      if (!formCountry.trim()) errors.country = "Country is required.";
+      if (formCountry.trim().toLowerCase() !== "india") {
+        errors.country = "Shipping is only available within India.";
+      }
+      if (!formPostalCode.trim() || !/^\d{6}$/.test(formPostalCode.trim())) {
+        errors.postalCode = "Please enter a valid 6-digit Postal/Pincode.";
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -923,7 +952,7 @@ function CheckoutContent() {
                   <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
                     isSoftCopy ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-emerald-100 text-emerald-700'
                   }`}>
-                    {isSoftCopy ? 'Soft Copy' : 'Printed Book'}
+                    {isSoftCopy ? 'Digital Copy' : 'Paperback'}
                   </span>
                 </div>
               </div>
@@ -1226,6 +1255,46 @@ function CheckoutContent() {
           {step === 1 && (
             // STEP 1: Customer Information
             <div className="space-y-4">
+              {/* Edition Format Selector */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  Choose Book Edition Format:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFormat("physical")}
+                    className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                      selectedFormat === "physical"
+                        ? "bg-white border-fuchsia-600 shadow-sm ring-2 ring-fuchsia-600/20"
+                        : "bg-white/60 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <BookOpen size={18} className={selectedFormat === "physical" ? "text-fuchsia-600 mt-0.5 shrink-0" : "text-slate-400 mt-0.5 shrink-0"} />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">Paperback (Print)</div>
+                      <div className="text-[10px] text-slate-500">Physical book delivered to doorstep</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFormat("soft")}
+                    className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                      selectedFormat === "soft"
+                        ? "bg-white border-fuchsia-600 shadow-sm ring-2 ring-fuchsia-600/20"
+                        : "bg-white/60 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <FileText size={18} className={selectedFormat === "soft" ? "text-fuchsia-600 mt-0.5 shrink-0" : "text-slate-400 mt-0.5 shrink-0"} />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">Digital Copy (PDF)</div>
+                      <div className="text-[10px] text-slate-500">Instant download & portal access</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <User size={14} className="text-[#64748B]" /> Full Name
@@ -1308,12 +1377,12 @@ function CheckoutContent() {
 
               <div>
                 <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <MapPin size={14} className="text-[#64748B]" /> Complete Shipping Address
+                  <MapPin size={14} className="text-[#64748B]" /> Complete Shipping Address {selectedFormat === "soft" && <span className="text-slate-400 font-normal lowercase">(optional for digital access)</span>}
                 </label>
                 <textarea
                   value={formAddress}
                   onChange={(e) => setFormAddress(e.target.value)}
-                  placeholder="Street Address, Building, Landmark"
+                  placeholder={selectedFormat === "soft" ? "Street Address, Building (Optional for PDF access)" : "Street Address, Building, Landmark"}
                   rows={2}
                   className={`w-full bg-white border ${formErrors.address ? 'border-red-400 focus:border-red-500' : 'border-[#E2E8F0] focus:border-fuchsia-500'} text-[#0F172A] rounded-xl px-4 py-3 text-sm focus:outline-none shadow-sm resize-none`}
                 />
@@ -1566,16 +1635,16 @@ function CheckoutContent() {
                   <div className="space-y-1.5 flex-grow">
                     <span className="text-[9px] text-fuchsia-600 font-bold uppercase tracking-wider bg-fuchsia-50 px-2 py-0.5 rounded border border-fuchsia-200/50 inline-block">
                       {format === "soft" ? 
-                        (plan === "book_only" ? "Soft Copy (Book Only)" :
-                         plan === "caselet" ? "Soft Copy (Caselet Only)" :
-                         plan === "book_caselet" ? "Soft Copy (Book + Caselet)" :
-                         plan === "book_portal" ? "Soft Copy (Book + Portal)" :
-                         plan === "book_caselet_portal" ? "Soft Copy (Book + Caselet + Portal)" :
+                        (plan === "book_only" ? "Digital Copy (Book)" :
+                         plan === "caselet" ? "Digital Copy (Caselet)" :
+                         plan === "book_caselet" ? "Digital Copy (Book + Caselet)" :
+                         plan === "book_portal" ? "Digital Copy (Book + Portal)" :
+                         plan === "book_caselet_portal" ? "Digital Copy (Book + Caselet + Portal)" :
                          plan === "complete" ? "Portal (Complete Access)" :
                          plan === "placements" ? "Portal (Placements Feature)" :
                          plan === "practice" ? "Portal (Practice Questions)" :
-                         "Soft Copy Access")
-                        : "Physical Printed Book"
+                         "Digital Copy Access")
+                        : "Paperback Printed Book"
                       }
                     </span>
                     <h4 className="text-xs font-bold text-[#0F172A] line-clamp-1 leading-tight">{item.title}</h4>

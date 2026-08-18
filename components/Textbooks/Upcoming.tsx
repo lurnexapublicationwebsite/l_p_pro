@@ -38,19 +38,7 @@ const textbooks = [
     pdfFileName: "python_programming.pdf",
     aboutBook: "This book provides a comprehensive and hands-on foundation in Python programming, designed for students, educators, and software development professionals. It covers essential syntax, core data structures, object-oriented concepts, and practical problem-solving techniques. Emphasizing real-world applications, industry coding standards, and algorithmic thinking, the text guides readers through structured examples and project-oriented learning to build proficiency in modern Python software development.",
     aboutAuthor: ""
-  },
-  {
-    id: 6,
-    title: "DATA STREAMING AND ANALYSIS",
-    author: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P",
-    domain: "Data Science / Analytics",
-    status: "In Press",
-    date: "2026-08-30",
-    isbn: "978-81-685077-8-4",
-    pdfFileName: "data_streaming_and_analysis.pdf",
-    aboutBook: "This textbook offers an in-depth exploration of real-time data streaming architectures, processing engines, and advanced analytics methods essential for modern data-driven ecosystems. It covers foundational stream processing concepts, distributed messaging systems, event-driven architectures, and scalable analytics algorithms. Designed for computer science students, researchers, and data engineering professionals, the book combines theoretical principles with practical frameworks to solve complex challenges in continuous data ingestion, real-time decision-making, and large-scale analytical processing.",
-    aboutAuthor: ""
-  },
+  }
 ];
 
 export default function Upcoming() {

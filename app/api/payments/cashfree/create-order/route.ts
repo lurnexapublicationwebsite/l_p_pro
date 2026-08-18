@@ -29,9 +29,12 @@ export async function POST(req: Request) {
       accessId
     } = body;
 
+    const finalShippingAddress = shippingAddress || (format === "soft" ? "Digital Delivery (Email & Portal Access)" : "");
+    const finalPostalCode = postalCode || (format === "soft" ? "000000" : "");
+
     // Validate billing details
-    if (!bookId || !price || !customerPhone || !customerEmail || !customerName || !shippingAddress || !postalCode) {
-      return NextResponse.json({ error: "Missing required booking and shipping details." }, { status: 400 });
+    if (!bookId || !price || !customerPhone || !customerEmail || !customerName || !finalShippingAddress || !finalPostalCode) {
+      return NextResponse.json({ error: "Missing required booking and customer contact details." }, { status: 400 });
     }
 
     // Backend restriction for ML book (id 2) and AI book (id 6) softcopy plans

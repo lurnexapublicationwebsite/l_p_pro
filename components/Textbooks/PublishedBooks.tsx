@@ -1,92 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, ShoppingBag, Eye, X, User, Tag, ShieldAlert, Calendar } from "lucide-react";
+import { BookOpen, ShoppingBag, Eye, X, User, Tag, ShieldAlert, Calendar, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
 
 export default function PublishedBooks() {
   const router = useRouter();
-  const [selectedBookForPreview, setSelectedBookForPreview] = useState<any | null>(null);
-
-  const books = [
-    {
-      id: "1",
-      title: "Indian Mineral Import Policy Options: An Economywide Analysis",
-      authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
-      domain: "Economics / Trade Policy",
-      isbn: "978-81-685077-7-7",
-      pages: 88,
-      price: 999,
-      code: "MP",
-      pdfFileName: "minerals.pdf",
-      publishedDate: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
-      description: "This study presents a comprehensive and data-driven examination of India's mineral import landscape, offering a distinctive economy-wide perspective. By integrating long-term trade trends with advanced simulation and modelling techniques, it evaluates the real economic implications of mineral import decisions on output, employment, prices, and trade dynamics. Covering a wide spectrum of critical minerals and situating India within the global resource ecosystem, the study provides a balanced and policy-relevant framework for understanding the interplay between domestic production and strategic imports."
-    },
-    {
-      id: "2",
-      title: "MACHINE LEARNING: A STRUCTURED APPROACH TO ALGORITHMS AND INTELLIGENT SYSTEMS",
-      authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
-      domain: "CSE / Machine Learning",
-      isbn: "978-81-685077-3-9",
-      pages: 231,
-      price: 700,
-      code: "ML",
-      pdfFileName: "ml.pdf",
-      publishedDate: "May 18, 2026",
-      description: "This book offers a systematic and in-depth exploration of machine learning, designed to help readers build a strong foundation while progressing toward advanced applications. It begins by introducing the core principles of machine learning, including data representation, statistical thinking, and the fundamental paradigms of supervised, unsupervised, and reinforcement learning."
-    },
-    {
-      id: "3",
-      title: "DATABASE MANAGEMENT SYSTEMS: CONCEPTS, DESIGN AND IMPLEMENTATION",
-      authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
-      domain: "CSE / DBMS",
-      isbn: "978-81-685077-5-3",
-      pages: 248,
-      price: 750,
-      code: "DB",
-      pdfFileName: "dbms.pdf",
-      publishedDate: "May 18, 2026",
-      description: "This textbook provides a comprehensive and structured introduction to the fundamental concepts, design principles, and implementation techniques of Database Management Systems (DBMS). It is designed to guide learners from foundational topics such as data models and relational theory to advanced areas including SQL, schema refinement (normalization), and transaction management."
-    },
-    {
-      id: "5",
-      title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT",
-      authors: "Dr. Aruna Kumar Dash",
-      domain: "Economics / Management",
-      isbn: "978-81-685077-1-5",
-      pages: 277,
-      price: 600,
-      code: "PM",
-      pdfFileName: "microeconomics.pdf",
-      publishedDate: "May 18, 2026",
-      description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making."
-    },
-    {
-      id: "6",
-      title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS",
-      authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
-      domain: "CSE / Artificial Intelligence",
-      isbn: "978-81-685077-4-6",
-      pages: 142,
-      price: 499,
-      code: "AI",
-      pdfFileName: "ai.pdf",
-      publishedDate: "August 6, 2026",
-      description: "This book provides a comprehensive foundation in Artificial Intelligence, exploring intelligent agents, state-space search algorithms, knowledge representation, machine learning paradigms, reasoning systems, and ethical AI implications for next-generation intelligent applications."
-    }
-  ];
 
   return (
     <div className="py-4 w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto px-4">
-        {books.map((bookItem) => {
-          let coverImg = "/portal_coverpages/minerals.jpg";
-          if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
-          if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-          if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
-          if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpg";
-
+        {PUBLISHED_BOOKS_DATA.map((bookItem) => {
           return (
             <div 
               key={bookItem.id} 
@@ -94,13 +20,13 @@ export default function PublishedBooks() {
             >
               <div className="space-y-4">
                 {/* Cover presentation */}
-                <div 
-                  onClick={() => router.push('/textbooks/store')}
-                  className="relative w-full aspect-[4/5] rounded-xl bg-gradient-to-tr from-slate-100 to-fuchsia-50/30 flex items-center justify-center border border-slate-200/20 hover:scale-[1.01] transition-all duration-300 cursor-pointer overflow-hidden p-5"
+                <Link 
+                  href={`/textbooks/${bookItem.slug}`}
+                  className="relative w-full aspect-[4/5] rounded-xl bg-gradient-to-tr from-slate-100 to-fuchsia-50/30 flex items-center justify-center border border-slate-200/20 hover:scale-[1.01] transition-all duration-300 cursor-pointer overflow-hidden p-5 block"
                 >
                   <div className="relative h-full aspect-[1/1.4] shadow-[0_10px_20px_-5px_rgba(0,0,0,0.15)] rounded-r overflow-hidden transition-transform duration-300 group-hover:scale-[1.02]">
                     <img 
-                      src={coverImg}
+                      src={bookItem.coverImg}
                       className="w-full h-full object-cover"
                       alt={bookItem.title}
                     />
@@ -109,7 +35,7 @@ export default function PublishedBooks() {
                     {/* Highlight gloss */}
                     <div className="absolute inset-y-0 left-2.5 w-[1px] bg-white/10" />
                   </div>
-                </div>
+                </Link>
 
                 {/* Meta & Info */}
                 <div className="space-y-2">
@@ -122,9 +48,15 @@ export default function PublishedBooks() {
                     </span>
                   </div>
 
-                  <h3 className="text-sm font-bold text-[#0F172A] line-clamp-2 leading-snug group-hover:text-fuchsia-600 transition-colors duration-200 h-10" title={bookItem.title}>
-                    {bookItem.title}
-                  </h3>
+                  <div className="h-10 flex items-center">
+                    <Link 
+                      href={`/textbooks/${bookItem.slug}`}
+                      className="text-sm font-bold text-[#0F172A] line-clamp-2 leading-snug group-hover:text-fuchsia-600 transition-colors duration-200" 
+                      title={bookItem.title}
+                    >
+                      {bookItem.title}
+                    </Link>
+                  </div>
 
                   <p className="text-[11px] text-[#64748B] font-semibold line-clamp-1">
                     By {bookItem.authors}
@@ -137,20 +69,31 @@ export default function PublishedBooks() {
               </div>
 
               {/* Pricing and Actions */}
-              <div className="pt-4 mt-4 border-t border-[#E2E8F0] space-y-3">
+              <div className="pt-4 mt-4 border-t border-[#E2E8F0] space-y-2">
                 <div className="flex items-baseline justify-between">
                   <div className="flex items-baseline gap-1.5">
                     <span className="text-lg font-black text-[#0F172A]">₹{bookItem.price}</span>
                   </div>
+                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    In Stock
+                  </span>
                 </div>
 
-                <button
-                  onClick={() => router.push('/textbooks/store')}
-                  className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2.5 rounded-xl text-[11px] text-center flex items-center justify-center gap-1.5 transition-all active:scale-98"
-                >
-                  <ShoppingBag size={12} />
-                  <span>Purchase from Store</span>
-                </button>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Link
+                    href={`/textbooks/${bookItem.slug}`}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 rounded-xl text-[11px] text-center flex items-center justify-center gap-1 transition-all"
+                  >
+                    <span>View Details</span>
+                  </Link>
+                  <Link
+                    href={`/textbooks/store/checkout?bookId=${bookItem.id}`}
+                    className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2 rounded-xl text-[11px] text-center flex items-center justify-center gap-1 transition-all shadow-sm"
+                  >
+                    <ShoppingBag size={11} />
+                    <span>Buy Now</span>
+                  </Link>
+                </div>
               </div>
             </div>
           );

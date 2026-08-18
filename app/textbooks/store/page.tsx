@@ -43,7 +43,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "Indian Mineral Import Policy Options: An Economywide Analysis",
     code: "MP",
     description: "This study presents a comprehensive and data-driven examination of India's mineral import landscape, offering a distinctive economy-wide perspective. By integrating long-term trade trends with advanced simulation and modelling techniques, it evaluates the real economic implications of mineral import decisions on output, employment, prices, and trade dynamics. Covering a wide spectrum of critical minerals and situating India within the global resource ecosystem, the study provides a balanced and policy-relevant framework for understanding the interplay between domestic production and strategic imports.",
-    price: 999,
+    price: 699,
     authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
     pages: 88,
     isbn: "978-81-685077-7-7",
@@ -56,7 +56,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "MACHINE LEARNING: A STRUCTURED APPROACH TO ALGORITHMS AND INTELLIGENT SYSTEMS",
     code: "ML",
     description: "This book offers a systematic and in-depth exploration of machine learning, designed to help readers build a strong foundation while progressing toward advanced applications. It begins by introducing the core principles of machine learning, including data representation, statistical thinking, and the fundamental paradigms of supervised, unsupervised, and reinforcement learning.",
-    price: 700,
+    price: 599,
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 231,
     isbn: "978-81-685077-3-9",
@@ -69,7 +69,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "DATABASE MANAGEMENT SYSTEMS: CONCEPTS, DESIGN AND IMPLEMENTATION",
     code: "DB",
     description: "This textbook provides a comprehensive and structured introduction to the fundamental concepts, design principles, and implementation techniques of Database Management Systems (DBMS). It is designed to guide learners from foundational topics such as data models and relational theory to advanced areas including SQL, schema refinement (normalization), and transaction management.",
-    price: 750,
+    price: 649,
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 248,
     isbn: "978-81-685077-5-3",
@@ -82,7 +82,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT",
     code: "PM",
     description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making.",
-    price: 600,
+    price: 599,
     authors: "Dr. Aruna Kumar Dash",
     pages: 277,
     isbn: "978-81-685077-1-5",
@@ -95,11 +95,24 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS",
     code: "AI",
     description: "This book provides a comprehensive foundation in Artificial Intelligence, exploring intelligent agents, state-space search algorithms, knowledge representation, machine learning paradigms, reasoning systems, and ethical AI implications for next-generation intelligent applications.",
-    price: 499,
+    price: 399,
     authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
     pages: 142,
     isbn: "978-81-685077-4-6",
     pdfFileName: "ai.pdf",
+    tag: "New Release",
+    stockStatus: "in-stock"
+  },
+  {
+    id: "7",
+    title: "DATA STREAMING AND ANALYSIS",
+    code: "DS",
+    description: "This textbook offers an in-depth exploration of real-time data streaming architectures, processing engines, and advanced analytics methods essential for modern data-driven ecosystems. It covers foundational stream processing concepts, distributed messaging systems, event-driven architectures, and scalable analytics algorithms.",
+    price: 449,
+    authors: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P",
+    pages: 199,
+    isbn: "978-81-685077-8-4",
+    pdfFileName: "data_streaming_and_analysis.pdf",
     tag: "New Release",
     stockStatus: "in-stock"
   }
@@ -115,48 +128,60 @@ interface CartItem {
   plan?: string;
 }
 
+const getPhysicalPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "3") {
+    if (plan === "caselet") return 99;
+    if (plan === "book_caselet") return 739;
+    return 649;
+  }
+  if (bookId === "5") {
+    if (plan === "caselet") return 99;
+    if (plan === "book_caselet") return 689;
+    return 599;
+  }
+  const found = PUBLISHED_BOOKS.find(b => b.id === bookId);
+  return found ? found.price : 649;
+};
+
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "1") {
+    if (plan === "book_only") return 499;
+    return 499;
+  }
+  if (bookId === "3") {
+    if (plan === "book_only") return 299;
+    if (plan === "caselet") return 49;
+    if (plan === "book_caselet") return 339;
+  }
+  if (bookId === "5") {
+    if (plan === "book_only") return 299;
+    if (plan === "caselet") return 49;
+    if (plan === "book_caselet") return 339;
+  }
+  if (bookId === "2") {
+    if (plan === "book_only") return 249;
+  }
+  if (bookId === "7") {
+    if (plan === "book_only") return 219;
+    return 219;
+  }
   if (bookId === "6") {
-    if (plan === "book_only") return 259;
+    if (plan === "book_only") return 199;
     if (plan === "caselet") return 60;
     if (plan === "book_caselet") return 295;
-    if (plan === "book_portal") return 259;
-    if (plan === "book_caselet_portal") return 329;
-    if (plan === "complete") return 200;
-    if (plan === "placements") return 150;
-    if (plan === "practice") return 80;
-    return 259;
+    return 199;
   }
   if (bookId === "5") {
     if (plan === "book_only") return 370;
     if (plan === "caselet") return 80;
     if (plan === "book_caselet") return 405;
-    if (plan === "book_portal") return 539;
-    if (plan === "book_caselet_portal") return 589;
-    if (plan === "complete") return 200;
-    if (plan === "placements") return 150;
-    if (plan === "practice") return 80;
   }
   let price = 399;
   switch (plan) {
     case "book_only": price = 230; break;
     case "caselet": price = 60; break;
     case "book_caselet": price = 265; break;
-    case "book_portal": price = 399; break;
-    case "book_caselet_portal": price = 449; break;
-    case "complete": price = 200; break;
-    case "placements": price = 150; break;
-    case "practice": price = 80; break;
     default: price = 399;
-  }
-  if (bookId === "2" || bookId === "3") {
-    if (bookId === "3") {
-      if (plan === "book_only") return 300;
-      if (plan === "book_caselet") return 335;
-      if (plan === "book_portal") return 469;
-      if (plan === "book_caselet_portal") return 519;
-    }
-    return price + 20;
   }
   return price;
 };
@@ -180,7 +205,7 @@ export default function BookstorePage() {
   // Plan Selection States
   const [selectedBookForPurchase, setSelectedBookForPurchase] = useState<TextbookDetails | null>(null);
   const [purchaseFormat, setPurchaseFormat] = useState<"physical" | "soft" | null>(null);
-  const [selectedSoftOption, setSelectedSoftOption] = useState<string>("book_portal"); // default
+  const [selectedSoftOption, setSelectedSoftOption] = useState<string>("book_only"); // default
   const [selectedPortalOnlyOption, setSelectedPortalOnlyOption] = useState<string>("complete");
   const [modalMode, setModalMode] = useState<'buy' | 'cart'>('buy');
 
@@ -199,17 +224,7 @@ export default function BookstorePage() {
   }, []);
 
   useEffect(() => {
-    if (selectedBookForPurchase?.id === "1") {
-      setPurchaseFormat("physical");
-    }
-    if (selectedBookForPurchase?.id === "6") {
-      setSelectedSoftOption("book_only");
-    }
-    if (selectedBookForPurchase?.id === "2") {
-      if (["caselet", "book_caselet", "book_caselet_portal"].includes(selectedSoftOption)) {
-        setSelectedSoftOption("book_portal");
-      }
-    }
+    setSelectedSoftOption("book_only");
   }, [selectedBookForPurchase]);
 
   const saveCartToStorage = (updatedCart: CartItem[]) => {
@@ -243,11 +258,12 @@ export default function BookstorePage() {
     let coverImg = "/portal_coverpages/minerals.jpg";
     if (book.id === "2") coverImg = "/portal_coverpages/ml.png";
     if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-    if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
+    if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
     if (book.id === "6") coverImg = "/portal_coverpages/ai.jpg";
+    if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
 
     const finalPrice = price !== undefined ? price : book.price;
-    const planLabel = format === "physical" ? "Physical Copy" : `Soft Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
+    const planLabel = format === "physical" ? "Paperback" : `Digital Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
     const displayTitle = `${book.title} (${planLabel})`;
 
     const existingIdx = cart.findIndex(item => item.id === book.id && (item as any).format === format && (item as any).plan === plan);
@@ -439,8 +455,9 @@ export default function BookstorePage() {
               let coverImg = "/portal_coverpages/minerals.jpg";
               if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
               if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-              if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
+              if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
               if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpg";
+              if (bookItem.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
 
               return (
                 <div 
@@ -497,9 +514,11 @@ export default function BookstorePage() {
                         </span>
                       </div>
 
-                      <h3 className="text-sm font-bold text-[#0F172A] line-clamp-2 leading-snug group-hover:text-fuchsia-600 transition-colors duration-200 h-10" title={bookItem.title}>
-                        {bookItem.title}
-                      </h3>
+                      <div className="h-10 flex items-center">
+                        <h3 className="text-sm font-bold text-[#0F172A] line-clamp-2 leading-snug group-hover:text-fuchsia-600 transition-colors duration-200" title={bookItem.title}>
+                          {bookItem.title}
+                        </h3>
+                      </div>
 
                       <p className="text-[11px] text-[#64748B] font-semibold line-clamp-1">
                         By {bookItem.authors}
@@ -825,7 +844,7 @@ export default function BookstorePage() {
             {/* Scrollable Content Body */}
             <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1">
               {/* Selector Card Choice */}
-              <div className={`grid gap-4 ${selectedBookForPurchase?.id === "1" ? "grid-cols-1 max-w-xs mx-auto" : "grid-cols-2"}`}>
+              <div className="grid grid-cols-2 gap-4">
                 <div
                   onClick={() => setPurchaseFormat("physical")}
                   className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
@@ -835,28 +854,26 @@ export default function BookstorePage() {
                   }`}
                 >
                   <ShoppingBag size={24} className={purchaseFormat === "physical" ? "text-fuchsia-600" : "text-slate-400"} />
-                  <span className="text-xs font-bold text-slate-900">Physical Copy</span>
+                  <span className="text-xs font-bold text-slate-900">Paperback</span>
                   <span className="text-[10px] text-slate-500 font-medium text-center">Printed textbook delivered by parcel. Shipping charges apply.</span>
                 </div>
 
-                {selectedBookForPurchase?.id !== "1" && (
-                  <div
-                    onClick={() => setPurchaseFormat("soft")}
-                    className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
-                      purchaseFormat === "soft"
-                        ? "border-fuchsia-600 bg-fuchsia-50/20"
-                        : "border-slate-200"
-                    }`}
-                  >
-                    <BookOpen size={24} className={purchaseFormat === "soft" ? "text-fuchsia-600" : "text-slate-400"} />
-                    <span className="text-xs font-bold text-slate-900">Soft Copy & Portal</span>
-                    <span className="text-[10px] text-slate-500 font-medium text-center">Read online in student portal with screenshot blocking. GST & online fees apply.</span>
-                  </div>
-                )}
+                <div
+                  onClick={() => setPurchaseFormat("soft")}
+                  className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
+                    purchaseFormat === "soft"
+                      ? "border-fuchsia-600 bg-fuchsia-50/20"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <BookOpen size={24} className={purchaseFormat === "soft" ? "text-fuchsia-600" : "text-slate-400"} />
+                  <span className="text-xs font-bold text-slate-900">Digital Copy</span>
+                  <span className="text-[10px] text-slate-500 font-medium text-center">Read online in student portal with screenshot blocking. GST & online fees apply.</span>
+                </div>
               </div>
 
-              {/* Soft Copy Sub-plans */}
-              {purchaseFormat === "soft" && (
+              {/* Format Sub-plans */}
+              {purchaseFormat && (
                 <div className="space-y-4 bg-slate-50/70 p-4 border border-slate-100 rounded-2xl animate-fadeIn">
                   <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Plan Package</span>
                   
@@ -864,125 +881,59 @@ export default function BookstorePage() {
                     <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
                       <input
                         type="radio"
-                        name="softPlan"
-                        checked={selectedSoftOption === "book_only" || selectedBookForPurchase?.id === "6"}
+                        name="subPlan"
+                        checked={selectedSoftOption === "book_only"}
                         onChange={() => setSelectedSoftOption("book_only")}
                         className="accent-fuchsia-600"
                       />
                       <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                        <span>Book Only</span>
-                        <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_only", selectedBookForPurchase?.id)}</span>
+                        <span>Book</span>
+                        <span className="text-fuchsia-600">
+                          ₹{purchaseFormat === "soft" 
+                            ? getSoftCopyPrice("book_only", selectedBookForPurchase?.id) 
+                            : getPhysicalPrice("book_only", selectedBookForPurchase?.id)}
+                        </span>
                       </div>
                     </label>
 
-                    {selectedBookForPurchase?.id !== "6" && selectedBookForPurchase?.id !== "2" && (
+                    {!["1", "2", "6", "7"].includes(selectedBookForPurchase?.id || "") && (
                       <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
                         <input
                           type="radio"
-                          name="softPlan"
+                          name="subPlan"
                           checked={selectedSoftOption === "caselet"}
                           onChange={() => setSelectedSoftOption("caselet")}
                           className="accent-fuchsia-600"
                         />
                         <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                          <span>Caselet Only</span>
-                          <span className="text-fuchsia-600">₹{getSoftCopyPrice("caselet", selectedBookForPurchase?.id)}</span>
+                          <span>Caselet</span>
+                          <span className="text-fuchsia-600">
+                            ₹{purchaseFormat === "soft" 
+                              ? getSoftCopyPrice("caselet", selectedBookForPurchase?.id) 
+                              : getPhysicalPrice("caselet", selectedBookForPurchase?.id)}
+                          </span>
                         </div>
                       </label>
                     )}
 
-                    {selectedBookForPurchase?.id !== "6" && selectedBookForPurchase?.id !== "2" && (
+                    {!["1", "2", "6", "7"].includes(selectedBookForPurchase?.id || "") && (
                       <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
                         <input
                           type="radio"
-                          name="softPlan"
+                          name="subPlan"
                           checked={selectedSoftOption === "book_caselet"}
                           onChange={() => setSelectedSoftOption("book_caselet")}
                           className="accent-fuchsia-600"
                         />
                         <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
                           <span>Book + Caselet</span>
-                          <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_caselet", selectedBookForPurchase?.id)}</span>
+                          <span className="text-fuchsia-600">
+                            ₹{purchaseFormat === "soft" 
+                              ? getSoftCopyPrice("book_caselet", selectedBookForPurchase?.id) 
+                              : getPhysicalPrice("book_caselet", selectedBookForPurchase?.id)}
+                          </span>
                         </div>
                       </label>
-                    )}
-
-                    {selectedBookForPurchase?.id !== "6" && (
-                      <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
-                        <input
-                          type="radio"
-                          name="softPlan"
-                          checked={selectedSoftOption === "book_portal"}
-                          onChange={() => setSelectedSoftOption("book_portal")}
-                          className="accent-fuchsia-600"
-                        />
-                        <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                          <span>Book + Portal Access</span>
-                          <span className="text-fuchsia-600">₹{getSoftCopyPrice("book_portal", selectedBookForPurchase?.id)}</span>
-                        </div>
-                      </label>
-                    )}
-
-                    {selectedBookForPurchase?.id !== "6" && (
-                      <div className="border-t border-slate-200 pt-2.5">
-                        <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
-                          <input
-                            type="radio"
-                            name="softPlan"
-                            checked={selectedSoftOption === "only_portal"}
-                            onChange={() => setSelectedSoftOption("only_portal")}
-                            className="accent-fuchsia-600"
-                          />
-                          <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                            <span>Only Portal Access</span>
-                            <span className="text-fuchsia-500/40 text-[10px] font-medium">Customize features below</span>
-                          </div>
-                        </label>
-
-                          {selectedSoftOption === "only_portal" && (
-                            <div className="mt-2 pl-6 space-y-2 animate-fadeIn bg-white/70 p-3 rounded-2xl border border-slate-100/80">
-                              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                                <input
-                                  type="radio"
-                                  name="portalOnlyType"
-                                  checked={selectedPortalOnlyOption === "complete"}
-                                  onChange={() => setSelectedPortalOnlyOption("complete")}
-                                  className="accent-fuchsia-600"
-                                />
-                                <div className="flex-1 flex justify-between">
-                                  <span>Complete Portal</span>
-                                  <span className="text-fuchsia-600">₹{getSoftCopyPrice("complete", selectedBookForPurchase?.id)}</span>
-                                </div>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                                <input
-                                  type="radio"
-                                  name="portalOnlyType"
-                                  checked={selectedPortalOnlyOption === "placements"}
-                                  onChange={() => setSelectedPortalOnlyOption("placements")}
-                                  className="accent-fuchsia-600"
-                                />
-                                <div className="flex-1 flex justify-between">
-                                  <span>Placements Feature Only</span>
-                                  <span className="text-fuchsia-600">₹{getSoftCopyPrice("placements", selectedBookForPurchase?.id)}</span>
-                                </div>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                                <input
-                                  type="radio"
-                                  name="portalOnlyType"
-                                  checked={selectedPortalOnlyOption === "practice"}
-                                  onChange={() => setSelectedPortalOnlyOption("practice")}
-                                  className="accent-fuchsia-600"
-                                />
-                                <div className="flex-1 flex justify-between">
-                                  <span>Coding Practice Questions Only</span>
-                                  <span className="text-fuchsia-600">₹{getSoftCopyPrice("practice", selectedBookForPurchase?.id)}</span>
-                                </div>
-                              </label>
-                            </div>
-                          )}
-                        </div>
                     )}
                   </div>
                 </div>
@@ -1004,15 +955,12 @@ export default function BookstorePage() {
                 disabled={!purchaseFormat}
                 onClick={() => {
                   if (!selectedBookForPurchase) return;
-                  const finalPlan = purchaseFormat === "physical" 
-                    ? "physical" 
-                    : (selectedSoftOption === "only_portal" ? selectedPortalOnlyOption : selectedSoftOption);
+                  const finalPlan = selectedSoftOption;
+                  const finalPrice = purchaseFormat === "soft" 
+                    ? getSoftCopyPrice(finalPlan, selectedBookForPurchase.id) 
+                    : getPhysicalPrice(finalPlan, selectedBookForPurchase.id);
                   
                   if (modalMode === "cart") {
-                    let finalPrice = selectedBookForPurchase.price;
-                    if (purchaseFormat === "soft") {
-                      finalPrice = getSoftCopyPrice(finalPlan, selectedBookForPurchase.id);
-                    }
                     handleAddToCart(selectedBookForPurchase, purchaseFormat || "physical", finalPlan, finalPrice);
                     setSelectedBookForPurchase(null);
                     setPurchaseFormat(null);
