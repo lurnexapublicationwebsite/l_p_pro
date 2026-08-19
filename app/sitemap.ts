@@ -21,8 +21,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        // Skip special folders that do not map to static routes or contain dynamic parameters
-        if (['api', 'providers', 'components', 'styles', 'public'].includes(entry.name)) continue;
+        // Skip special folders, auth/private routes, and dynamic parameter routes
+        if ([
+          'api', 'providers', 'components', 'styles', 'public',
+          'dashboard', 'EditoralLogins', 'login', 'signup',
+          'forgot-password', 'reset-password', 'resetPassword', 'set-password'
+        ].includes(entry.name)) continue;
         if (entry.name.startsWith('[') || entry.name.endsWith(']')) continue;
         walk(path.join(dir, entry.name), `${prefix}/${entry.name}`);
       } else if (entry.isFile()) {
@@ -100,27 +104,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.8,
       images: [`${baseUrl}${coverImg}`, ...defaultSiteImages],
-    });
-  });
-
-  // 4. Auth & User routes
-  const auths = [
-    '/login',
-    '/signup',
-    '/forgot-password',
-    '/reset-password',
-    '/resetPassword',
-    '/set-password',
-    '/dashboard',
-    '/EditoralLogins',
-  ];
-  auths.forEach((route) => {
-    sitemapMap.set(route, {
-      url: `${baseUrl}${route}`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly',
-      priority: 0.5,
-      images: defaultSiteImages,
     });
   });
 
