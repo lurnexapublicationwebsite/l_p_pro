@@ -100,9 +100,10 @@ export const metadata: Metadata = {
       "Driving the future of academic publishing and global research accessibility.",
     images: ["/og-image.png"],
   },
-  verification: {
-    google: "ADD_YOUR_GOOGLE_VERIFICATION_CODE_HERE",
-  },
+  // TODO: Add your Google Search Console verification code here
+  // verification: {
+  //   google: "YOUR_ACTUAL_GOOGLE_VERIFICATION_CODE",
+  // },
   robots: {
     index: true,
     follow: true,

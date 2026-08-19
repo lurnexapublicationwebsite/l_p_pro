@@ -2,6 +2,7 @@ import React from 'react';
 
 export default function JsonLd() {
   const schemaData = [
+    // ── 1. Organization ──
     {
       '@context': 'https://schema.org',
       '@type': 'Organization',
@@ -63,6 +64,8 @@ export default function JsonLd() {
         },
       },
     },
+
+    // ── 2. Founder Person ──
     {
       '@context': 'https://schema.org',
       '@type': 'Person',
@@ -77,6 +80,8 @@ export default function JsonLd() {
       },
       'url': 'https://lurnexa.in',
     },
+
+    // ── 3. CEO Person ──
     {
       '@context': 'https://schema.org',
       '@type': 'Person',
@@ -91,6 +96,8 @@ export default function JsonLd() {
       },
       'url': 'https://lurnexa.in',
     },
+
+    // ── 4. WebSite ──
     {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
@@ -102,6 +109,268 @@ export default function JsonLd() {
         '@type': 'Organization',
         '@id': 'https://lurnexa.in/#organization',
       },
+      'potentialAction': {
+        '@type': 'SearchAction',
+        'target': {
+          '@type': 'EntryPoint',
+          'urlTemplate': 'https://lurnexa.in/textbooks/store?q={search_term_string}',
+        },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+
+    // ── 5. SiteNavigationElement (helps Google build rich sitelinks) ──
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SiteNavigationElement',
+      '@id': 'https://lurnexa.in/#navigation',
+      'name': 'Main Navigation',
+      'hasPart': [
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Home',
+          'url': 'https://lurnexa.in/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Journals',
+          'url': 'https://lurnexa.in/journal/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'ACIET Journal',
+          'url': 'https://lurnexa.in/journal/aciet/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'ARESS Journal',
+          'url': 'https://lurnexa.in/journal/aress/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'CIMS Journal',
+          'url': 'https://lurnexa.in/journal/cims/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'IAEES Journal',
+          'url': 'https://lurnexa.in/journal/iaees/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Research Articles',
+          'url': 'https://lurnexa.in/Articles/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Textbooks Store',
+          'url': 'https://lurnexa.in/textbooks/store/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Machine Learning Textbook',
+          'url': 'https://lurnexa.in/textbooks/machine-learning/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'DBMS Textbook',
+          'url': 'https://lurnexa.in/textbooks/dbms/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'AI Textbook',
+          'url': 'https://lurnexa.in/textbooks/artificial-intelligence/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Microeconomics Textbook',
+          'url': 'https://lurnexa.in/textbooks/microeconomics/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Data Streaming Textbook',
+          'url': 'https://lurnexa.in/textbooks/data-streaming/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Gallery',
+          'url': 'https://lurnexa.in/gallery/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Archive',
+          'url': 'https://lurnexa.in/Archive/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'About Us',
+          'url': 'https://lurnexa.in/aboutus/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Contact',
+          'url': 'https://lurnexa.in/contact/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Services',
+          'url': 'https://lurnexa.in/services/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Submit Your Article',
+          'url': 'https://lurnexa.in/submityourarticle/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'Author Guidelines',
+          'url': 'https://lurnexa.in/author-guidelines/',
+        },
+      ],
+    },
+
+    // ── 6. ImageGallery (makes gallery discoverable as a collection) ──
+    {
+      '@context': 'https://schema.org',
+      '@type': 'ImageGallery',
+      '@id': 'https://lurnexa.in/gallery/#imagegallery',
+      'name': 'Lurnexa Publications Gallery',
+      'description': 'Photo gallery capturing milestones, celebrations, and distinguished visitors at Lurnexa Publications.',
+      'url': 'https://lurnexa.in/gallery/',
+      'publisher': {
+        '@type': 'Organization',
+        '@id': 'https://lurnexa.in/#organization',
+      },
+    },
+
+    // ── 7. CollectionPage for Textbook Store (product listing) ──
+    {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      '@id': 'https://lurnexa.in/textbooks/store/#collectionpage',
+      'name': 'Lurnexa Bookstore - Academic Textbooks',
+      'description': 'Browse, preview, and purchase peer-reviewed academic textbooks published by Lurnexa Publications. Available in paperback and digital PDF.',
+      'url': 'https://lurnexa.in/textbooks/store/',
+      'publisher': {
+        '@type': 'Organization',
+        '@id': 'https://lurnexa.in/#organization',
+      },
+      'mainEntity': {
+        '@type': 'ItemList',
+        'numberOfItems': 6,
+        'itemListElement': [
+          {
+            '@type': 'ListItem',
+            'position': 1,
+            'name': 'MACHINE LEARNING: A Structured Approach to Algorithms and Intelligent Systems',
+            'url': 'https://lurnexa.in/textbooks/machine-learning/',
+            'image': 'https://lurnexa.in/portal_coverpages/ml.jpeg',
+          },
+          {
+            '@type': 'ListItem',
+            'position': 2,
+            'name': 'DATABASE MANAGEMENT SYSTEMS: Concepts, Design and Implementation',
+            'url': 'https://lurnexa.in/textbooks/dbms/',
+            'image': 'https://lurnexa.in/portal_coverpages/dbms.jpeg',
+          },
+          {
+            '@type': 'ListItem',
+            'position': 3,
+            'name': 'FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: Concepts, Techniques and Applications',
+            'url': 'https://lurnexa.in/textbooks/artificial-intelligence/',
+            'image': 'https://lurnexa.in/portal_coverpages/ai.jpeg',
+          },
+          {
+            '@type': 'ListItem',
+            'position': 4,
+            'name': 'DATA STREAMING AND ANALYSIS',
+            'url': 'https://lurnexa.in/textbooks/data-streaming/',
+            'image': 'https://lurnexa.in/portal_coverpages/data_streaming.jpeg',
+          },
+          {
+            '@type': 'ListItem',
+            'position': 5,
+            'name': 'Indian Mineral Import Policy Options: An Economywide Analysis',
+            'url': 'https://lurnexa.in/textbooks/mineral-policy/',
+            'image': 'https://lurnexa.in/portal_coverpages/minerals.jpeg',
+          },
+          {
+            '@type': 'ListItem',
+            'position': 6,
+            'name': 'PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT',
+            'url': 'https://lurnexa.in/textbooks/microeconomics/',
+            'image': 'https://lurnexa.in/portal_coverpages/microeconomics.jpeg',
+          },
+        ],
+      },
+    },
+
+    // ── 8. Periodical schemas for each journal ──
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Periodical',
+      '@id': 'https://lurnexa.in/journal/#gjpir',
+      'name': 'Global Journal for Progressive Innovation and Research (GJPIR)',
+      'alternateName': 'GJPIR',
+      'url': 'https://lurnexa.in/journal/',
+      'publisher': {
+        '@type': 'Organization',
+        '@id': 'https://lurnexa.in/#organization',
+      },
+      'image': 'https://lurnexa.in/gjpir1.png',
+      'description': 'GJPIR is a peer-reviewed multidisciplinary academic journal by Lurnexa Publications covering engineering, economics, management, and social sciences.',
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Periodical',
+      '@id': 'https://lurnexa.in/journal/aciet/#periodical',
+      'name': 'Advanced Computational Intelligence & Emerging Technologies (ACIET)',
+      'alternateName': 'ACIET',
+      'url': 'https://lurnexa.in/journal/aciet/',
+      'publisher': {
+        '@type': 'Organization',
+        '@id': 'https://lurnexa.in/#organization',
+      },
+      'image': 'https://lurnexa.in/Aciet.png',
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Periodical',
+      '@id': 'https://lurnexa.in/journal/aress/#periodical',
+      'name': 'Advanced Research in Economics & Social Sciences (ARESS)',
+      'alternateName': 'ARESS',
+      'url': 'https://lurnexa.in/journal/aress/',
+      'publisher': {
+        '@type': 'Organization',
+        '@id': 'https://lurnexa.in/#organization',
+      },
+      'image': 'https://lurnexa.in/Aress.png',
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Periodical',
+      '@id': 'https://lurnexa.in/journal/cims/#periodical',
+      'name': 'Center for Innovative Management Studies (CIMS)',
+      'alternateName': 'CIMS',
+      'url': 'https://lurnexa.in/journal/cims/',
+      'publisher': {
+        '@type': 'Organization',
+        '@id': 'https://lurnexa.in/#organization',
+      },
+      'image': 'https://lurnexa.in/Cimms.png',
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Periodical',
+      '@id': 'https://lurnexa.in/journal/iaees/#periodical',
+      'name': 'Institute of Advanced Electrical & Electronics Studies (IAEES)',
+      'alternateName': 'IAEES',
+      'url': 'https://lurnexa.in/journal/iaees/',
+      'publisher': {
+        '@type': 'Organization',
+        '@id': 'https://lurnexa.in/#organization',
+      },
+      'image': 'https://lurnexa.in/iaees.png',
     },
   ];
 
