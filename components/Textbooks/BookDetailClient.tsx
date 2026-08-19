@@ -196,7 +196,7 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
                 </div>
                 <span className="text-[11px] text-slate-500 block">
                   {selectedFormat === 'physical' 
-                    ? 'Hardcopy Print + Free Delivery' 
+                    ? 'Hardcopy Print (Delivery Charges Applicable)' 
                     : 'Instant PDF Download + Portal Access'}
                 </span>
               </div>
@@ -239,7 +239,7 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
                 <>
                   <div className="flex items-center gap-2">
                     <Truck size={14} className="text-fuchsia-600 shrink-0" />
-                    <span>Free Home Delivery (3-5 Business Days)</span>
+                    <span>Standard Delivery (3-5 Business Days - Delivery Charges Applicable)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={14} className="text-fuchsia-600 shrink-0" />
