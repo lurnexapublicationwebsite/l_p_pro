@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Book } from '@/lib/data/books';
+import { Book, bookHasCaselet, getPhysicalPrice, getSoftCopyPrice } from '@/lib/data/books';
 import { 
   BookOpen, 
   ShoppingBag, 
@@ -26,8 +26,51 @@ interface BookDetailClientProps {
 
 export default function BookDetailClient({ book, relatedBooks }: BookDetailClientProps) {
   const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft'>('physical');
+  const [includeBook, setIncludeBook] = useState<boolean>(true);
+  const [includeCaselet, setIncludeCaselet] = useState<boolean>(false);
 
-  const currentPrice = selectedFormat === 'physical' ? book.price : book.digitalPrice;
+  const hasCaselet = book.hasCaselet || bookHasCaselet(book.id);
+
+  let plan = 'book_only';
+  if (hasCaselet) {
+    if (includeBook && includeCaselet) {
+      plan = 'book_caselet';
+    } else if (includeCaselet && !includeBook) {
+      plan = 'caselet';
+    } else {
+      plan = 'book_only';
+    }
+  }
+
+  const currentPrice = selectedFormat === 'physical'
+    ? getPhysicalPrice(plan, book.id, book.price)
+    : getSoftCopyPrice(plan, book.id, book.digitalPrice);
+
+  const toggleBook = () => {
+    if (includeBook && !includeCaselet) {
+      setIncludeBook(false);
+      setIncludeCaselet(true);
+    } else {
+      setIncludeBook(!includeBook);
+    }
+  };
+
+  const toggleCaselet = () => {
+    if (includeCaselet && !includeBook) {
+      setIncludeCaselet(false);
+      setIncludeBook(true);
+    } else {
+      setIncludeCaselet(!includeCaselet);
+    }
+  };
+
+  const bookItemPrice = selectedFormat === 'physical'
+    ? getPhysicalPrice('book_only', book.id, book.price)
+    : getSoftCopyPrice('book_only', book.id, book.digitalPrice);
+
+  const caseletItemPrice = selectedFormat === 'physical'
+    ? getPhysicalPrice('caselet', book.id, 99)
+    : getSoftCopyPrice('caselet', book.id, 49);
 
   return (
     <div className="space-y-8">
@@ -45,7 +88,7 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
             <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/25 via-black/10 to-transparent" />
           </div>
 
-          {/* Format Selector Box */}
+          {/* Format & Package Selector Box */}
           <div className="w-full max-w-xs mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
             
             {/* Format Toggle Tabs */}
@@ -82,6 +125,66 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
               </div>
             </div>
 
+            {/* Multiselect Component Selection if book has Caselet */}
+            {hasCaselet && (
+              <div className="space-y-2 pt-1 border-t border-slate-200/80">
+                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
+                  Select Included Items (Multiselect Available):
+                </span>
+                <div className="space-y-2">
+                  {/* Book Item Checkbox */}
+                  <div
+                    onClick={toggleBook}
+                    className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                      includeBook
+                        ? 'bg-white border-fuchsia-600 shadow-sm text-slate-900'
+                        : 'bg-slate-100/70 border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={includeBook}
+                        onChange={toggleBook}
+                        className="w-4 h-4 rounded text-fuchsia-600 focus:ring-fuchsia-500 accent-fuchsia-600 cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-xs font-bold block leading-none">Book</span>
+                        <span className="text-[10px] text-slate-500">
+                          {selectedFormat === 'physical' ? 'Paperback Printed Book' : 'Digital PDF Edition'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-fuchsia-600">₹{bookItemPrice}</span>
+                  </div>
+
+                  {/* Caselet Item Checkbox */}
+                  <div
+                    onClick={toggleCaselet}
+                    className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                      includeCaselet
+                        ? 'bg-white border-fuchsia-600 shadow-sm text-slate-900'
+                        : 'bg-slate-100/70 border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={includeCaselet}
+                        onChange={toggleCaselet}
+                        className="w-4 h-4 rounded text-fuchsia-600 focus:ring-fuchsia-500 accent-fuchsia-600 cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-xs font-bold block leading-none">Caselet</span>
+                        <span className="text-[10px] text-slate-500">Business Case Studies</span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-fuchsia-600">₹{caseletItemPrice}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Price & Delivery Details */}
             <div className="flex items-baseline justify-between pt-1">
               <div>
@@ -105,18 +208,26 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
             {/* Action Buttons */}
             <div className="space-y-2 pt-2">
               <Link
-                href={`/textbooks/store/checkout?bookId=${book.id}&format=${selectedFormat}`}
+                href={`/textbooks/store/checkout?bookId=${book.id}&format=${selectedFormat}&plan=${plan}`}
                 className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99]"
               >
                 {selectedFormat === 'physical' ? (
                   <>
                     <ShoppingBag size={16} />
-                    <span>Buy Paperback (₹{currentPrice})</span>
+                    <span>
+                      {plan === 'book_caselet' ? `Buy Book + Caselet (₹${currentPrice})` :
+                       plan === 'caselet' ? `Buy Caselet Only (₹${currentPrice})` :
+                       `Buy Paperback (₹${currentPrice})`}
+                    </span>
                   </>
                 ) : (
                   <>
                     <Download size={16} />
-                    <span>Get Digital Copy (₹{currentPrice})</span>
+                    <span>
+                      {plan === 'book_caselet' ? `Get Digital Book + Caselet (₹${currentPrice})` :
+                       plan === 'caselet' ? `Get Digital Caselet (₹${currentPrice})` :
+                       `Get Digital Copy (₹${currentPrice})`}
+                    </span>
                   </>
                 )}
               </Link>

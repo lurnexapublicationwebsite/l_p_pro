@@ -318,11 +318,11 @@ function CheckoutContent() {
     if (hasBookId) {
       const selected = PUBLISHED_BOOKS.find((b) => b.id === bookId) || PUBLISHED_BOOKS[0];
       setBook(selected);
-      let coverImg = "/portal_coverpages/minerals.jpg";
-      if (selected.id === "2") coverImg = "/portal_coverpages/ml.png";
+      let coverImg = "/portal_coverpages/minerals.jpeg";
+      if (selected.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
       if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
       if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
-      if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpg";
+      if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
       if (selected.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
 
       setCheckoutItems([{
@@ -668,7 +668,9 @@ function CheckoutContent() {
       totalAmount = itemCostAfterDiscount + gstVal + onlineFeeVal;
       itemSubtotal = itemCostAfterDiscount;
     } else {
-      itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      itemSubtotal = (!isCartCheckout && plan)
+        ? getPhysicalPrice(plan, bookId) * quantity
+        : checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
       // Check dynamic coupon first
       const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
@@ -1128,7 +1130,9 @@ function CheckoutContent() {
     totalAmount = itemCostAfterDiscount + gstVal + onlineFeeVal;
     itemSubtotal = itemCostAfterDiscount;
   } else {
-    itemSubtotal = checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    itemSubtotal = (!isCartCheckout && plan)
+      ? getPhysicalPrice(plan, bookId) * quantity
+      : checkoutItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
     // Check dynamic coupon first
     const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
@@ -1644,7 +1648,10 @@ function CheckoutContent() {
                          plan === "placements" ? "Portal (Placements Feature)" :
                          plan === "practice" ? "Portal (Practice Questions)" :
                          "Digital Copy Access")
-                        : "Paperback Printed Book"
+                        : (plan === "caselet" ? "Paperback (Caselet)" :
+                            plan === "book_caselet" ? "Paperback (Book + Caselet)" :
+                            plan === "book_only" ? "Paperback (Book)" :
+                            "Paperback Printed Book")
                       }
                     </span>
                     <h4 className="text-xs font-bold text-[#0F172A] line-clamp-1 leading-tight">{item.title}</h4>

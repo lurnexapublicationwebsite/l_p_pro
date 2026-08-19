@@ -19,6 +19,60 @@ export interface Book {
   stockStatus: "in-stock" | "low-stock" | "out-of-stock";
   keywords: string[];
   tableOfContents?: string[];
+  hasCaselet?: boolean;
+}
+
+export function bookHasCaselet(bookId?: string): boolean {
+  if (!bookId) return false;
+  return ["3", "5"].includes(bookId);
+}
+
+export function getPhysicalPrice(plan: string, bookId?: string, defaultPrice?: number): number {
+  if (bookId === "3") {
+    if (plan === "caselet") return 99;
+    if (plan === "book_caselet") return 739;
+    return 649;
+  }
+  if (bookId === "5") {
+    if (plan === "caselet") return 99;
+    if (plan === "book_caselet") return 689;
+    return 599;
+  }
+  const basePrice = defaultPrice || 649;
+  if (plan === "caselet") return 99;
+  if (plan === "book_caselet") return basePrice + 90;
+  return basePrice;
+}
+
+export function getSoftCopyPrice(plan: string, bookId?: string, defaultDigitalPrice?: number): number {
+  if (bookId === "1") {
+    return 499;
+  }
+  if (bookId === "3") {
+    if (plan === "caselet") return 49;
+    if (plan === "book_caselet") return 339;
+    return 299;
+  }
+  if (bookId === "5") {
+    if (plan === "caselet") return 49;
+    if (plan === "book_caselet") return 339;
+    return 299;
+  }
+  if (bookId === "2") {
+    return 249;
+  }
+  if (bookId === "7") {
+    return 219;
+  }
+  if (bookId === "6") {
+    if (plan === "caselet") return 60;
+    if (plan === "book_caselet") return 295;
+    return 199;
+  }
+  const basePrice = defaultDigitalPrice || 299;
+  if (plan === "caselet") return 49;
+  if (plan === "book_caselet") return basePrice + 40;
+  return basePrice;
 }
 
 export function slugifyBookTitle(title: string): string {
@@ -46,7 +100,7 @@ export const PUBLISHED_BOOKS_DATA: Book[] = [
     digitalPrice: 249,
     code: "ML",
     pdfFileName: "ml.pdf",
-    coverImg: "/portal_coverpages/ml.png",
+    coverImg: "/portal_coverpages/ml.jpeg",
     publishedDate: "May 18, 2026",
     tag: "Best Seller",
     stockStatus: "in-stock",
@@ -102,6 +156,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     publishedDate: "May 18, 2026",
     tag: "Staff Pick",
     stockStatus: "in-stock",
+    hasCaselet: true,
     description: "This textbook provides a comprehensive and structured introduction to the fundamental concepts, design principles, and implementation techniques of Database Management Systems (DBMS). It is designed to guide learners from foundational topics such as data models and relational theory to advanced areas including SQL, schema refinement (normalization), and transaction management.",
     longDescription: `Database Management Systems: Concepts, Design and Implementation serves as a definitive textbook for mastering relational databases, SQL queries, ER diagram modeling, indexing strategies, transaction processing, and modern NoSQL architectures.`,
     keywords: [
@@ -142,7 +197,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     digitalPrice: 199,
     code: "AI",
     pdfFileName: "ai.pdf",
-    coverImg: "/portal_coverpages/ai.jpg",
+    coverImg: "/portal_coverpages/ai.jpeg",
     publishedDate: "August 6, 2026",
     tag: "New Release",
     stockStatus: "in-stock",
@@ -223,7 +278,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     digitalPrice: 499,
     code: "MP",
     pdfFileName: "minerals.pdf",
-    coverImg: "/portal_coverpages/minerals.jpg",
+    coverImg: "/portal_coverpages/minerals.jpeg",
     publishedDate: "August 2026",
     tag: "Policy Study",
     stockStatus: "in-stock",
@@ -265,13 +320,17 @@ The textbook thoroughly covers regression models, decision trees, neural network
     publishedDate: "May 18, 2026",
     tag: "Academic Choice",
     stockStatus: "in-stock",
+    hasCaselet: true,
     description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making.",
     longDescription: `Principles of Microeconomics for Business and Management by Dr. Aruna Kumar Dash is a core university textbook for MBA, BBA, and Commerce students covering microeconomic principles and managerial economics.`,
     keywords: [
       "Microeconomics",
       "Microeconomics book",
       "Principles of Microeconomics textbook",
-      "Microeconomics for Business and Management",
+      "Principles of Microeconomics",
+      "principles of micro economics",
+      "micro economics",
+      "Principles of Microeconomics for Business and Management",
       "MBA Microeconomics book",
       "Dr Aruna Kumar Dash microeconomics",
       "978-81-685077-1-5",

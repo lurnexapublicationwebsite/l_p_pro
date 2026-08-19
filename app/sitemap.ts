@@ -10,6 +10,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Map to deduplicate routes by their path
   const sitemapMap = new Map<string, MetadataRoute.Sitemap[number]>();
 
+  const defaultSiteImages = [
+    `${baseUrl}/Logo.png`,
+    `${baseUrl}/founder.jpeg`,
+  ];
+
   // 1. Dynamically generate all static routes from the app folder structure
   const walk = (dir: string, prefix = '') => {
     if (!fs.existsSync(dir)) return;
@@ -38,6 +43,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
             lastModified: new Date(),
             changeFrequency: 'weekly',
             priority: finalRoute === '/' ? 1.0 : 0.8,
+            images: defaultSiteImages,
           });
         }
       }
@@ -54,34 +60,50 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1.0,
+      images: defaultSiteImages,
     });
   }
 
-  // 2. High-importance Journal routes
-  const journals = ['', '/aciet', '/aress', '/cims', '/explore', '/iaees'];
-  journals.forEach((subRoute) => {
-    const route = `/journal${subRoute}`;
+  // 2. High-importance Journal routes with specific journal cover images
+  const journalConfig: Record<string, { title: string; image: string }> = {
+    '/journal': { title: 'Lurnexa Journals Directory', image: '/Logo.png' },
+    '/journal/aciet': { title: 'ACIET Journal', image: '/Aciet.png' },
+    '/journal/aress': { title: 'ARESS Journal', image: '/Aress.png' },
+    '/journal/cims': { title: 'CIMS Journal', image: '/Cimms.png' },
+    '/journal/explore': { title: 'Explore Research Journals', image: '/Logo.png' },
+    '/journal/iaees': { title: 'IAEES Journal', image: '/iaees.png' },
+  };
+
+  Object.entries(journalConfig).forEach(([route, info]) => {
     sitemapMap.set(route, {
       url: `${baseUrl}${route}`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
-      priority: subRoute === '' ? 0.9 : 0.85,
+      priority: route === '/journal' ? 0.9 : 0.85,
+      images: [`${baseUrl}${info.image}`, ...defaultSiteImages],
     });
   });
 
   // 3. Editorial Board routes
-  const boards = ['/ACIET', '/ARESS', '/CIMS', '/GJPIR', '/IAEES'];
-  boards.forEach((subRoute) => {
-    const route = `/EditorialBoard${subRoute}`;
+  const boards: Record<string, string> = {
+    '/EditorialBoard/ACIET': '/Aciet.png',
+    '/EditorialBoard/ARESS': '/Aress.png',
+    '/EditorialBoard/CIMS': '/Cimms.png',
+    '/EditorialBoard/GJPIR': '/Gjpir.png',
+    '/EditorialBoard/IAEES': '/iaees.png',
+  };
+
+  Object.entries(boards).forEach(([route, coverImg]) => {
     sitemapMap.set(route, {
       url: `${baseUrl}${route}`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
+      images: [`${baseUrl}${coverImg}`, ...defaultSiteImages],
     });
   });
 
-  // 4. Auth & User routes (low importance for SEO indexing but good to keep in sitemap)
+  // 4. Auth & User routes
   const auths = [
     '/login',
     '/signup',
@@ -98,33 +120,38 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.5,
+      images: defaultSiteImages,
     });
   });
 
-  // 5. Dynamic article routes (ensures all research works are discoverable immediately)
+  // 5. Dynamic article routes (ensures all research works and their titles are discoverable)
   allArticles.forEach((article) => {
     const route = `/Articles/${slugify(article.title)}`;
     sitemapMap.set(route, {
       url: `${baseUrl}${route}`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
-      priority: 0.8,
+      priority: 0.85,
+      images: [`${baseUrl}/Logo.png`],
     });
   });
 
   // 6. Dynamic textbook routes (Maximum priority for search engine indexing and short-keyword ranking)
   const books = getAllBooks();
   books.forEach((book) => {
-    // Full URL slug
+    const bookImages = [`${baseUrl}${book.coverImg}`, ...defaultSiteImages];
+
+    // Full URL slug (e.g. /textbooks/principles-of-microeconomics-for-business-and-management)
     const route = `/textbooks/${book.slug}`;
     sitemapMap.set(route, {
       url: `${baseUrl}${route}`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1.0,
+      images: bookImages,
     });
 
-    // Short URL alias slug if exists (e.g. /textbooks/machine-learning)
+    // Short URL alias slug if exists (e.g. /textbooks/microeconomics)
     if (book.shortSlug) {
       const shortRoute = `/textbooks/${book.shortSlug}`;
       sitemapMap.set(shortRoute, {
@@ -132,15 +159,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
         lastModified: new Date(),
         changeFrequency: 'daily',
         priority: 1.0,
+        images: bookImages,
       });
 
-      // Exact-match root alias (e.g. /machine-learning)
+      // Exact-match root alias (e.g. /microeconomics)
       const rootAliasRoute = `/${book.shortSlug}`;
       sitemapMap.set(rootAliasRoute, {
         url: `${baseUrl}${rootAliasRoute}`,
         lastModified: new Date(),
         changeFrequency: 'daily',
         priority: 1.0,
+        images: bookImages,
       });
     }
   });

@@ -255,11 +255,11 @@ export default function BookstorePage() {
 
   // Cart Handlers
   const handleAddToCart = (book: TextbookDetails, format: 'physical' | 'soft' = 'physical', plan: string = 'physical', price?: number) => {
-    let coverImg = "/portal_coverpages/minerals.jpg";
-    if (book.id === "2") coverImg = "/portal_coverpages/ml.png";
+    let coverImg = "/portal_coverpages/minerals.jpeg";
+    if (book.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
     if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
     if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
-    if (book.id === "6") coverImg = "/portal_coverpages/ai.jpg";
+    if (book.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
     if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
 
     const finalPrice = price !== undefined ? price : book.price;
@@ -452,11 +452,11 @@ export default function BookstorePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredBooks.map((bookItem) => {
-              let coverImg = "/portal_coverpages/minerals.jpg";
-              if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.png";
+              let coverImg = "/portal_coverpages/minerals.jpeg";
+              if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
               if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
               if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
-              if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpg";
+              if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
               if (bookItem.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
 
               return (
@@ -875,62 +875,106 @@ export default function BookstorePage() {
               {/* Format Sub-plans */}
               {purchaseFormat && (
                 <div className="space-y-4 bg-slate-50/70 p-4 border border-slate-100 rounded-2xl animate-fadeIn">
-                  <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Plan Package</span>
+                  <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Select Plan Package {!["1", "2", "6", "7"].includes(selectedBookForPurchase?.id || "") && "(Multiselect Available)"}
+                  </span>
                   
                   <div className="space-y-2.5">
-                    <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
-                      <input
-                        type="radio"
-                        name="subPlan"
-                        checked={selectedSoftOption === "book_only"}
-                        onChange={() => setSelectedSoftOption("book_only")}
-                        className="accent-fuchsia-600"
-                      />
-                      <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                        <span>Book</span>
-                        <span className="text-fuchsia-600">
-                          ₹{purchaseFormat === "soft" 
-                            ? getSoftCopyPrice("book_only", selectedBookForPurchase?.id) 
-                            : getPhysicalPrice("book_only", selectedBookForPurchase?.id)}
-                        </span>
-                      </div>
-                    </label>
+                    {!["1", "2", "6", "7"].includes(selectedBookForPurchase?.id || "") ? (
+                      <>
+                        {/* Book Checkbox */}
+                        <div
+                          onClick={() => {
+                            const isBookOn = selectedSoftOption === "book_only" || selectedSoftOption === "book_caselet";
+                            const isCaseletOn = selectedSoftOption === "caselet" || selectedSoftOption === "book_caselet";
+                            if (isBookOn && !isCaseletOn) {
+                              setSelectedSoftOption("caselet");
+                            } else if (isBookOn && isCaseletOn) {
+                              setSelectedSoftOption("caselet");
+                            } else {
+                              setSelectedSoftOption(isCaseletOn ? "book_caselet" : "book_only");
+                            }
+                          }}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                            selectedSoftOption === "book_only" || selectedSoftOption === "book_caselet"
+                              ? 'bg-white border-fuchsia-600 shadow-sm text-slate-900'
+                              : 'bg-slate-100/70 border-slate-200 text-slate-500 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedSoftOption === "book_only" || selectedSoftOption === "book_caselet"}
+                              readOnly
+                              className="w-4 h-4 rounded text-fuchsia-600 accent-fuchsia-600 cursor-pointer"
+                            />
+                            <div>
+                              <span className="text-xs font-bold block">Book</span>
+                              <span className="text-[10px] text-slate-500">
+                                {purchaseFormat === "soft" ? "Digital PDF Textbook" : "Paperback Printed Book"}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold text-fuchsia-600">
+                            ₹{purchaseFormat === "soft"
+                              ? getSoftCopyPrice("book_only", selectedBookForPurchase?.id)
+                              : getPhysicalPrice("book_only", selectedBookForPurchase?.id)}
+                          </span>
+                        </div>
 
-                    {!["1", "2", "6", "7"].includes(selectedBookForPurchase?.id || "") && (
-                      <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
-                        <input
-                          type="radio"
-                          name="subPlan"
-                          checked={selectedSoftOption === "caselet"}
-                          onChange={() => setSelectedSoftOption("caselet")}
-                          className="accent-fuchsia-600"
-                        />
-                        <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                          <span>Caselet</span>
-                          <span className="text-fuchsia-600">
-                            ₹{purchaseFormat === "soft" 
-                              ? getSoftCopyPrice("caselet", selectedBookForPurchase?.id) 
+                        {/* Caselet Checkbox */}
+                        <div
+                          onClick={() => {
+                            const isBookOn = selectedSoftOption === "book_only" || selectedSoftOption === "book_caselet";
+                            const isCaseletOn = selectedSoftOption === "caselet" || selectedSoftOption === "book_caselet";
+                            if (isCaseletOn && !isBookOn) {
+                              setSelectedSoftOption("book_only");
+                            } else if (isCaseletOn && isBookOn) {
+                              setSelectedSoftOption("book_only");
+                            } else {
+                              setSelectedSoftOption(isBookOn ? "book_caselet" : "caselet");
+                            }
+                          }}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                            selectedSoftOption === "caselet" || selectedSoftOption === "book_caselet"
+                              ? 'bg-white border-fuchsia-600 shadow-sm text-slate-900'
+                              : 'bg-slate-100/70 border-slate-200 text-slate-500 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedSoftOption === "caselet" || selectedSoftOption === "book_caselet"}
+                              readOnly
+                              className="w-4 h-4 rounded text-fuchsia-600 accent-fuchsia-600 cursor-pointer"
+                            />
+                            <div>
+                              <span className="text-xs font-bold block">Caselet</span>
+                              <span className="text-[10px] text-slate-500">Business Case Studies & Exercises</span>
+                            </div>
+                          </div>
+                          <span className="text-xs font-bold text-fuchsia-600">
+                            ₹{purchaseFormat === "soft"
+                              ? getSoftCopyPrice("caselet", selectedBookForPurchase?.id)
                               : getPhysicalPrice("caselet", selectedBookForPurchase?.id)}
                           </span>
                         </div>
-                      </label>
-                    )}
-
-                    {!["1", "2", "6", "7"].includes(selectedBookForPurchase?.id || "") && (
+                      </>
+                    ) : (
                       <label className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:border-fuchsia-500/30">
                         <input
                           type="radio"
                           name="subPlan"
-                          checked={selectedSoftOption === "book_caselet"}
-                          onChange={() => setSelectedSoftOption("book_caselet")}
+                          checked={true}
+                          readOnly
                           className="accent-fuchsia-600"
                         />
                         <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
-                          <span>Book + Caselet</span>
+                          <span>Book</span>
                           <span className="text-fuchsia-600">
                             ₹{purchaseFormat === "soft" 
-                              ? getSoftCopyPrice("book_caselet", selectedBookForPurchase?.id) 
-                              : getPhysicalPrice("book_caselet", selectedBookForPurchase?.id)}
+                              ? getSoftCopyPrice("book_only", selectedBookForPurchase?.id) 
+                              : getPhysicalPrice("book_only", selectedBookForPurchase?.id)}
                           </span>
                         </div>
                       </label>
