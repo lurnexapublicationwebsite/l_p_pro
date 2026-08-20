@@ -116,6 +116,7 @@ interface TextbookDetails {
   authors: string;
   pages: number;
   isbn: string;
+  isbnDigital: string;
   coverColor: string;
   pdfFileName: string;
 }
@@ -130,6 +131,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
     pages: 88,
     isbn: "978-81-685077-7-7",
+    isbnDigital: "978-81-685077-7-7",
     coverColor: "from-blue-600 to-indigo-900",
     pdfFileName: "minerals.pdf"
   },
@@ -142,6 +144,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 231,
     isbn: "978-81-685077-3-9",
+    isbnDigital: "978-81-903315-7-9",
     coverColor: "from-purple-600 to-indigo-950",
     pdfFileName: "ml.pdf"
   },
@@ -154,6 +157,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 248,
     isbn: "978-81-685077-5-3",
+    isbnDigital: "978-81-903315-4-8",
     coverColor: "from-sky-700 to-slate-900",
     pdfFileName: "dbms.pdf"
   },
@@ -166,6 +170,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. Aruna Kumar Dash",
     pages: 277,
     isbn: "978-81-685077-1-5",
+    isbnDigital: "978-81-903315-5-5",
     coverColor: "from-amber-600 to-yellow-900",
     pdfFileName: "microeconomics.pdf"
   },
@@ -178,6 +183,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
     pages: 142,
     isbn: "978-81-685077-4-6",
+    isbnDigital: "978-81-903315-3-1",
     coverColor: "from-emerald-600 to-teal-950",
     pdfFileName: "ai.pdf"
   },
@@ -190,6 +196,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P",
     pages: 199,
     isbn: "978-81-685077-8-4",
+    isbnDigital: "978-81-903315-1-7",
     coverColor: "from-cyan-600 to-blue-950",
     pdfFileName: "data_streaming_and_analysis.pdf"
   }
@@ -201,6 +208,7 @@ interface CheckoutItem {
   price: number;
   quantity: number;
   isbn: string;
+  isbnDigital: string;
   coverImg: string;
 }
 
@@ -331,6 +339,7 @@ function CheckoutContent() {
         price: selected.price,
         quantity: quantity,
         isbn: selected.isbn,
+        isbnDigital: selected.isbnDigital,
         coverImg
       }]);
       setIsCartCheckout(false);
@@ -1655,7 +1664,7 @@ function CheckoutContent() {
                       }
                     </span>
                     <h4 className="text-xs font-bold text-[#0F172A] line-clamp-1 leading-tight">{item.title}</h4>
-                    <p className="text-[10px] text-[#64748B] font-semibold">ISBN: {item.isbn}</p>
+                    <p className="text-[10px] text-[#64748B] font-semibold">PB: {item.isbn} | Digital: {item.isbnDigital}</p>
 
                     {/* Quantity Selector inside Checkout */}
                     <div className="flex items-center gap-1.5 mt-2 bg-slate-50 border border-[#E2E8F0] rounded-lg px-2 py-0.5 w-max">

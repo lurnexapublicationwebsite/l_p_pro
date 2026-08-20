@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: `${primaryKeyword} Book - ${book.title} (ISBN: ${book.isbn}) | Lurnexa Publications`,
-    description: `Official ${primaryKeyword} textbook by ${book.authors}. Covers core algorithms, theory and practical implementations. Buy Paperback (₹${book.price}) or Digital PDF (₹${book.digitalPrice}) online on Lurnexa. ISBN: ${book.isbn}.`,
+    description: `Official ${primaryKeyword} textbook by ${book.authors}. Covers core algorithms, theory and practical implementations. Buy Paperback (₹${book.price}) or Digital PDF (₹${book.digitalPrice}) online on Lurnexa. Paperback ISBN: ${book.isbn}. Digital ISBN: ${book.isbnDigital}.`,
     keywords: book.keywords,
     alternates: {
       canonical: pageUrl,
@@ -100,6 +100,18 @@ export default async function BookDetailPage({ params }: Props) {
         '@id': `${pageUrl}#book`,
         'name': book.title,
         'isbn': book.isbn,
+        'workExample': [
+          {
+            '@type': 'Book',
+            'isbn': book.isbn,
+            'bookFormat': 'https://schema.org/Paperback',
+          },
+          {
+            '@type': 'Book',
+            'isbn': book.isbnDigital,
+            'bookFormat': 'https://schema.org/EBook',
+          },
+        ],
         'numberOfPages': book.pages,
         'inLanguage': 'en',
         'author': book.authors.split(',').map((name) => ({

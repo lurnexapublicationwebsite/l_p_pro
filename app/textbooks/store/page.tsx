@@ -31,6 +31,7 @@ interface TextbookDetails {
   authors: string;
   pages: number;
   isbn: string;
+  isbnDigital: string;
   pdfFileName: string;
   tag?: string; // e.g. "Best Seller", "Trending", "Staff Pick"
   stockStatus: "in-stock" | "low-stock" | "out-of-stock";
@@ -47,6 +48,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
     pages: 88,
     isbn: "978-81-685077-7-7",
+    isbnDigital: "978-81-685077-7-7",
     pdfFileName: "minerals.pdf",
     tag: "Trending",
     stockStatus: "in-stock"
@@ -60,6 +62,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 231,
     isbn: "978-81-685077-3-9",
+    isbnDigital: "978-81-903315-7-9",
     pdfFileName: "ml.pdf",
     tag: "Best Seller",
     stockStatus: "in-stock"
@@ -73,6 +76,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     pages: 248,
     isbn: "978-81-685077-5-3",
+    isbnDigital: "978-81-903315-4-8",
     pdfFileName: "dbms.pdf",
     tag: "Staff Pick",
     stockStatus: "in-stock"
@@ -86,6 +90,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. Aruna Kumar Dash",
     pages: 277,
     isbn: "978-81-685077-1-5",
+    isbnDigital: "978-81-903315-5-5",
     pdfFileName: "microeconomics.pdf",
     tag: "New Release",
     stockStatus: "in-stock"
@@ -99,6 +104,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
     pages: 142,
     isbn: "978-81-685077-4-6",
+    isbnDigital: "978-81-903315-3-1",
     pdfFileName: "ai.pdf",
     tag: "New Release",
     stockStatus: "in-stock"
@@ -112,6 +118,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P",
     pages: 199,
     isbn: "978-81-685077-8-4",
+    isbnDigital: "978-81-903315-1-7",
     pdfFileName: "data_streaming_and_analysis.pdf",
     tag: "New Release",
     stockStatus: "in-stock"
@@ -319,7 +326,8 @@ export default function BookstorePage() {
     const matchesSearch = 
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       book.authors.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.isbn.includes(searchQuery);
+      book.isbn.includes(searchQuery) ||
+      book.isbnDigital.includes(searchQuery);
     
     if (activeCategory === "All") return matchesSearch;
     if (activeCategory === "Best Sellers") return matchesSearch && book.tag === "Best Seller";
@@ -495,7 +503,7 @@ export default function BookstorePage() {
 
                     {/* Meta & Info */}
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {bookItem.stockStatus === "low-stock" ? (
                           <span className="text-[8px] text-amber-600 font-extrabold uppercase tracking-widest bg-amber-50 border border-amber-200/50 px-1.5 py-0.5 rounded">
                             Only {bookItem.stockCount || 2} Left
@@ -509,8 +517,13 @@ export default function BookstorePage() {
                             In Stock
                           </span>
                         )}
-                        <span className="text-[8px] text-[#64748B] font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-[#E2E8F0]">
-                          ISBN: {bookItem.isbn}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[7px] text-[#64748B] font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-[#E2E8F0]">
+                          PB ISBN: {bookItem.isbn}
+                        </span>
+                        <span className="text-[7px] text-[#64748B] font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-[#E2E8F0]">
+                          Digital ISBN: {bookItem.isbnDigital}
                         </span>
                       </div>
 
@@ -607,7 +620,7 @@ export default function BookstorePage() {
                       Peer-Reviewed
                     </span>
                     <span className="text-[8px] text-[#64748B] font-bold uppercase tracking-widest bg-slate-50 border border-[#E2E8F0] px-1.5 py-0.5 rounded">
-                      ISBN: {selectedBookForPreview.isbn}
+                      PB: {selectedBookForPreview.isbn} | Digital: {selectedBookForPreview.isbnDigital}
                     </span>
                   </div>
 

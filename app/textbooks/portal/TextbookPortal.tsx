@@ -183,34 +183,33 @@ const ALL_PLANS = [
   { key: "book_only", label: "Book Only", desc: "Digital textbook reading access" },
   { key: "caselet", label: "Caselet Only", desc: "Access to business case studies & caselets" },
   { key: "book_caselet", label: "Book + Caselet", desc: "Digital textbook and business case studies" },
-  { key: "practice", label: "Practice Feature Only", desc: "Unlocks quizzes & practice tests" },
-  { key: "placements", label: "Placements Feature Only", desc: "Unlocks placement preparation & career resources" },
-  { key: "complete", label: "Complete Portal Access", desc: "Full portal features: Quizzes, Practice, & Placements (No book)" },
-  { key: "book_portal", label: "Book + Portal Access", desc: "Digital textbook plus full portal features (No caselets)" },
-  { key: "book_caselet_portal", label: "Book + Caselet + Portal", desc: "The ultimate tier: Digital textbook, Caselets, and all portal features" }
 ];
 
-const SOFTCOPY_PLANS = ["book_only", "book_caselet", "book_portal", "book_caselet_portal"];
+// Portal plans removed from upgrade options for digital copy buyers
+const PORTAL_PLAN_KEYS = ["practice", "placements", "complete", "book_portal", "book_caselet_portal"];
+
+const SOFTCOPY_PLANS = ["book_only", "book_caselet"];
 
 const isPlanAllowedForBook = (planKey: string, bookId?: string): boolean => {
+  if (PORTAL_PLAN_KEYS.includes(planKey)) return false;
   if (bookId === "1") {
     // Book 1 (Minerals): Only book_only softcopy plan available (no caselets)
-    const restrictedFor1 = ["caselet", "book_caselet", "book_portal", "book_caselet_portal"];
+    const restrictedFor1 = ["caselet", "book_caselet"];
     if (restrictedFor1.includes(planKey)) return false;
   }
   if (bookId === "2") {
     // Book 2 (Machine Learning): No caselets available
-    const caseletPlans = ["caselet", "book_caselet", "book_caselet_portal"];
+    const caseletPlans = ["caselet", "book_caselet"];
     if (caseletPlans.includes(planKey)) return false;
   }
   if (bookId === "6") {
     // Book 6 (AI): Only book_only softcopy plan available
-    const restrictedFor6 = ["caselet", "book_caselet", "book_portal", "book_caselet_portal"];
+    const restrictedFor6 = ["caselet", "book_caselet"];
     if (restrictedFor6.includes(planKey)) return false;
   }
   if (bookId === "7") {
     // Book 7 (Data Streaming): Only book_only softcopy plan available
-    const restrictedFor7 = ["caselet", "book_caselet", "book_portal", "book_caselet_portal"];
+    const restrictedFor7 = ["caselet", "book_caselet"];
     if (restrictedFor7.includes(planKey)) return false;
   }
   return true;
@@ -222,7 +221,13 @@ const bookHasSoftcopy = (bookId?: string): boolean => {
 
 const getPlanLabel = (planKey?: string) => {
   const match = ALL_PLANS.find(p => p.key === planKey);
-  return match ? match.label : (planKey || "N/A");
+  if (match) return match.label;
+  if (planKey === "book_portal") return "Book + Portal Access";
+  if (planKey === "book_caselet_portal") return "Book + Caselet + Portal";
+  if (planKey === "complete") return "Complete Portal Access";
+  if (planKey === "practice") return "Practice Feature Only";
+  if (planKey === "placements") return "Placements Feature Only";
+  return planKey || "N/A";
 };
 
 

@@ -64,6 +64,18 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         '@id': `https://lurnexa.in/textbooks/${book.slug}#book`,
         'name': book.title,
         'isbn': book.isbn,
+        'workExample': [
+          {
+            '@type': 'Book',
+            'isbn': book.isbn,
+            'bookFormat': 'https://schema.org/Paperback',
+          },
+          {
+            '@type': 'Book',
+            'isbn': book.isbnDigital,
+            'bookFormat': 'https://schema.org/EBook',
+          },
+        ],
         'author': book.authors.split(',').map((name) => ({
           '@type': 'Person',
           'name': name.trim(),

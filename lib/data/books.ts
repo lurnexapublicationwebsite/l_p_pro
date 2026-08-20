@@ -5,7 +5,8 @@ export interface Book {
   title: string;
   authors: string;
   domain: string;
-  isbn: string;
+  isbn: string; // Paperback ISBN
+  isbnDigital: string; // Digital copy ISBN
   pages: number;
   price: number; // Paperback / Physical price
   digitalPrice: number; // Digital / PDF price
@@ -95,6 +96,7 @@ export const PUBLISHED_BOOKS_DATA: Book[] = [
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     domain: "Computer Science & Engineering / Machine Learning",
     isbn: "978-81-685077-3-9",
+    isbnDigital: "978-81-903315-7-9",
     pages: 231,
     price: 599,
     digitalPrice: 249,
@@ -147,6 +149,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     authors: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B",
     domain: "Computer Science & Engineering / DBMS",
     isbn: "978-81-685077-5-3",
+    isbnDigital: "978-81-903315-4-8",
     pages: 248,
     price: 649,
     digitalPrice: 299,
@@ -192,6 +195,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     authors: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy",
     domain: "Computer Science & Engineering / Artificial Intelligence",
     isbn: "978-81-685077-4-6",
+    isbnDigital: "978-81-903315-3-1",
     pages: 142,
     price: 399,
     digitalPrice: 199,
@@ -233,6 +237,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     authors: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P",
     domain: "Data Science / Analytics",
     isbn: "978-81-685077-8-4",
+    isbnDigital: "978-81-903315-1-7",
     pages: 199,
     price: 449,
     digitalPrice: 219,
@@ -273,6 +278,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
     domain: "Economics / Trade Policy",
     isbn: "978-81-685077-7-7",
+    isbnDigital: "978-81-685077-7-7",
     pages: 88,
     price: 699,
     digitalPrice: 499,
@@ -311,6 +317,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     authors: "Dr. Aruna Kumar Dash",
     domain: "Economics / Management",
     isbn: "978-81-685077-1-5",
+    isbnDigital: "978-81-903315-5-5",
     pages: 277,
     price: 599,
     digitalPrice: 299,
@@ -366,5 +373,7 @@ export function getBookBySlug(slug: string): Book | undefined {
 
 export function getBookByIsbn(isbn: string): Book | undefined {
   const clean = isbn.replace(/-/g, '');
-  return PUBLISHED_BOOKS_DATA.find((b) => b.isbn.replace(/-/g, '') === clean);
+  return PUBLISHED_BOOKS_DATA.find(
+    (b) => b.isbn.replace(/-/g, '') === clean || b.isbnDigital.replace(/-/g, '') === clean
+  );
 }

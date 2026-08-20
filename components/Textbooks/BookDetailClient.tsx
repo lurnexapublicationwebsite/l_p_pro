@@ -260,7 +260,11 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
               )}
               <div className="flex items-center gap-2">
                 <Award size={14} className="text-fuchsia-600 shrink-0" />
-                <span>Official ISBN: {book.isbn}</span>
+                <span>Paperback ISBN: {book.isbn}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Award size={14} className="text-fuchsia-600 shrink-0" />
+                <span>Digital ISBN: {book.isbnDigital}</span>
               </div>
             </div>
           </div>
@@ -297,10 +301,14 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
           </div>
 
           {/* Specs Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-4 border-y border-slate-100">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 py-4 border-y border-slate-100">
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold block">ISBN</span>
+              <span className="text-[10px] text-slate-500 uppercase font-semibold block">Paperback ISBN</span>
               <span className="text-xs font-mono font-bold text-slate-800">{book.isbn}</span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="text-[10px] text-slate-500 uppercase font-semibold block">Digital ISBN</span>
+              <span className="text-xs font-mono font-bold text-slate-800">{book.isbnDigital}</span>
             </div>
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
               <span className="text-[10px] text-slate-500 uppercase font-semibold block">Pages</span>
@@ -395,7 +403,10 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
                     />
                   </Link>
                   <span className="text-[9px] font-bold text-fuchsia-600 uppercase bg-fuchsia-50 px-2 py-0.5 rounded border border-fuchsia-200/40 inline-block">
-                    ISBN: {relBook.isbn}
+                    PB: {relBook.isbn}
+                  </span>
+                  <span className="text-[9px] font-bold text-fuchsia-600 uppercase bg-fuchsia-50 px-2 py-0.5 rounded border border-fuchsia-200/40 inline-block">
+                    Digital: {relBook.isbnDigital}
                   </span>
                   <h3 className="text-xs font-bold text-slate-900 group-hover:text-fuchsia-600 line-clamp-2 transition-colors">
                     <Link href={`/textbooks/${relBook.slug}`}>{relBook.title}</Link>

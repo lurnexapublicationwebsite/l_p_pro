@@ -44,7 +44,7 @@ export default function PublishedBooks() {
                       Peer-Reviewed
                     </span>
                     <span className="text-[8px] text-[#64748B] font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-[#E2E8F0]">
-                      ISBN: {bookItem.isbn}
+                      PB: {bookItem.isbn} | Digital: {bookItem.isbnDigital}
                     </span>
                   </div>
 
