@@ -3,9 +3,13 @@ frontend:
   phases:
     preBuild:
       commands:
+        - nvm use 20 || nvm use 18 || true
+        - export NODE_OPTIONS="--max-old-space-size=4096"
+        - export NEXT_TELEMETRY_DISABLED=1
         - npm install --legacy-peer-deps
     build:
       commands:
+        - export NODE_OPTIONS="--max-old-space-size=4096"
         - rm -rf .next
         - node scripts/inject-env.js
         - npm run build
@@ -16,3 +20,4 @@ frontend:
   cache:
     paths:
       - node_modules/**/*
+

@@ -60,6 +60,7 @@ function generatePDF(article) {
 
   console.log(`Generating text-selectable PDF for: "${article.title}" -> ${destPath}`);
 
+  fs.mkdirSync(path.dirname(destPath), { recursive: true });
   const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
   const writeStream = fs.createWriteStream(destPath);
   doc.pipe(writeStream);
