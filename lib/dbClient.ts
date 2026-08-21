@@ -481,7 +481,9 @@ export function initDb(): void {
       { id: "4", title: "Entrepreneurship Development: Concepts to Creation", code: "ED" },
       { id: "5", title: "Principles of Microeconomics for Business and Management", code: "PM" },
       { id: "6", title: "Foundations of Artificial Intelligence: Concepts, Techniques and Applications", code: "AI" },
-      { id: "7", title: "Data Streaming and Analysis", code: "DS" }
+      { id: "7", title: "Data Streaming and Analysis", code: "DS" },
+      { id: "8", title: "Python Programming: Principles and Practice", code: "PY" },
+      { id: "9", title: "NoSQL Databases Using MongoDB", code: "NS" }
     ];
     IN_MEMORY_DB['lurnexa_textbooks'] = defaultBooks;
   }

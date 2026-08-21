@@ -86,6 +86,14 @@ const getSoftCopyPrice = (plan: string, bookId?: string): number => {
     if (plan === "book_only") return 219;
     return 219;
   }
+  if (bookId === "8") {
+    if (plan === "book_only") return 299;
+    return 299;
+  }
+  if (bookId === "9") {
+    if (plan === "book_only") return 299;
+    return 299;
+  }
   if (bookId === "6") {
     if (plan === "book_only") return 199;
     if (plan === "caselet") return 60;
@@ -199,6 +207,32 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     isbnDigital: "978-81-903315-1-7",
     coverColor: "from-cyan-600 to-blue-950",
     pdfFileName: "data_streaming_and_analysis.pdf"
+  },
+  {
+    id: "8",
+    title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE",
+    code: "PY",
+    description: "This book provides a comprehensive and hands-on foundation in Python programming, designed for students, educators, and software development professionals. It covers essential syntax, core data structures, object-oriented concepts, and practical problem-solving techniques.",
+    price: 599,
+    authors: "Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, Mr. Shiva Prasad Munukuntla",
+    pages: 355,
+    isbn: "978-81-685077-2-2",
+    isbnDigital: "978-81-903315-6-2",
+    coverColor: "from-teal-600 to-slate-900",
+    pdfFileName: "python_programming.pdf"
+  },
+  {
+    id: "9",
+    title: "NOSQL DATABASES USING MONGODB",
+    code: "NS",
+    description: "This textbook provides a comprehensive and practical exploration of NoSQL database systems with a primary focus on MongoDB. It covers foundational document store concepts, schema design strategies, CRUD operations, aggregation frameworks, indexing, and enterprise scalability.",
+    price: 299,
+    authors: "Dr. Sujeet S. Jagtap",
+    pages: 197,
+    isbn: "N/A",
+    isbnDigital: "978-81-903315-8-6",
+    coverColor: "from-emerald-600 to-teal-950",
+    pdfFileName: "nosql.pdf"
   }
 ];
 
@@ -332,16 +366,34 @@ function CheckoutContent() {
       if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
       if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
       if (selected.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
+      if (selected.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
+      if (selected.id === "9") coverImg = "/portal_coverpages/NoSQL.jpeg";
+
+      const formatFromUrl = searchParams.get("format");
+      const planFromUrl = searchParams.get("plan");
+      const isSoft = formatFromUrl === "soft" || selected.id === "9";
+      if (isSoft && selectedFormat !== "soft") {
+        setSelectedFormat("soft");
+      }
+      const unitPrice = isSoft 
+        ? getSoftCopyPrice(planFromUrl || "book_only", selected.id) 
+        : selected.price;
+
+      const planLabel = isSoft 
+        ? `Digital Copy - ${(planFromUrl || "book_only").replace(/_/g, " ").toUpperCase()}`
+        : "Paperback";
 
       setCheckoutItems([{
         id: selected.id,
-        title: selected.title,
-        price: selected.price,
+        title: isSoft ? `${selected.title} (${planLabel})` : selected.title,
+        price: unitPrice,
         quantity: quantity,
         isbn: selected.isbn,
         isbnDigital: selected.isbnDigital,
-        coverImg
-      }]);
+        coverImg,
+        format: isSoft ? "soft" : "physical",
+        plan: planFromUrl || (isSoft ? "book_only" : "physical")
+      } as any]);
       setIsCartCheckout(false);
     } else {
       const savedCart = localStorage.getItem("lurnexa_store_cart");
@@ -624,7 +676,9 @@ function CheckoutContent() {
 
     if (format === "soft") {
       const qty = isCartCheckout ? checkoutItems.reduce((acc, i) => acc + i.quantity, 0) : quantity;
-      itemSubtotal = getSoftCopyPrice(plan, isCartCheckout ? checkoutItems[0]?.id : bookId) * qty;
+      itemSubtotal = isCartCheckout 
+        ? checkoutItems.reduce((acc, item) => acc + getSoftCopyPrice((item as any).plan || plan, item.id) * item.quantity, 0)
+        : getSoftCopyPrice(plan, bookId) * qty;
 
       // Check dynamic coupon first
       const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
@@ -1086,7 +1140,9 @@ function CheckoutContent() {
 
   if (format === "soft") {
     const qty = isCartCheckout ? checkoutItems.reduce((acc, i) => acc + i.quantity, 0) : quantity;
-    itemSubtotal = getSoftCopyPrice(plan, isCartCheckout ? checkoutItems[0]?.id : bookId) * qty;
+    itemSubtotal = isCartCheckout 
+      ? checkoutItems.reduce((acc, item) => acc + getSoftCopyPrice((item as any).plan || plan, item.id) * item.quantity, 0)
+      : getSoftCopyPrice(plan, bookId) * qty;
 
     // Check dynamic coupon first
     const dynamicCoupon = availableCoupons.find(c => c.code.toUpperCase() === (appliedCoupon || "").toUpperCase());
@@ -1271,41 +1327,51 @@ function CheckoutContent() {
               {/* Edition Format Selector */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
                 <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                  Choose Book Edition Format:
+                  Book Edition Format:
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFormat("physical")}
-                    className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
-                      selectedFormat === "physical"
-                        ? "bg-white border-fuchsia-600 shadow-sm ring-2 ring-fuchsia-600/20"
-                        : "bg-white/60 border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <BookOpen size={18} className={selectedFormat === "physical" ? "text-fuchsia-600 mt-0.5 shrink-0" : "text-slate-400 mt-0.5 shrink-0"} />
+                {bookId === "9" || book?.isbn === "N/A" || checkoutItems.some(i => i.id === "9" || i.isbn === "N/A") ? (
+                  <div className="p-3 bg-white border border-fuchsia-600 shadow-sm ring-2 ring-fuchsia-600/20 rounded-xl flex items-start gap-2.5">
+                    <FileText size={18} className="text-fuchsia-600 mt-0.5 shrink-0" />
                     <div>
-                      <div className="text-xs font-bold text-slate-900">Paperback (Print)</div>
-                      <div className="text-[10px] text-slate-500">Physical book delivered to doorstep</div>
+                      <div className="text-xs font-bold text-slate-900">Digital Copy (Exclusive)</div>
+                      <div className="text-[10px] text-slate-500">Read online in student portal with screenshot protection</div>
                     </div>
-                  </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFormat("physical")}
+                      className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                        selectedFormat === "physical"
+                          ? "bg-white border-fuchsia-600 shadow-sm ring-2 ring-fuchsia-600/20"
+                          : "bg-white/60 border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <BookOpen size={18} className={selectedFormat === "physical" ? "text-fuchsia-600 mt-0.5 shrink-0" : "text-slate-400 mt-0.5 shrink-0"} />
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">Paperback (Print)</div>
+                        <div className="text-[10px] text-slate-500">Physical book delivered to doorstep</div>
+                      </div>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFormat("soft")}
-                    className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
-                      selectedFormat === "soft"
-                        ? "bg-white border-fuchsia-600 shadow-sm ring-2 ring-fuchsia-600/20"
-                        : "bg-white/60 border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <FileText size={18} className={selectedFormat === "soft" ? "text-fuchsia-600 mt-0.5 shrink-0" : "text-slate-400 mt-0.5 shrink-0"} />
-                    <div>
-                      <div className="text-xs font-bold text-slate-900">Digital Copy (PDF)</div>
-                      <div className="text-[10px] text-slate-500">Instant download & portal access</div>
-                    </div>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFormat("soft")}
+                      className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                        selectedFormat === "soft"
+                          ? "bg-white border-fuchsia-600 shadow-sm ring-2 ring-fuchsia-600/20"
+                          : "bg-white/60 border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <FileText size={18} className={selectedFormat === "soft" ? "text-fuchsia-600 mt-0.5 shrink-0" : "text-slate-400 mt-0.5 shrink-0"} />
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">Digital Copy (PDF)</div>
+                        <div className="text-[10px] text-slate-500">Instant download & portal access</div>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1664,7 +1730,9 @@ function CheckoutContent() {
                       }
                     </span>
                     <h4 className="text-xs font-bold text-[#0F172A] line-clamp-1 leading-tight">{item.title}</h4>
-                    <p className="text-[10px] text-[#64748B] font-semibold">PB: {item.isbn} | Digital: {item.isbnDigital}</p>
+                    <p className="text-[10px] text-[#64748B] font-semibold">
+                      {item.isbn && item.isbn !== "N/A" ? `PB: ${item.isbn} | Digital: ${item.isbnDigital}` : `Digital ISBN: ${item.isbnDigital}`}
+                    </p>
 
                     {/* Quantity Selector inside Checkout */}
                     <div className="flex items-center gap-1.5 mt-2 bg-slate-50 border border-[#E2E8F0] rounded-lg px-2 py-0.5 w-max">

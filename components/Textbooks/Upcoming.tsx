@@ -28,19 +28,6 @@ const textbooks = [
     pdfFileName: "Gig_Economy_Social_Security_Research_Paper.pdf",
     aboutBook: "This book provides a comprehensive and practical roadmap for aspiring entrepreneurs, students, and professionals who aim to transform ideas into successful ventures. It begins by building a strong conceptual foundation of entrepreneurship—covering key theories, traits of successful entrepreneurs, and the evolving role of innovation in today’s dynamic business environment.\n\nMoving beyond theory, the book systematically guides readers through the entrepreneurial journey—from opportunity identification and idea validation to business model development and resource mobilization. It emphasizes real-world applicability by integrating case studies, contemporary examples, and structured frameworks that help bridge the gap between academic knowledge and practical execution.",
     aboutAuthor: "Dr. Sourav Mondal is a faculty member at the Indian Institute of Management Jammu, with expertise in entrepreneurship, strategic management, and operations. He earned his Ph.D. in Entrepreneurship from the Indian Institute of Technology (ISM) Dhanbad, where his doctoral research received the Best Thesis Award. He also holds postdoctoral experience from IIT Delhi.\n\nPrior to joining IIM Jammu, he served as an Assistant Professor at the Symbiosis Centre for Management Studies, Pune. His teaching and research interests include Entrepreneurship, Supply Chain Management, and Corporate Sustainability, with a focus on ESG and the Circular Economy."
-  },
-  {
-    id: 5,
-    title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE",
-    author: "Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, Mr. Shiva Prasad Munukuntla",
-    domain: "Computer Science / Programming",
-    status: "In Press",
-    date: "2026-08-30",
-    isbn: "978-81-685077-2-2",
-    isbnDigital: "978-81-903315-6-2",
-    pdfFileName: "python_programming.pdf",
-    aboutBook: "This book provides a comprehensive and hands-on foundation in Python programming, designed for students, educators, and software development professionals. It covers essential syntax, core data structures, object-oriented concepts, and practical problem-solving techniques. Emphasizing real-world applications, industry coding standards, and algorithmic thinking, the text guides readers through structured examples and project-oriented learning to build proficiency in modern Python software development.",
-    aboutAuthor: ""
   }
 ];
 
@@ -64,9 +51,12 @@ export default function Upcoming() {
 
   const filteredTextbooks = textbooks.filter(
     (book) => {
-      // Only hide the Minerals textbook once it is published; keep the remaining books in upcoming
+      // Only hide published textbooks once they are published
       if (book.pdfFileName === "minerals.pdf") {
         return !publishedPdfs.includes("minerals.pdf");
+      }
+      if (book.pdfFileName === "python_programming.pdf") {
+        return !publishedPdfs.includes("python_programming.pdf");
       }
       return true;
     }

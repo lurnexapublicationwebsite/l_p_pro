@@ -70,6 +70,12 @@ export function getSoftCopyPrice(plan: string, bookId?: string, defaultDigitalPr
     if (plan === "book_caselet") return 295;
     return 199;
   }
+  if (bookId === "8") {
+    return 299;
+  }
+  if (bookId === "9") {
+    return 299;
+  }
   const basePrice = defaultDigitalPrice || 299;
   if (plan === "caselet") return 49;
   if (plan === "book_caselet") return basePrice + 40;
@@ -351,6 +357,85 @@ The textbook thoroughly covers regression models, decision trees, neural network
       "Chapter 4: Production Analysis & Cost Functions",
       "Chapter 5: Market Structures - Perfect Competition, Monopoly & Oligopoly",
       "Chapter 6: Factor Pricing & Strategic Pricing Models"
+    ]
+  },
+  {
+    id: "8",
+    slug: "python-programming-principles-and-practice",
+    shortSlug: "python-programming",
+    title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE",
+    authors: "Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, Mr. Shiva Prasad Munukuntla",
+    domain: "Computer Science & Engineering / Programming",
+    isbn: "978-81-685077-2-2",
+    isbnDigital: "978-81-903315-6-2",
+    pages: 355,
+    price: 599,
+    digitalPrice: 299,
+    code: "PY",
+    pdfFileName: "python_programming.pdf",
+    coverImg: "/portal_coverpages/python_programming.jpeg",
+    publishedDate: "August 2026",
+    tag: "New Release",
+    stockStatus: "in-stock",
+    description: "This book provides a comprehensive and hands-on foundation in Python programming, designed for students, educators, and software development professionals. It covers essential syntax, core data structures, object-oriented concepts, and practical problem-solving techniques. Emphasizing real-world applications, industry coding standards, and algorithmic thinking, the text guides readers through structured examples and project-oriented learning to build proficiency in modern Python software development.",
+    longDescription: `PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE is an essential textbook designed for university students, researchers, and software engineers. Authored by Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, and Mr. Shiva Prasad Munukuntla, this comprehensive guide delivers theoretical rigor alongside real-world Python implementation and hands-on programming projects.`,
+    keywords: [
+      "Python Programming",
+      "Python Programming book",
+      "Python Programming textbook",
+      "Python Programming principles and practice",
+      "Dr Prakash Shanmurthy Python book",
+      "Dr J Somasekar Python textbook",
+      "978-81-685077-2-2",
+      "Buy Python Programming book online India",
+      "Lurnexa Python textbook",
+      "CSE Python programming reference book"
+    ],
+    tableOfContents: [
+      "Chapter 1: Introduction to Python & Algorithmic Problem Solving",
+      "Chapter 2: Control Structures, Functions & Modular Programming",
+      "Chapter 3: Data Structures - Lists, Tuples, Sets & Dictionaries",
+      "Chapter 4: Object-Oriented Programming (OOP) in Python",
+      "Chapter 5: File Handling, Exception Management & Modules",
+      "Chapter 6: Advanced Python - Functional Programming & Data Analysis Libraries"
+    ]
+  },
+  {
+    id: "9",
+    slug: "nosql-databases-using-mongodb",
+    shortSlug: "nosql-mongodb",
+    title: "NOSQL DATABASES USING MONGODB",
+    authors: "Dr. Sujeet S. Jagtap",
+    domain: "Computer Science & Engineering / Databases",
+    isbn: "N/A",
+    isbnDigital: "978-81-903315-8-6",
+    pages: 197,
+    price: 299,
+    digitalPrice: 299,
+    code: "NS",
+    pdfFileName: "nosql.pdf",
+    coverImg: "/portal_coverpages/NoSQL.jpeg",
+    publishedDate: "August 2026",
+    tag: "Digital Exclusive",
+    stockStatus: "in-stock",
+    description: "This textbook provides a comprehensive and practical exploration of NoSQL database systems with a primary focus on MongoDB. It covers foundational document store concepts, schema design strategies, CRUD operations, aggregation frameworks, indexing, and enterprise scalability.",
+    longDescription: `NOSQL DATABASES USING MONGODB is a definitive academic and practical guide authored by Dr. Sujeet S. Jagtap. Designed for computer science students, database administrators, and software architects, this book covers modern document-oriented database paradigms, high-performance querying, and distributed database deployment.`,
+    keywords: [
+      "NoSQL Databases",
+      "MongoDB book",
+      "NoSQL Databases Using MongoDB",
+      "Dr Sujeet S Jagtap NoSQL",
+      "978-81-903315-8-6",
+      "MongoDB textbook India",
+      "Lurnexa NoSQL book"
+    ],
+    tableOfContents: [
+      "Chapter 1: Introduction to NoSQL & Document-Oriented Databases",
+      "Chapter 2: MongoDB Architecture & Core Data Models",
+      "Chapter 3: CRUD Operations & Query Optimization",
+      "Chapter 4: Aggregation Pipeline & Complex Analytics",
+      "Chapter 5: Indexing, Sharding & High Availability Replica Sets",
+      "Chapter 6: Enterprise Security, Backup & Database Administration"
     ]
   }
 ];

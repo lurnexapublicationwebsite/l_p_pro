@@ -25,7 +25,8 @@ interface BookDetailClientProps {
 }
 
 export default function BookDetailClient({ book, relatedBooks }: BookDetailClientProps) {
-  const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft'>('physical');
+  const isDigitalExclusive = book.id === "9" || book.isbn === "N/A";
+  const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft'>(isDigitalExclusive ? 'soft' : 'physical');
   const [includeBook, setIncludeBook] = useState<boolean>(true);
   const [includeCaselet, setIncludeCaselet] = useState<boolean>(false);
 
@@ -96,33 +97,42 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
               <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
                 Select Edition Format:
               </span>
-              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/60 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setSelectedFormat('physical')}
-                  className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    selectedFormat === 'physical'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <BookOpen size={14} className={selectedFormat === 'physical' ? 'text-fuchsia-600' : ''} />
-                  <span>Paperback</span>
-                </button>
+              {isDigitalExclusive ? (
+                <div className="p-2 bg-fuchsia-50 border border-fuchsia-200 rounded-xl text-center">
+                  <span className="text-xs font-bold text-fuchsia-900 flex items-center justify-center gap-1.5">
+                    <Smartphone size={14} className="text-fuchsia-600" />
+                    <span>Digital PDF (Exclusive)</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/60 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFormat('physical')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      selectedFormat === 'physical'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <BookOpen size={14} className={selectedFormat === 'physical' ? 'text-fuchsia-600' : ''} />
+                    <span>Paperback</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedFormat('soft')}
-                  className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    selectedFormat === 'soft'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Smartphone size={14} className={selectedFormat === 'soft' ? 'text-fuchsia-600' : ''} />
-                  <span>Digital PDF</span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFormat('soft')}
+                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      selectedFormat === 'soft'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Smartphone size={14} className={selectedFormat === 'soft' ? 'text-fuchsia-600' : ''} />
+                    <span>Digital PDF</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Multiselect Component Selection if book has Caselet */}

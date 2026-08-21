@@ -144,8 +144,8 @@ export default function RootLayout({
         {/* ✅ Global Auth Context Wrapper */}
 
         <AuthProvider>
-        {children}
-     </AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

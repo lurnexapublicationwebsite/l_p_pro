@@ -193,6 +193,16 @@ export default function JsonLd() {
         },
         {
           '@type': 'SiteNavigationElement',
+          'name': 'Python Programming Textbook',
+          'url': 'https://lurnexa.in/textbooks/python-programming/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
+          'name': 'NoSQL Databases Using MongoDB',
+          'url': 'https://lurnexa.in/textbooks/nosql-mongodb/',
+        },
+        {
+          '@type': 'SiteNavigationElement',
           'name': 'Gallery',
           'url': 'https://lurnexa.in/gallery/',
         },
@@ -257,7 +267,7 @@ export default function JsonLd() {
       },
       'mainEntity': {
         '@type': 'ItemList',
-        'numberOfItems': 6,
+        'numberOfItems': 8,
         'itemListElement': [
           {
             '@type': 'ListItem',
@@ -300,6 +310,20 @@ export default function JsonLd() {
             'name': 'PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT',
             'url': 'https://lurnexa.in/textbooks/microeconomics/',
             'image': 'https://lurnexa.in/portal_coverpages/microeconomics.jpeg',
+          },
+          {
+            '@type': 'ListItem',
+            'position': 7,
+            'name': 'PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE',
+            'url': 'https://lurnexa.in/textbooks/python-programming/',
+            'image': 'https://lurnexa.in/portal_coverpages/python_programming.jpeg',
+          },
+          {
+            '@type': 'ListItem',
+            'position': 8,
+            'name': 'NOSQL DATABASES USING MONGODB',
+            'url': 'https://lurnexa.in/textbooks/nosql-mongodb/',
+            'image': 'https://lurnexa.in/portal_coverpages/NoSQL.jpeg',
           },
         ],
       },

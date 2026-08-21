@@ -134,6 +134,9 @@ const getQuizTotalMarks = (quiz: TextbookQuiz | null | undefined): number => {
 };
 
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+  if (bookId === "8" || bookId === "9") {
+    return 299;
+  }
   if (bookId === "6") {
     if (plan === "book_only") return 259;
     if (plan === "caselet") return 60;
@@ -192,25 +195,9 @@ const SOFTCOPY_PLANS = ["book_only", "book_caselet"];
 
 const isPlanAllowedForBook = (planKey: string, bookId?: string): boolean => {
   if (PORTAL_PLAN_KEYS.includes(planKey)) return false;
-  if (bookId === "1") {
-    // Book 1 (Minerals): Only book_only softcopy plan available (no caselets)
-    const restrictedFor1 = ["caselet", "book_caselet"];
-    if (restrictedFor1.includes(planKey)) return false;
-  }
-  if (bookId === "2") {
-    // Book 2 (Machine Learning): No caselets available
+  if (["1", "2", "6", "7", "8", "9"].includes(bookId || "")) {
     const caseletPlans = ["caselet", "book_caselet"];
     if (caseletPlans.includes(planKey)) return false;
-  }
-  if (bookId === "6") {
-    // Book 6 (AI): Only book_only softcopy plan available
-    const restrictedFor6 = ["caselet", "book_caselet"];
-    if (restrictedFor6.includes(planKey)) return false;
-  }
-  if (bookId === "7") {
-    // Book 7 (Data Streaming): Only book_only softcopy plan available
-    const restrictedFor7 = ["caselet", "book_caselet"];
-    if (restrictedFor7.includes(planKey)) return false;
   }
   return true;
 };
@@ -237,7 +224,9 @@ const PORTAL_PUBLISHED_BOOKS = [
   { id: "3", title: "DATABASE MANAGEMENT SYSTEMS: CONCEPTS, DESIGN AND IMPLEMENTATION", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B", price: 649 },
   { id: "5", title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT", pdfFileName: "microeconomics.pdf", coverImg: "/portal_coverpages/microeconomics.jpg", author: "Dr. Aruna Kumar Dash", price: 599 },
   { id: "6", title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS", pdfFileName: "ai.pdf", coverImg: "/portal_coverpages/ai.jpeg", author: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy", price: 399 },
-  { id: "7", title: "DATA STREAMING AND ANALYSIS", pdfFileName: "data_streaming_and_analysis.pdf", coverImg: "/portal_coverpages/data_streaming.jpeg", author: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P", price: 449 }
+  { id: "7", title: "DATA STREAMING AND ANALYSIS", pdfFileName: "data_streaming_and_analysis.pdf", coverImg: "/portal_coverpages/data_streaming.jpeg", author: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P", price: 449 },
+  { id: "8", title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE", pdfFileName: "python_programming.pdf", coverImg: "/portal_coverpages/python_programming.jpeg", author: "Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, Mr. Shiva Prasad Munukuntla", price: 599 },
+  { id: "9", title: "NOSQL DATABASES USING MONGODB", pdfFileName: "nosql.pdf", coverImg: "/portal_coverpages/NoSQL.jpeg", author: "Dr. Sujeet S. Jagtap", price: 299 }
 ];
 
 interface Caselet {

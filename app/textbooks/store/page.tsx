@@ -122,6 +122,34 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     pdfFileName: "data_streaming_and_analysis.pdf",
     tag: "New Release",
     stockStatus: "in-stock"
+  },
+  {
+    id: "8",
+    title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE",
+    code: "PY",
+    description: "This book provides a comprehensive and hands-on foundation in Python programming, designed for students, educators, and software development professionals. It covers essential syntax, core data structures, object-oriented concepts, and practical problem-solving techniques. Emphasizing real-world applications, industry coding standards, and algorithmic thinking, the text guides readers through structured examples and project-oriented learning to build proficiency in modern Python software development.",
+    price: 599,
+    authors: "Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, Mr. Shiva Prasad Munukuntla",
+    pages: 355,
+    isbn: "978-81-685077-2-2",
+    isbnDigital: "978-81-903315-6-2",
+    pdfFileName: "python_programming.pdf",
+    tag: "New Release",
+    stockStatus: "in-stock"
+  },
+  {
+    id: "9",
+    title: "NOSQL DATABASES USING MONGODB",
+    code: "NS",
+    description: "This textbook provides a comprehensive and practical exploration of NoSQL database systems with a primary focus on MongoDB. It covers foundational document store concepts, schema design strategies, CRUD operations, aggregation frameworks, indexing, and enterprise scalability.",
+    price: 299,
+    authors: "Dr. Sujeet S. Jagtap",
+    pages: 197,
+    isbn: "N/A",
+    isbnDigital: "978-81-903315-8-6",
+    pdfFileName: "nosql.pdf",
+    tag: "Digital Exclusive",
+    stockStatus: "in-stock"
   }
 ];
 
@@ -171,6 +199,14 @@ const getSoftCopyPrice = (plan: string, bookId?: string): number => {
   if (bookId === "7") {
     if (plan === "book_only") return 219;
     return 219;
+  }
+  if (bookId === "8") {
+    if (plan === "book_only") return 299;
+    return 299;
+  }
+  if (bookId === "9") {
+    if (plan === "book_only") return 299;
+    return 299;
   }
   if (bookId === "6") {
     if (plan === "book_only") return 199;
@@ -268,6 +304,8 @@ export default function BookstorePage() {
     if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
     if (book.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
     if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
+    if (book.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
+    if (book.id === "9") coverImg = "/portal_coverpages/NoSQL.jpeg";
 
     const finalPrice = price !== undefined ? price : book.price;
     const planLabel = format === "physical" ? "Paperback" : `Digital Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
@@ -466,6 +504,8 @@ export default function BookstorePage() {
               if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
               if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
               if (bookItem.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
+              if (bookItem.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
+              if (bookItem.id === "9") coverImg = "/portal_coverpages/NoSQL.jpeg";
 
               return (
                 <div 
@@ -519,9 +559,11 @@ export default function BookstorePage() {
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[7px] text-[#64748B] font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-[#E2E8F0]">
-                          PB ISBN: {bookItem.isbn}
-                        </span>
+                        {bookItem.isbn && bookItem.isbn !== "N/A" && (
+                          <span className="text-[7px] text-[#64748B] font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-[#E2E8F0]">
+                            PB ISBN: {bookItem.isbn}
+                          </span>
+                        )}
                         <span className="text-[7px] text-[#64748B] font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-[#E2E8F0]">
                           Digital ISBN: {bookItem.isbnDigital}
                         </span>
@@ -555,7 +597,7 @@ export default function BookstorePage() {
                       <button
                         onClick={() => {
                           setSelectedBookForPurchase(bookItem);
-                          setPurchaseFormat(null);
+                          setPurchaseFormat(bookItem.id === "9" || bookItem.isbn === "N/A" ? "soft" : null);
                           setModalMode("cart");
                         }}
                         className="bg-slate-50 hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] font-bold py-2 rounded-xl text-[10px] text-center flex items-center justify-center gap-1 transition-all"
@@ -566,7 +608,7 @@ export default function BookstorePage() {
                       <button
                         onClick={() => {
                           setSelectedBookForPurchase(bookItem);
-                          setPurchaseFormat(null);
+                          setPurchaseFormat(bookItem.id === "9" || bookItem.isbn === "N/A" ? "soft" : null);
                           setModalMode("buy");
                         }}
                         className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2 rounded-xl text-[10px] text-center flex items-center justify-center gap-1 transition-all active:scale-98"
@@ -857,43 +899,56 @@ export default function BookstorePage() {
             {/* Scrollable Content Body */}
             <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1">
               {/* Selector Card Choice */}
-              <div className="grid grid-cols-2 gap-4">
-                <div
-                  onClick={() => setPurchaseFormat("physical")}
-                  className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
-                    purchaseFormat === "physical"
-                      ? "border-fuchsia-600 bg-fuchsia-50/20"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <ShoppingBag size={24} className={purchaseFormat === "physical" ? "text-fuchsia-600" : "text-slate-400"} />
-                  <span className="text-xs font-bold text-slate-900">Paperback</span>
-                  <span className="text-[10px] text-slate-500 font-medium text-center">Printed textbook delivered by parcel. Shipping charges apply.</span>
+              {selectedBookForPurchase.id === "9" || selectedBookForPurchase.isbn === "N/A" ? (
+                <div className="grid grid-cols-1 gap-4">
+                  <div
+                    onClick={() => setPurchaseFormat("soft")}
+                    className="border-2 border-fuchsia-600 bg-fuchsia-50/20 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2"
+                  >
+                    <BookOpen size={24} className="text-fuchsia-600" />
+                    <span className="text-xs font-bold text-slate-900">Digital Copy (Exclusive)</span>
+                    <span className="text-[10px] text-slate-500 font-medium text-center">Read online in student portal with screenshot blocking. GST & online fees apply.</span>
+                  </div>
                 </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div
+                    onClick={() => setPurchaseFormat("physical")}
+                    className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
+                      purchaseFormat === "physical"
+                        ? "border-fuchsia-600 bg-fuchsia-50/20"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <ShoppingBag size={24} className={purchaseFormat === "physical" ? "text-fuchsia-600" : "text-slate-400"} />
+                    <span className="text-xs font-bold text-slate-900">Paperback</span>
+                    <span className="text-[10px] text-slate-500 font-medium text-center">Printed textbook delivered by parcel. Shipping charges apply.</span>
+                  </div>
 
-                <div
-                  onClick={() => setPurchaseFormat("soft")}
-                  className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
-                    purchaseFormat === "soft"
-                      ? "border-fuchsia-600 bg-fuchsia-50/20"
-                      : "border-slate-200"
-                  }`}
-                >
-                  <BookOpen size={24} className={purchaseFormat === "soft" ? "text-fuchsia-600" : "text-slate-400"} />
-                  <span className="text-xs font-bold text-slate-900">Digital Copy</span>
-                  <span className="text-[10px] text-slate-500 font-medium text-center">Read online in student portal with screenshot blocking. GST & online fees apply.</span>
+                  <div
+                    onClick={() => setPurchaseFormat("soft")}
+                    className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
+                      purchaseFormat === "soft"
+                        ? "border-fuchsia-600 bg-fuchsia-50/20"
+                        : "border-slate-200"
+                    }`}
+                  >
+                    <BookOpen size={24} className={purchaseFormat === "soft" ? "text-fuchsia-600" : "text-slate-400"} />
+                    <span className="text-xs font-bold text-slate-900">Digital Copy</span>
+                    <span className="text-[10px] text-slate-500 font-medium text-center">Read online in student portal with screenshot blocking. GST & online fees apply.</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Format Sub-plans */}
               {purchaseFormat && (
                 <div className="space-y-4 bg-slate-50/70 p-4 border border-slate-100 rounded-2xl animate-fadeIn">
                   <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Select Plan Package {!["1", "2", "6", "7"].includes(selectedBookForPurchase?.id || "") && "(Multiselect Available)"}
+                    Select Plan Package {["3", "5"].includes(selectedBookForPurchase?.id || "") && "(Multiselect Available)"}
                   </span>
                   
                   <div className="space-y-2.5">
-                    {!["1", "2", "6", "7"].includes(selectedBookForPurchase?.id || "") ? (
+                    {["3", "5"].includes(selectedBookForPurchase?.id || "") ? (
                       <>
                         {/* Book Checkbox */}
                         <div
