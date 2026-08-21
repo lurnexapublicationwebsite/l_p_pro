@@ -363,7 +363,7 @@ function CheckoutContent() {
       let coverImg = "/portal_coverpages/minerals.jpeg";
       if (selected.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
       if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-      if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
+      if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
       if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
       if (selected.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
       if (selected.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";

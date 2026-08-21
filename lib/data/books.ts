@@ -329,7 +329,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     digitalPrice: 299,
     code: "PM",
     pdfFileName: "microeconomics.pdf",
-    coverImg: "/portal_coverpages/microeconomics.jpg",
+    coverImg: "/portal_coverpages/microeconomics.jpeg",
     publishedDate: "May 18, 2026",
     tag: "Academic Choice",
     stockStatus: "in-stock",

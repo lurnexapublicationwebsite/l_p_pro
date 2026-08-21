@@ -301,7 +301,7 @@ export default function BookstorePage() {
     let coverImg = "/portal_coverpages/minerals.jpeg";
     if (book.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
     if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-    if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
+    if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
     if (book.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
     if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
     if (book.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
@@ -501,7 +501,7 @@ export default function BookstorePage() {
               let coverImg = "/portal_coverpages/minerals.jpeg";
               if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
               if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-              if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpg";
+              if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
               if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
               if (bookItem.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
               if (bookItem.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
