@@ -4,7 +4,7 @@ import path from "path";
 
 export async function GET() {
   try {
-    const pdfsDir = path.join(process.cwd(), "public", "published_books", "pdfs");
+    const pdfsDir = path.join(process.cwd(), "public", "portal_textbooks");
     
     if (!fs.existsSync(pdfsDir)) {
       return NextResponse.json({ files: [] });
