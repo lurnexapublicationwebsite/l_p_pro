@@ -9,16 +9,20 @@ frontend:
         - rm -rf .next
         - node scripts/inject-env.js
         - NODE_OPTIONS="--max-old-space-size=4096" npm run build
-        - rm -rf .next/cache
+        - rm -rf .next/cache .next/diagnostics .next/dev .next/trace
   artifacts:
     baseDirectory: .next
     files:
       - '**/*'
     exclude:
       - 'cache/**/*'
+      - 'diagnostics/**/*'
+      - 'dev/**/*'
+      - 'trace/**/*'
   cache:
     paths:
       - node_modules/**/*
+
 
 
 
