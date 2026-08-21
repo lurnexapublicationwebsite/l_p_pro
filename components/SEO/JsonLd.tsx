@@ -323,7 +323,7 @@ export default function JsonLd() {
             'position': 8,
             'name': 'NOSQL DATABASES USING MONGODB',
             'url': 'https://lurnexa.in/textbooks/nosql-mongodb/',
-            'image': 'https://lurnexa.in/portal_coverpages/NoSQL.jpeg',
+            'image': 'https://lurnexa.in/portal_coverpages/nosql.jpeg',
           },
         ],
       },

@@ -414,7 +414,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     digitalPrice: 299,
     code: "NS",
     pdfFileName: "nosql.pdf",
-    coverImg: "/portal_coverpages/NoSQL.jpeg",
+    coverImg: "/portal_coverpages/nosql.jpeg",
     publishedDate: "August 2026",
     tag: "Digital Exclusive",
     stockStatus: "in-stock",

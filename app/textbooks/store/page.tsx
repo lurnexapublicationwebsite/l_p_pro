@@ -305,7 +305,7 @@ export default function BookstorePage() {
     if (book.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
     if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
     if (book.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
-    if (book.id === "9") coverImg = "/portal_coverpages/NoSQL.jpeg";
+    if (book.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
 
     const finalPrice = price !== undefined ? price : book.price;
     const planLabel = format === "physical" ? "Paperback" : `Digital Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
@@ -505,7 +505,7 @@ export default function BookstorePage() {
               if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
               if (bookItem.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
               if (bookItem.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
-              if (bookItem.id === "9") coverImg = "/portal_coverpages/NoSQL.jpeg";
+              if (bookItem.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
 
               return (
                 <div 

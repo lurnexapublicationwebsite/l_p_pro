@@ -367,7 +367,7 @@ function CheckoutContent() {
       if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
       if (selected.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
       if (selected.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
-      if (selected.id === "9") coverImg = "/portal_coverpages/NoSQL.jpeg";
+      if (selected.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
 
       const formatFromUrl = searchParams.get("format");
       const planFromUrl = searchParams.get("plan");
