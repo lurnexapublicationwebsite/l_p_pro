@@ -15,12 +15,12 @@ export default function CIMSPage() {
           <p className="text-center text-lg text-gray-600 italic mb-12">
             “Bridging Innovation and Management Excellence”
              <br />
-            ISSN:
+            ISSN: 3139-9126
           </p>
 
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
-              <img src="/Cimss4.png" alt="CIMS Cover" className="w-[240px] h-[320px] object-cover rounded-lg shadow-md border"/>
+              <img src="/Cimss.png" alt="CIMS Cover" className="w-[240px] h-[320px] object-cover rounded-lg shadow-md border"/>
             </div>
 
             <div className="flex-[1.5] flex flex-col items-end gap-3 w-full">

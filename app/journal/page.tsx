@@ -16,13 +16,13 @@ export default function PublicationsPage() {
           <p className="text-center text-lg text-gray-600 italic mb-12">
             “Integrating Knowledge, Inspiring Progress”
             <br />
-            ISSN:
+            ISSN: 3139-9126
           </p>
 
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
               <img
-                src="/gjpir1.png"
+                src="/Gjpir.png"
                 alt="GJPIR Cover"
                 className="w-[520px] h-[500px] object-contain rounded-lg shadow-md border bg-white p-2"
               />

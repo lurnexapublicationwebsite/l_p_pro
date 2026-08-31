@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     siteName: 'Lurnexa Publications',
     images: [
       {
-        url: '/Cimss4.png',
+        url: '/Cimss.png',
         width: 600,
         height: 800,
         alt: 'CIMS Journal Cover',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'CIMS Journal | Advanced Management Studies Research',
     description: 'Fostering innovation and sustainable excellence in phygital marketing, corporate governance, and organizational transformation.',
-    images: ['/Cimss4.png'],
+    images: ['/Cimss.png'],
   },
   alternates: {
     canonical: '/journal/cims',

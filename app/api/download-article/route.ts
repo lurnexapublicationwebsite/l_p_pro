@@ -3,7 +3,7 @@ import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const WATERMARK_TEXT = 'Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR) — Vol. 01, Issue 01, April 2026';
+const WATERMARK_TEXT = 'Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR) — ISSN: 3139-9126 — Vol. 01, Issue 01, April 2026';
 
 export async function GET(request: NextRequest) {
   try {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Footer text with professional spacing, commas, and em-dash
-      const fullFooterText = 'Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR), Vol. 01, Issue 01, April 2026';
+      const fullFooterText = 'Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR) | ISSN: 3139-9126 | Vol. 01, Issue 01, April 2026';
       const footerTextWidth = footerFont.widthOfTextAtSize(fullFooterText, footerFontSize);
       
       // Center footer text on the page

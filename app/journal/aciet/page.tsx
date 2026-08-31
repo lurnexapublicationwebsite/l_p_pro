@@ -15,12 +15,12 @@ export default function ACIETPage() {
           <p className="text-center text-lg text-gray-600 italic mb-12">
             “Pioneering Intelligence, Shaping the Future”
             <br />
-            ISSN:
+            ISSN: 3139-9126
           </p>
 
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
-              <Image src="/Aciet2.png" alt="Journal cover for Advanced Computational Intelligence & Emerging Technologies, ACIET. The cover features an abstract design with interconnected lines and glowing nodes set against a dark background, conveying themes of advanced technology and digital networks."
+              <Image src="/Aciet.png" alt="Journal cover for Advanced Computational Intelligence & Emerging Technologies, ACIET. The cover features an abstract design with interconnected lines and glowing nodes set against a dark background, conveying themes of advanced technology and digital networks."
           width={300}
           height={400}
           className="object-cover rounded-lg shadow-xl border"

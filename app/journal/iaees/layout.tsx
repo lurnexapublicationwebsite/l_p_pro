@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     siteName: 'Lurnexa Publications',
     images: [
       {
-        url: '/Iaees3.png',
+        url: '/Iaees.png',
         width: 600,
         height: 800,
         alt: 'IAEES Journal Cover',
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'IAEES Journal | Advanced Electrical & Electronics Research',
     description: 'Fostering excellence, scientific depth, and global impact in next-generation electrical grids, smart retail NFC systems, and IoT.',
-    images: ['/Iaees3.png'],
+    images: ['/Iaees.png'],
   },
   alternates: {
     canonical: '/journal/iaees',

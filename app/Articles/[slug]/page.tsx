@@ -196,7 +196,7 @@ export default function ArticlePage() {
             {/* Watermark diagonal overlay */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden z-0 select-none opacity-[0.05]">
               <div className="transform -rotate-[35deg] text-center text-slate-900 font-black text-base md:text-xl tracking-[0.2em] whitespace-normal max-w-2xl leading-loose uppercase">
-                Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR) — Vol. 01, Issue 01, April 2026
+                Lurnexa Publications — Global Journal for Progressive Innovation and Research (GJPIR) — ISSN: 3139-9126 — Vol. 01, Issue 01, April 2026
               </div>
             </div>
 
@@ -264,6 +264,8 @@ export default function ArticlePage() {
               <span>Lurnexa Publications</span>
               <span className="text-slate-400 font-bold">—</span>
               <span className="font-bold text-slate-700">Global Journal for Progressive Innovation and Research (GJPIR)</span>
+              <span className="text-slate-400 font-bold">•</span>
+              <span className="font-mono font-bold text-slate-600">ISSN: 3139-9126</span>
               <span className="text-slate-400 font-bold">•</span>
               <span>Vol. 01, Issue 01</span>
               <span className="text-slate-400 font-bold">•</span>

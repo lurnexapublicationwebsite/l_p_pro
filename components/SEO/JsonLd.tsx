@@ -8,11 +8,62 @@ export default function JsonLd() {
       '@type': 'Organization',
       '@id': 'https://lurnexa.in/#organization',
       'name': 'Lurnexa Publications',
-      'alternateName': ['LURNEXA PUBLICATIONS', 'Lurnexa'],
+      'legalName': 'LURNEXA PUBLICATIONS',
+      'alternateName': ['LURNEXA PUBLICATIONS', 'Lurnexa', 'Lurnexa Publishing'],
       'url': 'https://lurnexa.in',
-      'logo': 'https://lurnexa.in/Logo.png',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': 'https://lurnexa.in/Logo.png',
+        'width': 512,
+        'height': 512,
+      },
       'image': 'https://lurnexa.in/Logo.png',
-      'description': 'Lurnexa Publications is a premier scholarly publisher and techno-management hub, publishing peer-reviewed academic journals, university textbooks, and research monographs.',
+      'description': 'Lurnexa Publications (ISSN: 3139-9126 | ISO 9001:2015 Certified) is a premier scholarly publisher and techno-management hub based in Guntur, India. We publish peer-reviewed academic journals (GJPIR, ACIET, ARESS, CIMS, IAEES), university textbooks, and research monographs across engineering, management, economics, and social sciences.',
+      'slogan': 'Empowering technology, innovation, and creativity through professional scholarly publishing',
+      'foundingDate': '2024',
+      'foundingLocation': {
+        '@type': 'Place',
+        'name': 'Guntur, Andhra Pradesh, India',
+      },
+      'areaServed': 'Worldwide',
+      'numberOfEmployees': {
+        '@type': 'QuantitativeValue',
+        'minValue': 10,
+        'maxValue': 50,
+      },
+      'hasCredential': [
+        {
+          '@type': 'EducationalOccupationalCredential',
+          'credentialCategory': 'certification',
+          'name': 'ISO 9001:2015 Certified',
+          'description': 'Quality Management System Certification — ISO 9001:2015',
+        },
+      ],
+      'identifier': [
+        {
+          '@type': 'PropertyValue',
+          'propertyID': 'ISSN',
+          'value': '3139-9126',
+        },
+      ],
+      'sameAs': [
+        'https://www.linkedin.com/company/lurnexa-publications/',
+        'https://www.instagram.com/lurnexa_publications',
+        'https://youtube.com/@lurnexapublications',
+      ],
+      'knowsAbout': [
+        'Scholarly Publishing',
+        'Peer-Reviewed Academic Journals',
+        'Research Paper Publication',
+        'Open Access Research',
+        'University Textbooks',
+        'Engineering Research',
+        'Management Studies',
+        'Economics & Social Sciences',
+        'Computational Intelligence',
+        'Electrical & Electronics Engineering',
+      ],
+      'publishingPrinciples': 'https://lurnexa.in/publications-ethics-policy',
       'email': 'lurnexapublication@gmail.com',
       'telephone': '+91-9133521829',
       'address': {
@@ -29,7 +80,7 @@ export default function JsonLd() {
           'telephone': '+91-9133521829',
           'contactType': 'customer service',
           'email': 'lurnexapublication@gmail.com',
-          'areaServed': 'IN',
+          'areaServed': 'Worldwide',
           'availableLanguage': ['English', 'Hindi', 'Telugu'],
         },
         {
@@ -37,7 +88,7 @@ export default function JsonLd() {
           'telephone': '+91-9347375817',
           'contactType': 'editorial & publishing support',
           'email': 'lurnexapublication@gmail.com',
-          'areaServed': 'IN',
+          'areaServed': 'Worldwide',
           'availableLanguage': ['English'],
         },
       ],
@@ -63,6 +114,24 @@ export default function JsonLd() {
           '@id': 'https://lurnexa.in/#organization',
         },
       },
+      'member': [
+        {
+          '@type': 'OrganizationRole',
+          'member': {
+            '@type': 'Person',
+            'name': 'Narendra Kumar Kurakula',
+          },
+          'roleName': 'Founder & Director',
+        },
+        {
+          '@type': 'OrganizationRole',
+          'member': {
+            '@type': 'Person',
+            'name': 'Rushik Burla',
+          },
+          'roleName': 'Chief Executive Officer',
+        },
+      ],
     },
 
     // ── 2. Founder Person ──
@@ -341,8 +410,9 @@ export default function JsonLd() {
         '@type': 'Organization',
         '@id': 'https://lurnexa.in/#organization',
       },
-      'image': 'https://lurnexa.in/gjpir1.png',
+      'image': 'https://lurnexa.in/Gjpir.png',
       'description': 'GJPIR is a peer-reviewed multidisciplinary academic journal by Lurnexa Publications covering engineering, economics, management, and social sciences.',
+      'issn': '3139-9126',
     },
     {
       '@context': 'https://schema.org',
@@ -356,6 +426,7 @@ export default function JsonLd() {
         '@id': 'https://lurnexa.in/#organization',
       },
       'image': 'https://lurnexa.in/Aciet.png',
+      'issn': '3139-9126',
     },
     {
       '@context': 'https://schema.org',
@@ -369,6 +440,7 @@ export default function JsonLd() {
         '@id': 'https://lurnexa.in/#organization',
       },
       'image': 'https://lurnexa.in/Aress.png',
+      'issn': '3139-9126',
     },
     {
       '@context': 'https://schema.org',
@@ -381,7 +453,8 @@ export default function JsonLd() {
         '@type': 'Organization',
         '@id': 'https://lurnexa.in/#organization',
       },
-      'image': 'https://lurnexa.in/Cimms.png',
+      'image': 'https://lurnexa.in/Cimss.png',
+      'issn': '3139-9126',
     },
     {
       '@context': 'https://schema.org',
@@ -394,7 +467,8 @@ export default function JsonLd() {
         '@type': 'Organization',
         '@id': 'https://lurnexa.in/#organization',
       },
-      'image': 'https://lurnexa.in/iaees.png',
+      'image': 'https://lurnexa.in/Iaees.png',
+      'issn': '3139-9126',
     },
   ];
 

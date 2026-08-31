@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linkedin, Mail, MapPin, ExternalLink } from "lucide-react";
+import { Linkedin, Instagram, Youtube, Mail, MapPin, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 export default function FooterSection() {
@@ -47,16 +47,50 @@ export default function FooterSection() {
               <p className="text-slate-500 leading-relaxed max-w-xs text-sm md:text-base">
                 Empowering technology, innovation, and creativity through professional scholarly publishing.
               </p>
-              <div className="pt-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm group hover:border-orange-200 transition-colors">
-                  <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center text-white">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+              <div className="pt-3">
+                <div className="relative bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-md max-w-[280px]">
+                  {/* Top accent gradient bar */}
+                  <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #f97316, #fb923c, #fdba74)' }} />
+                  
+                  <div className="p-4 space-y-3">
+                    {/* ISO Certification */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
+                          <path d="M9 12l2 2 4-4" />
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-extrabold text-slate-800 tracking-wider uppercase block leading-tight">
+                          ISO 9001:2015
+                        </span>
+                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">
+                          Certified
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+
+                    {/* Official ISSN Number */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white shrink-0 shadow-sm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest block leading-tight">
+                          ISSN
+                        </span>
+                        <span className="font-mono font-extrabold text-sm text-slate-800 tracking-[0.15em]">
+                          3139-9126
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-bold uppercase text-slate-700 tracking-wider">
-                    ISO 9001:2015 Certified
-                  </span>
                 </div>
               </div>
             </div>
@@ -151,6 +185,22 @@ export default function FooterSection() {
               className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg hover:-translate-y-1"
             >
               <Linkedin size={18} />
+            </a>
+            <a 
+              href="https://www.instagram.com/lurnexa_publications" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg hover:-translate-y-1"
+            >
+              <Instagram size={18} />
+            </a>
+            <a 
+              href="https://youtube.com/@lurnexapublications?si=zzDaH1o8s8p5YQyg" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-orange-500 transition-all shadow-lg hover:-translate-y-1"
+            >
+              <Youtube size={18} />
             </a>
           </div>
         </div>

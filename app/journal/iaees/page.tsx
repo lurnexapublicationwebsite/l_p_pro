@@ -16,14 +16,14 @@ export default function IAEESPage() {
           <p className="text-center text-lg text-gray-600 italic mb-12">
             “Empowering Innovation in Electrical and Electronic Frontiers”
              <br />
-            ISSN:
+            ISSN: 3139-9126
           </p>
 
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             {/* Left Image */}
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
               <img
-                src="/Iaees3.png"
+                src="/Iaees.png"
                 alt="IAEES Cover"
                 className="w-[240px] h-[320px] object-cover rounded-lg shadow-md border border-gray-200"
               />

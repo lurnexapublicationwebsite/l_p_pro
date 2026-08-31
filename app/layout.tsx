@@ -25,11 +25,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://lurnexa.in"),
   title: {
-    default: "LURNEXA PUBLICATIONS | Excellence in Scholarly Publishing & Academic Research",
+    default: "LURNEXA PUBLICATIONS | ISSN: 3139-9126 | ISO 9001:2015 Certified Scholarly Publisher",
     template: "%s | LURNEXA PUBLICATIONS",
   },
   description:
-    "LURNEXA PUBLICATIONS is a premier techno-management powerhouse and scholarly publisher. We bridge the gap between high-impact academic publishing, peer-reviewed journals, and global research dissemination to drive science and innovation.",
+    "LURNEXA PUBLICATIONS (ISSN: 3139-9126 | ISO 9001:2015 Certified) is a premier scholarly publisher and techno-management hub. Publishing peer-reviewed academic journals including GJPIR, ACIET, ARESS, CIMS, and IAEES. Bridging high-impact research and global knowledge dissemination.",
   keywords: [
     "LURNEXA PUBLICATIONS",
     "Lurnexa Publications",
@@ -63,6 +63,10 @@ export const metadata: Metadata = {
     "Management Studies Journal",
     "Economics Research Paper Submission",
     "Double Blind Peer Review Publications",
+    "ISSN 3139-9126",
+    "ISSN Lurnexa Publications",
+    "ISO 9001:2015 Certified Publisher",
+    "ISO Certified Academic Publisher India",
     "Fast Track Research Publication"
   ],
   authors: [{ name: "LURNEXA PUBLICATIONS" }],
@@ -77,9 +81,9 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "LURNEXA PUBLICATIONS | Bridging Knowledge and Research",
+    title: "LURNEXA PUBLICATIONS | ISSN: 3139-9126 | ISO 9001:2015 Certified",
     description:
-      "A multidisciplinary hub driving excellence through scholarly publishing and academic research dissemination.",
+      "LURNEXA PUBLICATIONS — ISSN: 3139-9126 | ISO 9001:2015 Certified. A multidisciplinary hub driving excellence through scholarly publishing and academic research dissemination.",
     url: "https://lurnexa.in",
     siteName: "LURNEXA PUBLICATIONS",
     images: [
@@ -95,9 +99,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "LURNEXA PUBLICATIONS | Excellence in Research & Publications",
+    title: "LURNEXA PUBLICATIONS | ISSN: 3139-9126 | ISO 9001:2015 Certified",
     description:
-      "Driving the future of academic publishing and global research accessibility.",
+      "LURNEXA PUBLICATIONS — ISSN: 3139-9126 | ISO 9001:2015 Certified. Driving the future of academic publishing and global research accessibility.",
     images: ["/og-image.png"],
   },
   // TODO: Add your Google Search Console verification code here

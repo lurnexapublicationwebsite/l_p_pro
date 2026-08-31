@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     siteName: 'Lurnexa Publications',
     images: [
       {
-        url: '/Aciet2.png',
+        url: '/Aciet.png',
         width: 600,
         height: 800,
         alt: 'ACIET Journal Cover',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'ACIET Journal | Advanced Computational Intelligence Research',
     description: 'Fostering excellence and innovation in artificial intelligence, machine learning, and emerging digital technologies.',
-    images: ['/Aciet2.png'],
+    images: ['/Aciet.png'],
   },
   alternates: {
     canonical: '/journal/aciet',

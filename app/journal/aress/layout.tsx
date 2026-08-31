@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     siteName: 'Lurnexa Publications',
     images: [
       {
-        url: '/Aress5.png',
+        url: '/Aress.png',
         width: 600,
         height: 800,
         alt: 'ARESS Journal Cover',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'ARESS Journal | Advanced Economics & Social Sciences Research',
     description: 'Fostering excellence and critical inquiry in international economics, green trade transitions, and inclusive social systems.',
-    images: ['/Aress5.png'],
+    images: ['/Aress.png'],
   },
   alternates: {
     canonical: '/journal/aress',

@@ -15,14 +15,14 @@ export default function ARESSPage() {
           <p className="text-center text-lg text-gray-600 italic mb-12">
             “Empowering Socio-Economic Transformation”
              <br />
-            ISSN:
+            ISSN: 3139-9126
           </p>
 
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             {/* Left Image */}
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
               <Image
-                src="/Aress5.png"
+                src="/Aress.png"
                 alt="ARESS Cover"
                 width={240}
                 height={320}

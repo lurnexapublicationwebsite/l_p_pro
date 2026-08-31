@@ -8,9 +8,9 @@ import path from 'path';
 const journalCoverMap: Record<string, string> = {
   'ACIET': '/Aciet.png',
   'ARESS': '/Aress.png',
-  'CIMS': '/Cimms.png',
-  'GJPIR': '/gjpir1.png',
-  'IAEES': '/iaees.png',
+  'CIMS': '/Cimss.png',
+  'GJPIR': '/Gjpir.png',
+  'IAEES': '/Iaees.png',
 };
 
 // Routes that should never appear in the sitemap
@@ -143,9 +143,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/journal': { title: 'Lurnexa Journals Directory', image: '/Logo.png' },
     '/journal/aciet': { title: 'ACIET Journal - Advanced Computational Intelligence & Emerging Technologies', image: '/Aciet.png' },
     '/journal/aress': { title: 'ARESS Journal - Advanced Research in Economics & Social Sciences', image: '/Aress.png' },
-    '/journal/cims': { title: 'CIMS Journal - Center for Innovative Management Studies', image: '/Cimms.png' },
+    '/journal/cims': { title: 'CIMS Journal - Center for Innovative Management Studies', image: '/Cimss.png' },
     '/journal/explore': { title: 'Explore Research Journals - GJPIR', image: '/Logo.png' },
-    '/journal/iaees': { title: 'IAEES Journal - Institute of Advanced Electrical & Electronics Studies', image: '/iaees.png' },
+    '/journal/iaees': { title: 'IAEES Journal - Institute of Advanced Electrical & Electronics Studies', image: '/Iaees.png' },
   };
 
   Object.entries(journalConfig).forEach(([route, info]) => {
@@ -162,9 +162,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const boards: Record<string, string> = {
     '/EditorialBoard/ACIET': '/Aciet.png',
     '/EditorialBoard/ARESS': '/Aress.png',
-    '/EditorialBoard/CIMS': '/Cimms.png',
-    '/EditorialBoard/GJPIR': '/gjpir1.png',
-    '/EditorialBoard/IAEES': '/iaees.png',
+    '/EditorialBoard/CIMS': '/Cimss.png',
+    '/EditorialBoard/GJPIR': '/Gjpir.png',
+    '/EditorialBoard/IAEES': '/Iaees.png',
   };
 
   Object.entries(boards).forEach(([route, coverImg]) => {

@@ -13,7 +13,7 @@ export default function ExploreJournalsPage() {
         "Dive into advanced studies and innovations in computing and information technologies.",
       color: "bg-purple-600",
       path: "/journal/aciet",
-      image: "/Aciet2.png",
+      image: "/Aciet.png",
       name: "ACIET",
     },
     {
@@ -23,7 +23,7 @@ export default function ExploreJournalsPage() {
         "Discover pioneering research in management, leadership, and innovation strategies.",
       color: "bg-yellow-500",
       path: "/journal/cims",
-      image: "/Cimss4.png",
+      image: "/Cimss.png",
       name: "CIMS",
     },
     {
@@ -33,7 +33,7 @@ export default function ExploreJournalsPage() {
         "Engage with impactful research and insights in economics and social sciences.",
       color: "bg-emerald-600",
       path: "/journal/aress",
-      image: "/Aress5.png",
+      image: "/Aress.png",
       name: "ARESS",
     },
     {
@@ -43,7 +43,7 @@ export default function ExploreJournalsPage() {
         "Explore advancements and applied research in electrical and electronics engineering.",
       color: "bg-indigo-600",
       path: "/journal/iaees",
-      image: "/Iaees3.png",
+      image: "/Iaees.png",
       name: "IAEES",
     },
   ];
