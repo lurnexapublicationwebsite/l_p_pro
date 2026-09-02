@@ -103,12 +103,12 @@ export default function JsonLd() {
           '@id': 'https://lurnexa.in/#organization',
         },
       },
-      'ceo': {
+      'coFounder': {
         '@type': 'Person',
-        '@id': 'https://lurnexa.in/#ceo',
+        '@id': 'https://lurnexa.in/#co-founder',
         'name': 'Rushik Burla',
-        'jobTitle': 'Chief Executive Officer',
-        'image': 'https://lurnexa.in/ceo.jpg',
+        'jobTitle': 'Co-Founder',
+        'image': 'https://lurnexa.in/co-founder.jpg',
         'worksFor': {
           '@type': 'Organization',
           '@id': 'https://lurnexa.in/#organization',
@@ -129,7 +129,7 @@ export default function JsonLd() {
             '@type': 'Person',
             'name': 'Rushik Burla',
           },
-          'roleName': 'Chief Executive Officer',
+          'roleName': 'Co-Founder',
         },
       ],
     },
@@ -150,14 +150,14 @@ export default function JsonLd() {
       'url': 'https://lurnexa.in',
     },
 
-    // ── 3. CEO Person ──
+    // ── 3. Co-Founder Person ──
     {
       '@context': 'https://schema.org',
       '@type': 'Person',
-      '@id': 'https://lurnexa.in/#ceo',
+      '@id': 'https://lurnexa.in/#co-founder',
       'name': 'Rushik Burla',
-      'jobTitle': 'Chief Executive Officer',
-      'image': 'https://lurnexa.in/ceo.jpg',
+      'jobTitle': 'Co-Founder',
+      'image': 'https://lurnexa.in/co-founder.jpg',
       'worksFor': {
         '@type': 'Organization',
         '@id': 'https://lurnexa.in/#organization',

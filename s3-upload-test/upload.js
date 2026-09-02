@@ -45,7 +45,7 @@ async function uploadImageToS3(filePath, folder = "editorial_board_photos") {
 
 (async () => {
   try {
-    const url = await uploadImageToS3("ceo.jpg");
+    const url = await uploadImageToS3("co-founder.jpg");
     console.log("Image URL:", url);
   } catch (err) {
     console.error(err);

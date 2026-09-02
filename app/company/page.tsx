@@ -63,7 +63,7 @@ export default function CompanyPage() {
                       <img src="/founder.jpeg" alt="Founder" className="object-cover h-full w-full" />
                     </div>
                     <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center overflow-hidden">
-                      <img src="/ceo.jpg" alt="CEO" className="object-cover h-full w-full" />
+                      <img src="/co-founder.jpg" alt="Co-Founder" className="object-cover h-full w-full" />
                     </div>
                   </div>
                   <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">

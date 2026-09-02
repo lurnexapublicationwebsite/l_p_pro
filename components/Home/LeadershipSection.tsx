@@ -36,8 +36,8 @@ As we move forward, we remain dedicated to transforming knowledge into impact—
 Together, we are not just upholding a vision.
 We are driving it forward`,
       name: "Rushik Burla",
-      designation: "Chief Executive Officer — Lurnexa Publications",
-      src: "/ceo.jpg",
+      designation: "Co-Founder — Lurnexa Publications",
+      src: "/co-founder.jpg",
 
     },
   ];
