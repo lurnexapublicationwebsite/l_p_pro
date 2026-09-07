@@ -1,0 +1,30 @@
+name: Rental Expiry Check
+
+# Triggers /api/rentals/check-expiry once a day. That endpoint:
+#   - flips any book_rentals row past its expires_at from 'active' to 'expired'
+#   - sends the 7-day and 1-day "expiring soon" warning emails
+#   - sends the "your rental has expired" email
+# None of that runs on its own — this workflow is what actually drives it, since the
+# app itself (AWS Amplify hosting, no built-in scheduler) never calls it by itself.
+
+on:
+  schedule:
+    # 03:00 UTC daily (~8:30 AM IST)
+    - cron: '0 3 * * *'
+  workflow_dispatch: {} # lets you trigger a run manually from the Actions tab
+
+jobs:
+  check-expiry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call rental expiry check endpoint
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" \
+            "https://lurnexa.in/api/rentals/check-expiry?secret=${{ secrets.RENTAL_EXPIRY_CHECK_SECRET }}")
+          echo "HTTP status: $status"
+          echo "Response body:"
+          cat response.json
+          if [ "$status" -ne 200 ]; then
+            echo "::error::Rental expiry check failed with status $status"
+            exit 1
+          fi
