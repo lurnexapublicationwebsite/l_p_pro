@@ -16,8 +16,10 @@ import {
   BookCheck, 
   Sparkles,
   Truck,
-  Smartphone
+  Smartphone,
+  Clock
 } from 'lucide-react';
+import RentalPlanSelector from '@/components/Textbooks/RentalPlanSelector';
 
 interface BookDetailClientProps {
   book: Book;
@@ -26,9 +28,10 @@ interface BookDetailClientProps {
 
 export default function BookDetailClient({ book, relatedBooks }: BookDetailClientProps) {
   const isDigitalExclusive = book.id === "9" || book.isbn === "N/A";
-  const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft'>(isDigitalExclusive ? 'soft' : 'physical');
+  const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft' | 'rental'>(isDigitalExclusive ? 'soft' : 'physical');
   const [includeBook, setIncludeBook] = useState<boolean>(true);
   const [includeCaselet, setIncludeCaselet] = useState<boolean>(false);
+  const [isRentalModalOpen, setIsRentalModalOpen] = useState(false);
 
   const hasCaselet = book.hasCaselet || bookHasCaselet(book.id);
 
@@ -45,7 +48,9 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
 
   const currentPrice = selectedFormat === 'physical'
     ? getPhysicalPrice(plan, book.id, book.price)
-    : getSoftCopyPrice(plan, book.id, book.digitalPrice);
+    : selectedFormat === 'soft'
+    ? getSoftCopyPrice(plan, book.id, book.digitalPrice)
+    : 59;
 
   const toggleBook = () => {
     if (includeBook && !includeCaselet) {
@@ -75,6 +80,17 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
 
   return (
     <div className="space-y-8">
+      {/* Rental Modal */}
+      <RentalPlanSelector
+        isOpen={isRentalModalOpen}
+        onClose={() => setIsRentalModalOpen(false)}
+        book={book}
+        onSelectPlan={(rentalPlan) => {
+          setIsRentalModalOpen(false);
+          window.location.href = `/textbooks/store/checkout?bookId=${book.id}&format=rental&plan=${rentalPlan.planCode}`;
+        }}
+      />
+
       {/* Hero Book Section */}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
@@ -105,38 +121,54 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
                   </span>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/60 rounded-xl">
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-200/60 rounded-xl">
                   <button
                     type="button"
                     onClick={() => setSelectedFormat('physical')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-1 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
                       selectedFormat === 'physical'
                         ? 'bg-white text-slate-900 shadow-sm'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <BookOpen size={14} className={selectedFormat === 'physical' ? 'text-fuchsia-600' : ''} />
+                    <BookOpen size={13} className={selectedFormat === 'physical' ? 'text-fuchsia-600' : ''} />
                     <span>Paperback</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSelectedFormat('soft')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-1 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
                       selectedFormat === 'soft'
                         ? 'bg-white text-slate-900 shadow-sm'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <Smartphone size={14} className={selectedFormat === 'soft' ? 'text-fuchsia-600' : ''} />
+                    <Smartphone size={13} className={selectedFormat === 'soft' ? 'text-fuchsia-600' : ''} />
                     <span>Digital PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFormat('rental');
+                      setIsRentalModalOpen(true);
+                    }}
+                    className={`py-2 px-1 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
+                      selectedFormat === 'rental'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/80'
+                    }`}
+                  >
+                    <Clock size={13} />
+                    <span>Rent ₹59</span>
                   </button>
                 </div>
               )}
             </div>
 
             {/* Multiselect Component Selection if book has Caselet */}
-            {hasCaselet && (
+            {hasCaselet && selectedFormat !== 'rental' && (
               <div className="space-y-2 pt-1 border-t border-slate-200/80">
                 <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
                   Select Included Items (Multiselect Available):
@@ -199,15 +231,19 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
             <div className="flex items-baseline justify-between pt-1">
               <div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-slate-900">₹{currentPrice}</span>
-                  {selectedFormat === 'soft' && (
+                  <span className="text-2xl font-black text-slate-900">
+                    {selectedFormat === 'rental' ? 'From ₹59' : `₹${currentPrice}`}
+                  </span>
+                  {selectedFormat !== 'physical' && (
                     <span className="text-xs text-slate-400 line-through">₹{book.price}</span>
                   )}
                 </div>
                 <span className="text-[11px] text-slate-500 block">
                   {selectedFormat === 'physical' 
                     ? 'Hardcopy Print (Delivery Charges Applicable)' 
-                    : 'Instant PDF Download + Portal Access'}
+                    : selectedFormat === 'soft'
+                    ? 'Instant PDF Download + Portal Access'
+                    : '1 Month (₹59) • 3 Months (₹99) • 6 Months (₹149)'}
                 </span>
               </div>
               <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
@@ -217,30 +253,53 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
 
             {/* Action Buttons */}
             <div className="space-y-2 pt-2">
-              <Link
-                href={`/textbooks/store/checkout?bookId=${book.id}&format=${selectedFormat}&plan=${plan}`}
-                className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99]"
-              >
-                {selectedFormat === 'physical' ? (
-                  <>
-                    <ShoppingBag size={16} />
-                    <span>
-                      {plan === 'book_caselet' ? `Buy Book + Caselet (₹${currentPrice})` :
-                       plan === 'caselet' ? `Buy Caselet Only (₹${currentPrice})` :
-                       `Buy Paperback (₹${currentPrice})`}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Download size={16} />
-                    <span>
-                      {plan === 'book_caselet' ? `Get Digital Book + Caselet (₹${currentPrice})` :
-                       plan === 'caselet' ? `Get Digital Caselet (₹${currentPrice})` :
-                       `Get Digital Copy (₹${currentPrice})`}
-                    </span>
-                  </>
-                )}
-              </Link>
+              {selectedFormat === 'rental' ? (
+                <button
+                  type="button"
+                  onClick={() => setIsRentalModalOpen(true)}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99]"
+                >
+                  <Clock size={16} />
+                  <span>Choose Rental Plan (From ₹59)</span>
+                </button>
+              ) : (
+                <Link
+                  href={`/textbooks/store/checkout?bookId=${book.id}&format=${selectedFormat}&plan=${plan}`}
+                  className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99]"
+                >
+                  {selectedFormat === 'physical' ? (
+                    <>
+                      <ShoppingBag size={16} />
+                      <span>
+                        {plan === 'book_caselet' ? `Buy Book + Caselet (₹${currentPrice})` :
+                         plan === 'caselet' ? `Buy Caselet Only (₹${currentPrice})` :
+                         `Buy Paperback (₹${currentPrice})`}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={16} />
+                      <span>
+                        {plan === 'book_caselet' ? `Get Digital Book + Caselet (₹${currentPrice})` :
+                         plan === 'caselet' ? `Get Digital Caselet (₹${currentPrice})` :
+                         `Get Digital Copy (₹${currentPrice})`}
+                      </span>
+                    </>
+                  )}
+                </Link>
+              )}
+
+              {/* Direct Rental Quick Button below main CTA */}
+              {selectedFormat !== 'rental' && (
+                <button
+                  type="button"
+                  onClick={() => setIsRentalModalOpen(true)}
+                  className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 border border-indigo-200/80 transition-all"
+                >
+                  <Clock size={14} />
+                  <span>Rent eBook from ₹59 / Month</span>
+                </button>
+              )}
             </div>
 
             {/* Delivery/Feature Badges */}
@@ -256,26 +315,29 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
                     <span>Premium Bound Academic Edition</span>
                   </div>
                 </>
+              ) : selectedFormat === 'soft' ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Download size={14} className="text-fuchsia-600 shrink-0" />
+                    <span>Instant Digital PDF Access</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Award size={14} className="text-fuchsia-600 shrink-0" />
+                    <span>Includes Student Portal & Learning Tools</span>
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-fuchsia-600 shrink-0" />
-                    <span>Instant Digital PDF Access After Checkout</span>
+                    <Clock size={14} className="text-indigo-600 shrink-0" />
+                    <span>Flexible Duration (1 Mo ₹59, 3 Mo ₹99, 6 Mo ₹149)</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-fuchsia-600 shrink-0" />
-                    <span>Read on Desktop, Tablet & Mobile</span>
+                    <ShieldCheck size={14} className="text-indigo-600 shrink-0" />
+                    <span>Instant Reader & Portal Access</span>
                   </div>
                 </>
               )}
-              <div className="flex items-center gap-2">
-                <Award size={14} className="text-fuchsia-600 shrink-0" />
-                <span>Paperback ISBN: {book.isbn}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Award size={14} className="text-fuchsia-600 shrink-0" />
-                <span>Digital ISBN: {book.isbnDigital}</span>
-              </div>
             </div>
           </div>
         </div>
@@ -311,7 +373,7 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
           </div>
 
           {/* Specs Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 py-4 border-y border-slate-100">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 py-4 border-y border-slate-100">
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
               <span className="text-[10px] text-slate-500 uppercase font-semibold block">Paperback ISBN</span>
               <span className="text-xs font-mono font-bold text-slate-800">{book.isbn}</span>
@@ -331,6 +393,12 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
               <span className="text-[10px] text-slate-500 uppercase font-semibold block">Digital PDF</span>
               <span className="text-xs font-bold text-fuchsia-600">₹{book.digitalPrice}</span>
+            </div>
+            <div className="bg-indigo-50/70 p-3 rounded-xl border border-indigo-200">
+              <span className="text-[10px] text-indigo-600 uppercase font-bold block flex items-center gap-1">
+                <Clock size={10} /> Rental
+              </span>
+              <span className="text-xs font-black text-indigo-700">From ₹59</span>
             </div>
           </div>
 

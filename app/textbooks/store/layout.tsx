@@ -44,6 +44,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/textbooks/store',
   },
+  // Links the reading-app manifest here too, so the browser's install prompt fires while
+  // browsing the store — the "Get the Lurnexa Textbooks App" button can install directly.
+  manifest: '/textbook-app-manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Lurnexa Textbooks',
+  },
 };
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
@@ -107,6 +115,39 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             '@type': 'Offer',
             'name': 'Digital PDF Edition',
             'price': book.digitalPrice,
+            'priceCurrency': 'INR',
+            'availability': 'https://schema.org/InStock',
+            'seller': {
+              '@type': 'Organization',
+              'name': 'Lurnexa Publications',
+            },
+          },
+          {
+            '@type': 'Offer',
+            'name': 'Digital Rental (1 Month)',
+            'price': 59,
+            'priceCurrency': 'INR',
+            'availability': 'https://schema.org/InStock',
+            'seller': {
+              '@type': 'Organization',
+              'name': 'Lurnexa Publications',
+            },
+          },
+          {
+            '@type': 'Offer',
+            'name': 'Digital Rental (3 Months)',
+            'price': 99,
+            'priceCurrency': 'INR',
+            'availability': 'https://schema.org/InStock',
+            'seller': {
+              '@type': 'Organization',
+              'name': 'Lurnexa Publications',
+            },
+          },
+          {
+            '@type': 'Offer',
+            'name': 'Digital Rental (6 Months)',
+            'price': 149,
             'priceCurrency': 'INR',
             'availability': 'https://schema.org/InStock',
             'seller': {

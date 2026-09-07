@@ -5,11 +5,11 @@ import { sendOtpEmail, sendOtpSms } from "@/lib/otpService";
 
 export async function POST(req: NextRequest) {
   try {
-    const { accessId, target } = await req.json();
+    const { accessId = "USER", target } = await req.json();
 
-    if (!accessId || !target) {
+    if (!target) {
       return NextResponse.json(
-        { error: "Access ID and verification target (email or phone number) are required." },
+        { error: "Verification target (email or phone number) is required." },
         { status: 400 }
       );
     }

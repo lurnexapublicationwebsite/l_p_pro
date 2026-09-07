@@ -40,7 +40,7 @@ export default function HeroSection() {
             
             <button className="rounded-full border border-slate-300 px-8 py-3 text-sm sm:text-base font-semibold text-slate-800 shadow-sm transition hover:border-blue-500 hover:text-blue-600 dark:hover:border-sky-400 dark:hover:text-sky-300">
               <Link
-            href="/comingsoon">
+            href="/submityourarticle">
               Submit Your Article
               </Link>
             </button>

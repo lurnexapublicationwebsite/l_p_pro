@@ -18,9 +18,14 @@ import {
   Plus,
   Minus,
   Trash2,
-  ShoppingCart
+  ShoppingCart,
+  Clock,
+  User,
+  Download
 } from "lucide-react";
 import Link from "next/link";
+import RentalPlanSelector from "@/components/Textbooks/RentalPlanSelector";
+import { RentalPlan } from "@/lib/data/rentals";
 
 interface TextbookDetails {
   id: string;
@@ -252,8 +257,62 @@ export default function BookstorePage() {
   const [selectedPortalOnlyOption, setSelectedPortalOnlyOption] = useState<string>("complete");
   const [modalMode, setModalMode] = useState<'buy' | 'cart'>('buy');
 
+  // Rental Selection State
+  const [selectedBookForRental, setSelectedBookForRental] = useState<TextbookDetails | null>(null);
+  const [isRentalModalOpen, setIsRentalModalOpen] = useState(false);
+
+  // User session state
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showLoginPromptModal, setShowLoginPromptModal] = useState(false);
+  const [pendingBuyBook, setPendingBuyBook] = useState<{ book: TextbookDetails; format: 'physical' | 'soft'; plan: string } | null>(null);
+
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Captures the browser's native install prompt for the reading app (its manifest is linked
+  // from this route's layout) so the "Get the App" button can install directly.
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
+  const [isStandaloneApp, setIsStandaloneApp] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setIsStandaloneApp(
+      window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true
+    );
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  const handleDownloadApp = async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      setDeferredInstallPrompt(null);
+    } else {
+      router.push("/textbooks/app");
+    }
+  };
+
+  const getLoggedInUser = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const rawUser = sessionStorage.getItem("lurnexa_current_user");
+      if (!rawUser || rawUser === "null" || rawUser === "undefined") return null;
+      const parsed = JSON.parse(rawUser);
+      if (parsed && typeof parsed === "object" && (parsed.email || parsed.accessId || parsed.mobileNumber || parsed.id || parsed.name)) {
+        return parsed;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
     fetchPublishedBooks();
     // Load Cart from localStorage
     const savedCart = localStorage.getItem("lurnexa_store_cart");
@@ -264,7 +323,38 @@ export default function BookstorePage() {
         console.error("Failed to parse cart storage:", err);
       }
     }
+    // Load logged-in user session
+    const loggedInUser = getLoggedInUser();
+    if (loggedInUser) {
+      setCurrentUser(loggedInUser);
+    } else {
+      setCurrentUser(null);
+    }
   }, []);
+
+  const handleProceedToBuy = (book: TextbookDetails, format: 'physical' | 'soft', plan: string) => {
+    const user = getLoggedInUser();
+      
+    if (!user) {
+      setPendingBuyBook({ book, format, plan });
+      setShowLoginPromptModal(true);
+      return;
+    }
+    
+    router.push(`/textbooks/store/checkout?bookId=${book.id}&format=${format}&plan=${plan}`);
+  };
+
+  const handleCartCheckout = () => {
+    const user = getLoggedInUser();
+      
+    if (!user) {
+      setPendingBuyBook(null);
+      setShowLoginPromptModal(true);
+      return;
+    }
+    
+    router.push(`/textbooks/store/checkout?format=${cart[0]?.format || 'physical'}&plan=${cart[0]?.plan || 'physical'}`);
+  };
 
   useEffect(() => {
     setSelectedSoftOption("book_only");
@@ -331,6 +421,46 @@ export default function BookstorePage() {
     showToast(`"${book.title.slice(0, 30)}..." added to cart!`);
   };
 
+  const handleAddRentalToCart = (book: TextbookDetails, plan: RentalPlan, action: 'buy_now' | 'add_to_cart') => {
+    if (action === 'buy_now') {
+      setIsRentalModalOpen(false);
+      router.push(`/textbooks/store/checkout?bookId=${book.id}&format=rental&plan=${plan.planCode}`);
+      return;
+    }
+
+    let coverImg = "/portal_coverpages/minerals.jpeg";
+    if (book.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
+    if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
+    if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
+    if (book.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
+    if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
+    if (book.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
+    if (book.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
+
+    const displayTitle = `${book.title} (Digital Rental - ${plan.displayName})`;
+
+    const existingIdx = cart.findIndex(item => item.id === book.id && (item as any).format === 'rental' && (item as any).plan === plan.planCode);
+    if (existingIdx !== -1) {
+      const updated = [...cart];
+      updated[existingIdx].quantity += 1;
+      saveCartToStorage(updated);
+    } else {
+      const newItem: CartItem = {
+        id: book.id,
+        title: displayTitle,
+        price: plan.price,
+        coverImg,
+        quantity: 1,
+        format: 'rental' as any,
+        plan: plan.planCode
+      };
+      saveCartToStorage([...cart, newItem]);
+    }
+
+    setIsRentalModalOpen(false);
+    showToast(`"${book.title.slice(0, 25)}..." rental (${plan.displayName}) added to cart!`);
+  };
+
   const handleRemoveFromCart = (bookId: string) => {
     const updated = cart.filter(item => item.id !== bookId);
     saveCartToStorage(updated);
@@ -352,10 +482,10 @@ export default function BookstorePage() {
 
   // Cart Calculations
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const isSoftCart = cart.some(item => (item as any).format === "soft");
-  const cartGst = isSoftCart ? Math.round(cartSubtotal * 0.18) : 0;
-  const cartOnlineFee = isSoftCart ? Math.round((cartSubtotal + cartGst) * 0.02) : 0;
-  const cartShipping = isSoftCart ? 0 : 50;
+  const isDigitalCart = cart.some(item => (item as any).format === "soft" || (item as any).format === "rental");
+  const cartGst = isDigitalCart ? Math.round(cartSubtotal * 0.18) : 0;
+  const cartOnlineFee = isDigitalCart ? Math.round((cartSubtotal + cartGst) * 0.02) : 0;
+  const cartShipping = isDigitalCart ? 0 : 50;
   const cartTotal = cartSubtotal + cartGst + cartOnlineFee + cartShipping;
   const totalCartQty = cart.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -408,13 +538,41 @@ export default function BookstorePage() {
           </div>
           
           <div className="flex items-center gap-3">
-            <Link 
+            {currentUser ? (
+              <Link 
+                href="/textbooks/portal/login?view=mybooks"
+                className="inline-flex items-center gap-1.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md shrink-0"
+              >
+                <BookOpen size={14} />
+                <span>My Bookshelf ({currentUser.name})</span>
+              </Link>
+            ) : (
+              <Link 
+                href="/textbooks/portal/login"
+                className="inline-flex items-center gap-1.5 bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-700 px-4 py-2.5 rounded-lg text-xs font-bold border border-fuchsia-200/80 transition-all shadow-sm shrink-0"
+              >
+                <User size={14} />
+                <span>Log In / Access Portal</span>
+              </Link>
+            )}
+
+            <Link
               href="/textbooks"
               className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-[#64748B] hover:text-[#0F172A] px-4 py-2.5 rounded-lg text-xs font-bold border border-[#E2E8F0] transition-all shadow-sm shrink-0"
             >
               <ArrowLeft size={14} />
               <span>Back to Textbooks</span>
             </Link>
+
+            {!isStandaloneApp && (
+              <button
+                onClick={handleDownloadApp}
+                className="inline-flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md shrink-0"
+              >
+                <Download size={14} />
+                <span>Get the App</span>
+              </button>
+            )}
 
             {/* Cart Button */}
             <button
@@ -590,20 +748,41 @@ export default function BookstorePage() {
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-lg font-black text-[#0F172A]">₹{bookItem.price}</span>
+                        <span className="text-[10px] text-slate-500 font-medium">paperback</span>
                       </div>
+                      <button
+                        onClick={() => {
+                          setSelectedBookForRental(bookItem);
+                          setIsRentalModalOpen(true);
+                        }}
+                        className="text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-full transition-all flex items-center gap-1 border border-indigo-200/60"
+                      >
+                        <Clock size={10} />
+                        <span>Rent from ₹59</span>
+                      </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        onClick={() => {
+                          setSelectedBookForRental(bookItem);
+                          setIsRentalModalOpen(true);
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-[9px] text-center flex items-center justify-center gap-1 transition-all col-span-1 shadow-sm"
+                      >
+                        <Clock size={10} />
+                        <span>Rent</span>
+                      </button>
                       <button
                         onClick={() => {
                           setSelectedBookForPurchase(bookItem);
                           setPurchaseFormat(bookItem.id === "9" || bookItem.isbn === "N/A" ? "soft" : null);
                           setModalMode("cart");
                         }}
-                        className="bg-slate-50 hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] font-bold py-2 rounded-xl text-[10px] text-center flex items-center justify-center gap-1 transition-all"
+                        className="bg-slate-50 hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] font-bold py-2 rounded-xl text-[9px] text-center flex items-center justify-center gap-1 transition-all"
                       >
-                        <ShoppingCart size={12} className="text-[#64748B]" />
-                        <span>Add to Cart</span>
+                        <ShoppingCart size={10} className="text-[#64748B]" />
+                        <span>Cart</span>
                       </button>
                       <button
                         onClick={() => {
@@ -611,10 +790,10 @@ export default function BookstorePage() {
                           setPurchaseFormat(bookItem.id === "9" || bookItem.isbn === "N/A" ? "soft" : null);
                           setModalMode("buy");
                         }}
-                        className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2 rounded-xl text-[10px] text-center flex items-center justify-center gap-1 transition-all active:scale-98"
+                        className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2 rounded-xl text-[9px] text-center flex items-center justify-center gap-1 transition-all active:scale-98"
                       >
-                        <ShoppingBag size={12} />
-                        <span>Buy Now</span>
+                        <ShoppingBag size={10} />
+                        <span>Buy</span>
                       </button>
                     </div>
                   </div>
@@ -844,7 +1023,7 @@ export default function BookstorePage() {
                       <span>GST Tax (18%)</span>
                       <span className="text-[#0F172A] font-bold">₹{cartGst}</span>
                     </div>
-                    {isSoftCart && (
+                    {cartOnlineFee > 0 && (
                       <div className="flex justify-between">
                         <span>Online Processing Fee (2%)</span>
                         <span className="text-[#0F172A] font-bold">₹{cartOnlineFee}</span>
@@ -860,12 +1039,12 @@ export default function BookstorePage() {
                     </div>
                   </div>
 
-                  <Link
-                    href={`/textbooks/store/checkout?format=${cart[0]?.format || 'physical'}&plan=${cart[0]?.plan || 'physical'}`}
-                    className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-extrabold text-xs py-3 rounded-xl shadow transition-all block text-center mt-2"
+                  <button
+                    onClick={handleCartCheckout}
+                    className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-extrabold text-xs py-3 rounded-xl shadow transition-all block text-center mt-2 cursor-pointer"
                   >
                     Proceed to Checkout
-                  </Link>
+                  </button>
                 </div>
               )}
 
@@ -1077,7 +1256,9 @@ export default function BookstorePage() {
                     setSelectedBookForPurchase(null);
                     setPurchaseFormat(null);
                   } else {
-                    router.push(`/textbooks/store/checkout?bookId=${selectedBookForPurchase.id}&format=${purchaseFormat}&plan=${finalPlan}`);
+                    handleProceedToBuy(selectedBookForPurchase, purchaseFormat || "physical", finalPlan);
+                    setSelectedBookForPurchase(null);
+                    setPurchaseFormat(null);
                   }
                 }}
                 className="flex-grow py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg transition-all text-center"
@@ -1086,6 +1267,71 @@ export default function BookstorePage() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Rental Plan Selector Modal */}
+      <RentalPlanSelector
+        isOpen={isRentalModalOpen}
+        onClose={() => setIsRentalModalOpen(false)}
+        book={selectedBookForRental}
+        onSelectPlan={(plan, action) => {
+          if (selectedBookForRental) {
+            handleAddRentalToCart(selectedBookForRental, plan, action);
+          }
+        }}
+      />
+
+      {/* Login / Sign Up Required Modal */}
+      {showLoginPromptModal && (
+        <div className="fixed inset-0 z-50 bg-[#0F172A]/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-[#E2E8F0] rounded-3xl w-full max-w-md shadow-2xl p-6 relative animate-scaleIn text-center space-y-5">
+            <div className="w-16 h-16 bg-fuchsia-50 rounded-full flex items-center justify-center mx-auto text-fuchsia-600 border border-fuchsia-100 shadow-sm">
+              <User size={30} />
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-[#0F172A]">Log In or Sign Up Required</h3>
+              <p className="text-xs text-[#64748B] leading-relaxed">
+                To purchase academic textbooks or digital editions and automatically save them to your account, please log in or sign up first.
+              </p>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-1.5 text-xs text-slate-700">
+              <div className="flex items-center gap-2 font-bold text-slate-900">
+                <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                <span>Instant Bookshelf Synchronization</span>
+              </div>
+              <p className="text-[11px] text-slate-500 pl-5">
+                Purchased books and active rentals will be immediately accessible in your personal student reader dashboard.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                onClick={() => {
+                  setShowLoginPromptModal(false);
+                  const queryStr = pendingBuyBook 
+                    ? `redirect=checkout&bookId=${pendingBuyBook.book.id}&format=${pendingBuyBook.format}&plan=${pendingBuyBook.plan}`
+                    : `redirect=checkout`;
+                  router.push(`/textbooks/portal/login?${queryStr}`);
+                }}
+                className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <User size={14} />
+                <span>Log In / Sign Up to Continue</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowLoginPromptModal(false);
+                  setPendingBuyBook(null);
+                }}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-2.5 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

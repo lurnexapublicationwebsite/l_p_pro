@@ -12,6 +12,8 @@ const inter = Inter({
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 import FooterSection from "@/components/Home/FooterSection";
+import RentalBadge from "@/components/Textbooks/RentalBadge";
+import RenewModal from "@/components/Textbooks/RenewModal";
 import {
   getUser,
   createUser,
@@ -125,7 +127,15 @@ import {
   Tag,
   Edit,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Mail,
+  Phone,
+  Package,
+  MapPin,
+  Home,
+  FileText,
+  CreditCard,
+  RefreshCw
 } from "lucide-react";
 
 const getQuizTotalMarks = (quiz: TextbookQuiz | null | undefined): number => {
@@ -224,7 +234,7 @@ const PORTAL_PUBLISHED_BOOKS = [
   { id: "3", title: "DATABASE MANAGEMENT SYSTEMS: CONCEPTS, DESIGN AND IMPLEMENTATION", pdfFileName: "dbms.pdf", coverImg: "/portal_coverpages/dbms.jpeg", author: "Dr. Halavath Balaji, Jogu Saritha, Pallavi B", price: 649 },
   { id: "5", title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT", pdfFileName: "microeconomics.pdf", coverImg: "/portal_coverpages/microeconomics.jpeg", author: "Dr. Aruna Kumar Dash", price: 599 },
   { id: "6", title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS", pdfFileName: "ai.pdf", coverImg: "/portal_coverpages/ai.jpeg", author: "Dr. P. Manikandan, Dr. P. Renukadevi, Dr. J. Nashreen Begum, Dr. D. Banumathy", price: 399 },
-  { id: "7", title: "DATA STREAMING AND ANALYSIS", pdfFileName: "data_streaming_and_analysis.pdf", coverImg: "/portal_coverpages/data_streaming.jpeg", author: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P", price: 449 },
+  { id: "7", title: "DATA STREAMING AND ANALYSIS", pdfFileName: "data_streaming.pdf", coverImg: "/portal_coverpages/data_streaming.jpeg", author: "Dr. P. Renukadevi, Dr. Chinmaya Kumar Swain, Dr. Archana Sasi, Mr. Shahad P", price: 449 },
   { id: "8", title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE", pdfFileName: "python_programming.pdf", coverImg: "/portal_coverpages/python_programming.jpeg", author: "Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, Mr. Shiva Prasad Munukuntla", price: 599 },
   { id: "9", title: "NOSQL DATABASES USING MONGODB", pdfFileName: "nosql.pdf", coverImg: "/portal_coverpages/nosql.jpeg", author: "Dr. Sujeet S. Jagtap", price: 299 }
 ];
@@ -236,38 +246,9 @@ interface Caselet {
   pdfFileName?: string;
 }
 
+// Only books that actually sell a Caselet plan (see isPlanAllowedForBook / store purchase options)
+// should have entries here. Minerals (id "1") and AI (id "6") do not offer a caselet product.
 const BOOK_CASELETS: Record<string, Caselet[]> = {
-  "1": [
-    {
-      title: "Caselet",
-      scenario: `India's growing industrial sector demands robust mineral resources, particularly non-coal minerals. The government faces a dilemma between promoting domestic mineral exploration and keeping import costs low for manufacturing.
-Assume you are a policy adviser analyzing the implementation of a 10% import tariff on critical minerals. 
-
-Based on the textbook:
-- Critically evaluate the economywide impacts of import tariffs on steel and aluminum manufacturing.
-- How would such tariffs affect overall employment and consumer prices in the domestic market?`,
-      questions: [
-        "What are the direct and indirect impacts of imposing a tariff on crucial raw minerals on primary manufacturers?",
-        "How do strategic trade models justify selective tariffs on industrial minerals?"
-      ],
-      pdfFileName: "minerals.pdf"
-    }
-  ],
-  "2": [
-    {
-      title: "Caselet",
-      scenario: `An enterprise scale recruitment engine uses a neural network model to screen resumes. Historical hiring data was used for training, resulting in a model that disproportionately rejects female candidates for technical roles.
-
-Based on machine learning fairness concepts:
-- Identify the source of bias in the model.
-- Propose mitigation strategies (e.g., pre-processing data balancing, post-processing threshold calibration).`,
-      questions: [
-        "What metrics can be used to measure algorithmic fairness and demographic parity?",
-        "Explain how adversarial debiasing works in neural network architectures."
-      ],
-      pdfFileName: "ml.pdf"
-    }
-  ],
   "3": [
     {
       title: "Caselet",
@@ -280,7 +261,7 @@ Based on database scaling principles:
         "What are the trade-offs between range-based sharding and hash-based sharding?",
         "How does the CAP theorem apply to distributed transactional database scaling?"
       ],
-      pdfFileName: "dbms.pdf"
+      pdfFileName: "dbms_caselet.pdf"
     }
   ],
   "5": [
@@ -295,22 +276,7 @@ Based on microeconomics principles:
         "How does price elasticity affect total revenue under different market demand structures?",
         "Explain the concept of price discrimination in different customer segments."
       ],
-      pdfFileName: "microeconomics.pdf"
-    }
-  ],
-  "6": [
-    {
-      title: "Caselet",
-      scenario: `An autonomous intelligent agent is deployed in a dynamic medical diagnosis environment. The system must navigate complex decision trees, state-space search paths, and uncertain knowledge representations to provide real-time recommendations.
-
-Based on Foundations of Artificial Intelligence:
-- Evaluate informed vs uninformed search algorithms (e.g., A* search vs BFS/DFS) for optimal pathfinding.
-- Propose logic representation and machine learning techniques to handle uncertainty and ethical constraints in AI decision-making.`,
-      questions: [
-        "How do heuristic functions influence optimality and completeness in state-space search algorithms?",
-        "Discuss ethical perspectives and safety guardrails required when deploying autonomous AI agents."
-      ],
-      pdfFileName: "ai.pdf"
+      pdfFileName: "microeconomics_caselet.pdf"
     }
   ]
 };
@@ -325,22 +291,204 @@ const getEffectiveQuestionLimit = (bookId: string): number => {
 
 const isCollegeEmail = (email: string): boolean => {
   if (!email || !email.includes("@")) return false;
-  const genericDomains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "mail.com", "yandex.com", "protonmail.com"];
-  const domain = email.split("@")[1]?.toLowerCase().trim();
-  return !genericDomains.includes(domain);
+  return email.trim().length >= 5;
 };
 
-export default function TextbookPortal({ 
+// Change Password card — shared across the student, faculty, and admin profile tabs (same
+// account/logic regardless of which dashboard it's opened from). Deliberately hoisted to
+// module scope, taking all its state as props, rather than declared as a nested function
+// inside TextbookPortal: a component defined inside another component's render body gets a
+// brand-new function identity on every parent re-render, so React treats it as a different
+// component type each time and unmounts + remounts its DOM — which was silently kicking
+// focus out of these inputs after every single keystroke.
+interface ChangePasswordCardProps {
+  showChangePassword: boolean;
+  onOpen: () => void;
+  oldPasswordInput: string;
+  setOldPasswordInput: (v: string) => void;
+  newPasswordInput: string;
+  setNewPasswordInput: (v: string) => void;
+  confirmPasswordInput: string;
+  setConfirmPasswordInput: (v: string) => void;
+  showOldPasswordInput: boolean;
+  setShowOldPasswordInput: (v: boolean) => void;
+  showNewPasswordInput: boolean;
+  setShowNewPasswordInput: (v: boolean) => void;
+  changePasswordError: string;
+  changePasswordSuccess: string;
+  isChangingPassword: boolean;
+  resetChangePasswordForm: () => void;
+  handleChangePassword: (e: React.FormEvent) => void;
+}
+
+const ChangePasswordCard: React.FC<ChangePasswordCardProps> = ({
+  showChangePassword, onOpen,
+  oldPasswordInput, setOldPasswordInput,
+  newPasswordInput, setNewPasswordInput,
+  confirmPasswordInput, setConfirmPasswordInput,
+  showOldPasswordInput, setShowOldPasswordInput,
+  showNewPasswordInput, setShowNewPasswordInput,
+  changePasswordError, changePasswordSuccess,
+  isChangingPassword,
+  resetChangePasswordForm, handleChangePassword
+}) => {
+  const passwordsMatch = confirmPasswordInput.length > 0 && newPasswordInput === confirmPasswordInput;
+  const passwordsMismatch = confirmPasswordInput.length > 0 && newPasswordInput !== confirmPasswordInput;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl">
+      <div className="flex justify-between items-center mb-2">
+        <div>
+          <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Lock size={18} className="text-fuchsia-600" />
+            Change Password
+          </h4>
+          {!showChangePassword && (
+            <p className="text-xs text-slate-500 mt-1">Update your account password using your current password.</p>
+          )}
+        </div>
+        {!showChangePassword ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="bg-slate-950 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-xs font-bold transition shrink-0"
+          >
+            Change Password
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={resetChangePasswordForm}
+            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      {showChangePassword && (
+        <form onSubmit={handleChangePassword} className="space-y-4 mt-4 max-w-md">
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Current Password</label>
+            <div className="relative">
+              <input
+                type={showOldPasswordInput ? "text" : "password"}
+                value={oldPasswordInput}
+                onChange={(e) => setOldPasswordInput(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 pr-11 focus:outline-none focus:border-fuchsia-500 font-medium"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowOldPasswordInput(!showOldPasswordInput)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <Eye size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">New Password</label>
+            <div className="relative">
+              <input
+                type={showNewPasswordInput ? "text" : "password"}
+                value={newPasswordInput}
+                onChange={(e) => setNewPasswordInput(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 pr-11 focus:outline-none focus:border-fuchsia-500 font-medium"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPasswordInput(!showNewPasswordInput)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <Eye size={16} />
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1.5">
+              At least 8 characters, with uppercase, lowercase, a number, and a special character.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Confirm New Password</label>
+            <input
+              type={showNewPasswordInput ? "text" : "password"}
+              value={confirmPasswordInput}
+              onChange={(e) => setConfirmPasswordInput(e.target.value)}
+              className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 focus:outline-none font-medium text-slate-900 ${
+                passwordsMismatch ? "border-red-300 focus:border-red-500" :
+                passwordsMatch ? "border-emerald-300 focus:border-emerald-500" :
+                "border-slate-200 focus:border-fuchsia-500"
+              }`}
+              required
+            />
+            {/* Live match feedback — updates as the user types, ahead of the on-submit check. */}
+            {passwordsMatch && (
+              <p className="text-[10px] font-bold text-emerald-600 mt-1.5 flex items-center gap-1">
+                <Check size={12} /> Passwords match
+              </p>
+            )}
+            {passwordsMismatch && (
+              <p className="text-[10px] font-bold text-red-500 mt-1.5 flex items-center gap-1">
+                <X size={12} /> Passwords do not match
+              </p>
+            )}
+          </div>
+
+          {changePasswordError && (
+            <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{changePasswordError}</p>
+          )}
+          {changePasswordSuccess && (
+            <p className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">{changePasswordSuccess}</p>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={resetChangePasswordForm}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isChangingPassword}
+              className="bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition shadow-md"
+            >
+              {isChangingPassword ? "Updating..." : "Update Password"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+};
+
+export default function TextbookPortal({
   defaultSignup = false,
   initialView = "",
-  initialQuizCode = ""
-}: { 
+  initialQuizCode = "",
+  appMode = false
+}: {
   defaultSignup?: boolean;
   initialView?: string;
   initialQuizCode?: string;
+  // True for the installable reading-app entry point (/textbooks/app): hides the marketing
+  // nav/footer chrome and restricts the experience to login/signup + the reading library —
+  // no admin/faculty tooling, no store/journal browsing.
+  appMode?: boolean;
 }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+
+  // Install-to-home-screen prompt for the app-mode PWA. Chrome/Android fires
+  // beforeinstallprompt and lets us trigger it programmatically; iOS Safari never fires it,
+  // so isIOS drives a static "Add to Home Screen" instruction instead.
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   const shuffleArray = <T,>(arr: T[]): T[] => {
     const copy = [...arr];
@@ -358,7 +506,15 @@ export default function TextbookPortal({
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 
-  // Login inputs
+  // Email & Password Auth State
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authMobile, setAuthMobile] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  // Login inputs (legacy / access ID)
   const [loginAccessId, setLoginAccessId] = useState("");
   const [loginMobile, setLoginMobile] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -426,6 +582,10 @@ export default function TextbookPortal({
 
   // Secure e-Reader & Plan Upgrade States
   const [readingBookId, setReadingBookId] = useState<string | null>(null);
+  // Rentals read through the same in-portal secure reader as purchased books — this holds
+  // which rental is open and the access-validated data (pdf url + watermark) needed to load it.
+  const [readingRentalId, setReadingRentalId] = useState<string | null>(null);
+  const [activeRentalReadData, setActiveRentalReadData] = useState<{ bookTitle: string; pdfUrl: string } | null>(null);
   const [isReaderBlurred, setIsReaderBlurred] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -469,9 +629,31 @@ export default function TextbookPortal({
   const [adminUsers, setAdminUsers] = useState<TextbookUser[]>([]);
   const [adminCollegeFilter, setAdminCollegeFilter] = useState("");
   const [adminRoleFilter, setAdminRoleFilter] = useState("");
+  // User Profile Control tab: search + status filter, layered on top of the shared
+  // college/role filters above (same pattern as purchaseSearch on the Payments tab).
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userStatusFilter, setUserStatusFilter] = useState("all");
 
   // Bookstore Payments Dashboard state
   const [adminPurchases, setAdminPurchases] = useState<PurchaseRecord[]>([]);
+  // Rentals live in a separate table (book_rentals) from regular purchases, so they're
+  // fetched separately and merged with adminPurchases wherever the payments table reads
+  // its data — see adminAllOrders below.
+  const [adminRentals, setAdminRentals] = useState<PurchaseRecord[]>([]);
+  const fetchAdminRentals = () => {
+    fetch("/api/rentals/admin-list")
+      .then(res => res.json())
+      .then(data => setAdminRentals(data.rentals || []))
+      .catch(err => console.error("Failed to fetch admin rentals:", err));
+  };
+  const adminAllOrders = React.useMemo(
+    () => [...adminPurchases, ...adminRentals].sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    }),
+    [adminPurchases, adminRentals]
+  );
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [purchaseSearch, setPurchaseSearch] = useState("");
@@ -485,6 +667,45 @@ export default function TextbookPortal({
   const [qbankPage, setQbankPage] = useState(1);
   const [textbooksPage, setTextbooksPage] = useState(1);
   const [adminQBankBook, setAdminQBankBook] = useState("1");
+  const [portalRentals, setPortalRentals] = useState<any[]>([]);
+  // Expired rentals are tracked separately so the portal can surface a "Renew" prompt for
+  // them, instead of just letting them silently vanish once their access window closes.
+  const [expiredPortalRentals, setExpiredPortalRentals] = useState<any[]>([]);
+  const [renewalRental, setRenewalRental] = useState<{ rentalId: string; bookTitle: string; expiresAt?: string; planCode: string } | null>(null);
+  // Which category is shown in My Books / My Caselets — null means "auto-pick based on
+  // what the account actually has" until the user explicitly toggles one.
+  const [myBooksFilter, setMyBooksFilter] = useState<'rental' | 'purchased' | null>(null);
+  const [myCaseletsFilter, setMyCaseletsFilter] = useState<'rental' | 'purchased' | null>(null);
+
+  const fetchPortalRentals = () => {
+    if (!user) return;
+    const targetQuery = user.email || user.collegeEmail || user.mobileNumber || user.accessId || "";
+    if (!targetQuery) return;
+    fetch(`/api/rentals/my-rentals?email=${encodeURIComponent(targetQuery.trim())}&phone=${encodeURIComponent(user.mobileNumber || "")}&accessId=${encodeURIComponent(user.accessId || "")}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.rentals) {
+          // Only "active" rentals should grant reading/caselet access or show under
+          // "Active eBook Rentals" — expired/pending ones were previously included here.
+          setPortalRentals(data.grouped?.active || data.rentals.filter((r: any) => r.status === 'active'));
+          setExpiredPortalRentals(data.grouped?.expired || data.rentals.filter((r: any) => r.status === 'expired'));
+        }
+      })
+      .catch(err => console.error("Failed to fetch portal rentals:", err));
+  };
+
+  useEffect(() => {
+    if (user) {
+      const targetQuery = user.email || user.collegeEmail || user.mobileNumber || user.accessId || "";
+      if (targetQuery) {
+        fetchPortalRentals();
+      }
+      // Needed here (not just on the Orders sub-tab) so we know which exact plan
+      // (book_only / caselet / book_caselet) was paid for per book — used to gate
+      // the Caselets tab and to show the Permanent/Rental access badge on My Books.
+      fetchUserOrders();
+    }
+  }, [user]);
 
   useEffect(() => {
     setUsersPage(1);
@@ -578,6 +799,7 @@ export default function TextbookPortal({
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingStudentProfile, setIsEditingStudentProfile] = useState(false);
   const [studentProfileName, setStudentProfileName] = useState("");
+  const [studentProfileMobile, setStudentProfileMobile] = useState("");
   const [studentTeachingFacultyEdit, setStudentTeachingFacultyEdit] = useState("");
   const [profileForm, setProfileForm] = useState({
     name: "",
@@ -605,6 +827,103 @@ export default function TextbookPortal({
     mobileNumber: "9347834904",
     email: "lurnexapublication@gmail.com"
   });
+
+  // Change Password — shared across the student, faculty, and admin profile tabs, since
+  // it's the exact same account/logic regardless of which dashboard it's opened from.
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [oldPasswordInput, setOldPasswordInput] = useState("");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
+  const [showOldPasswordInput, setShowOldPasswordInput] = useState(false);
+  const [showNewPasswordInput, setShowNewPasswordInput] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState("");
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const resetChangePasswordForm = () => {
+    setShowChangePassword(false);
+    setOldPasswordInput("");
+    setNewPasswordInput("");
+    setConfirmPasswordInput("");
+    setShowOldPasswordInput(false);
+    setShowNewPasswordInput(false);
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+  };
+
+  const openChangePassword = () => {
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+    setShowChangePassword(true);
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+
+    if (!oldPasswordInput || !newPasswordInput || !confirmPasswordInput) {
+      setChangePasswordError("Please fill in all fields.");
+      return;
+    }
+    if (newPasswordInput !== confirmPasswordInput) {
+      setChangePasswordError("New password and confirmation do not match.");
+      return;
+    }
+    if (newPasswordInput.length < 8) {
+      setChangePasswordError("New password must be at least 8 characters long.");
+      return;
+    }
+    if (!/[A-Z]/.test(newPasswordInput)) {
+      setChangePasswordError("New password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[a-z]/.test(newPasswordInput)) {
+      setChangePasswordError("New password must contain at least one lowercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(newPasswordInput)) {
+      setChangePasswordError("New password must contain at least one number.");
+      return;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPasswordInput)) {
+      setChangePasswordError("New password must contain at least one special character (!@#$%^&* etc.).");
+      return;
+    }
+    if (newPasswordInput === oldPasswordInput) {
+      setChangePasswordError("New password must be different from your current password.");
+      return;
+    }
+
+    const userEmail = user?.email || user?.collegeEmail;
+    if (!userEmail) {
+      setChangePasswordError("Unable to identify your account email. Please log in again.");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const res = await fetch("/api/textbooks/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, oldPassword: oldPasswordInput, newPassword: newPasswordInput })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setChangePasswordError(data.error || "Failed to change password. Please try again.");
+        return;
+      }
+      setChangePasswordSuccess("Password changed successfully!");
+      setOldPasswordInput("");
+      setNewPasswordInput("");
+      setConfirmPasswordInput("");
+      setTimeout(() => resetChangePasswordForm(), 2000);
+    } catch (err) {
+      setChangePasswordError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   const getAdminCredentials = () => {
     if (typeof window === 'undefined') return { accessId: "LURNEXA", mobileNumber: "9347834904", name: "Administrator", email: "lurnexapublication@gmail.com" };
@@ -661,6 +980,156 @@ export default function TextbookPortal({
     }
   }, [activeToast]);
 
+  // ─── USER PROFILE: ORDER HISTORY & ADDRESS BOOK STATE ───
+  const [profileSubTab, setProfileSubTab] = useState<'account' | 'orders' | 'addresses'>('account');
+  const [userOrdersList, setUserOrdersList] = useState<any[]>([]);
+  const [isFetchingOrders, setIsFetchingOrders] = useState(false);
+  const [selectedOrderInvoice, setSelectedOrderInvoice] = useState<any | null>(null);
+
+  const [userAddressesList, setUserAddressesList] = useState<any[]>([]);
+  const [isFetchingAddresses, setIsFetchingAddresses] = useState(false);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [editingAddressObj, setEditingAddressObj] = useState<any | null>(null);
+  const [addressFormData, setAddressFormData] = useState({
+    fullName: "",
+    phoneNumber: "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    pincode: "",
+    country: "India",
+    addressType: "Home" as "Home" | "Work" | "College" | "Other",
+    isDefault: false
+  });
+
+  const fetchUserOrders = async () => {
+    if (!user) return;
+    setIsFetchingOrders(true);
+    try {
+      const userIdent = user.email || user.collegeEmail || user.mobileNumber;
+      const res = await fetch(`/api/textbooks/user/orders?user=${encodeURIComponent(userIdent)}`);
+      const data = await res.json();
+      setUserOrdersList(data.orders || []);
+    } catch (e) {
+      console.error("Error fetching user orders:", e);
+    } finally {
+      setIsFetchingOrders(false);
+    }
+  };
+
+  // The exact plan (book_only / caselet / book_caselet) paid for a given book — orders come
+  // back newest-first, so the most recent paid order for that book wins. userOrdersList also
+  // contains rentals (folded in for a unified Order History), which must be excluded here —
+  // otherwise a rental's plan code (e.g. "1 Month") can outrank a real purchase and get shown
+  // on the permanent "Purchased Digital Editions" card instead of the actual purchase plan.
+  const getLatestPaidPlanForBook = (bookId: string): string | null => {
+    // Exclude both real rentals (isRental, sourced from book_rentals) and any legacy order
+    // that was recorded with purchaseFormat "rental" — neither represents a permanent plan.
+    const match = userOrdersList.find((o: any) =>
+      String(o.bookId) === String(bookId) && !o.isRental && o.purchaseFormat !== "rental"
+    );
+    return match?.purchasePlan || null;
+  };
+
+  const fetchUserAddresses = async () => {
+    if (!user) return;
+    setIsFetchingAddresses(true);
+    try {
+      const userIdent = user.email || user.collegeEmail || user.mobileNumber;
+      const res = await fetch(`/api/textbooks/user/addresses?user=${encodeURIComponent(userIdent)}`);
+      const data = await res.json();
+      setUserAddressesList(data.addresses || []);
+    } catch (e) {
+      console.error("Error fetching user addresses:", e);
+    } finally {
+      setIsFetchingAddresses(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && (activeTab === "studentProfile" || activeTab === "profile")) {
+      if (profileSubTab === "orders") {
+        fetchUserOrders();
+      } else if (profileSubTab === "addresses") {
+        fetchUserAddresses();
+      }
+    }
+  }, [activeTab, profileSubTab, user]);
+
+  const handleSaveAddressSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    const userIdent = user.email || user.collegeEmail || user.mobileNumber;
+
+    if (
+      !addressFormData.fullName.trim() ||
+      !addressFormData.phoneNumber.trim() ||
+      !addressFormData.addressLine1.trim() ||
+      !addressFormData.city.trim() ||
+      !addressFormData.state.trim() ||
+      !addressFormData.pincode.trim()
+    ) {
+      showToast("Please fill in all required address fields.", "warning");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/textbooks/user/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingAddressObj?.id,
+          userIdentifier: userIdent,
+          ...addressFormData
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Failed to save address", "error");
+        return;
+      }
+      showToast(editingAddressObj ? "Address updated successfully!" : "New address added to Address Book!", "success");
+      setIsAddressModalOpen(false);
+      setEditingAddressObj(null);
+      fetchUserAddresses();
+    } catch (err) {
+      showToast("Error connecting to server", "error");
+    }
+  };
+
+  const handleDeleteAddress = async (id: number) => {
+    if (!user) return;
+    const userIdent = user.email || user.collegeEmail || user.mobileNumber;
+    try {
+      const res = await fetch(`/api/textbooks/user/addresses?id=${id}&user=${encodeURIComponent(userIdent)}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        showToast("Address deleted from Address Book.", "success");
+        fetchUserAddresses();
+      }
+    } catch (e) {
+      showToast("Failed to delete address", "error");
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: number) => {
+    if (!user) return;
+    const userIdent = user.email || user.collegeEmail || user.mobileNumber;
+    try {
+      const res = await fetch(`/api/textbooks/user/addresses?id=${id}&user=${encodeURIComponent(userIdent)}`, {
+        method: "PUT"
+      });
+      if (res.ok) {
+        showToast("Default delivery address updated!", "success");
+        fetchUserAddresses();
+      }
+    } catch (e) {
+      showToast("Failed to set default address", "error");
+    }
+  };
+
   // --- STUDENT STATE ---
   const [studentQuizCode, setStudentQuizCode] = useState("");
   const [activeStudentQuiz, setActiveStudentQuiz] = useState<TextbookQuiz | null>(null);
@@ -668,7 +1137,7 @@ export default function TextbookPortal({
   const [studentAnswers, setStudentAnswers] = useState<string[]>([]);
   const [studentQuizResult, setStudentQuizResult] = useState<QuizAttempt | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
-  const [readingCaseletIndex, setReadingCaseletIndex] = useState<number | null>(null);
+  const [readingCaseletInfo, setReadingCaseletInfo] = useState<{ bookId: string; index: number } | null>(null);
 
   const requestFullscreenSafe = () => {
     try {
@@ -683,19 +1152,128 @@ export default function TextbookPortal({
     } catch (e) {}
   };
 
+  // Each of these three "open a reader" actions must be authoritative and clear the other
+  // two reading modes — otherwise a reader left open via a path that skips closeSecureReader
+  // (e.g. fullscreen never actually activated, so the ESC/fullscreenchange reset never fires)
+  // leaves stale state that outranks a fresh request: the PDF-loading effect checks
+  // book > rental > caselet in that order, so a stuck readingRentalId would keep loading the
+  // book even after the user just clicked "Read Caselet PDF".
   const openSecureBook = (bookId: string) => {
+    setReadingRentalId(null);
+    setActiveRentalReadData(null);
+    setReadingCaseletInfo(null);
     setReadingBookId(bookId);
     requestFullscreenSafe();
   };
 
-  const openSecureCaselet = (index: number) => {
-    setReadingCaseletIndex(index);
+  // Validates the rental (ownership + not expired) and grabs its PDF url, then opens it in the
+  // exact same secure reader used for purchased books — same UI, same protections, no separate tab.
+  const openSecureRental = async (rentalId: string) => {
+    const userEmail = user?.email || user?.collegeEmail;
+    if (!userEmail) {
+      setErrorMessage("Please log in again to access your rental.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/rentals/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rentalId, userEmail })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMessage(data.error || "Unable to access this rental right now.");
+        return;
+      }
+      setReadingBookId(null);
+      setReadingCaseletInfo(null);
+      setActiveRentalReadData({
+        bookTitle: data.rental?.bookTitle || "Rented eBook",
+        pdfUrl: data.pdfUrl
+      });
+      setReadingRentalId(rentalId);
+      requestFullscreenSafe();
+    } catch (e) {
+      setErrorMessage("Failed to load the rented eBook. Please check your connection and try again.");
+    }
+  };
+
+  const openSecureCaselet = (bookId: string, index: number) => {
+    setReadingBookId(null);
+    setReadingRentalId(null);
+    setActiveRentalReadData(null);
+    setReadingCaseletInfo({ bookId, index });
     requestFullscreenSafe();
+  };
+
+  // Lazily loads the Cashfree JS SDK on demand (only when a renewal is actually
+  // attempted) rather than on every portal page load.
+  const ensureCashfreeLoaded = (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if ((window as any).Cashfree) {
+        resolve((window as any).Cashfree);
+        return;
+      }
+      const scriptId = "cashfree-sdk-script";
+      let script = document.getElementById(scriptId) as HTMLScriptElement;
+      if (!script) {
+        script = document.createElement("script");
+        script.id = scriptId;
+        script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+        script.async = true;
+        document.body.appendChild(script);
+      }
+      const checkLoaded = setInterval(() => {
+        if ((window as any).Cashfree) {
+          clearInterval(checkLoaded);
+          resolve((window as any).Cashfree);
+        }
+      }, 100);
+      setTimeout(() => {
+        clearInterval(checkLoaded);
+        if (!(window as any).Cashfree) reject(new Error("Cashfree SDK failed to load."));
+      }, 10000);
+    });
+  };
+
+  // Creates a renewal order via /api/rentals/renew (extends from the current expiry if
+  // renewed early, otherwise starts fresh from now) and hands off to Cashfree — same
+  // payment flow as a brand-new rental, just triggered from inside the portal instead of
+  // the store checkout page. Cashfree's own return_url (set server-side) sends the
+  // customer back to /textbooks/store/checkout, which already knows how to verify and
+  // activate a rental by its rentalId.
+  const handleConfirmRenewal = async (rentalId: string, newPlanCode: string) => {
+    setErrorMessage("");
+    try {
+      const res = await fetch("/api/rentals/renew", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rentalId, newPlanCode })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.error || "Unable to start the renewal right now. Please try again.");
+        return;
+      }
+
+      const Cashfree = await ensureCashfreeLoaded();
+      const isProduction = process.env.NEXT_PUBLIC_CASHFREE_ENV === "production";
+      const cashfree = Cashfree({ mode: isProduction ? "production" : "sandbox" });
+      cashfree.checkout({
+        paymentSessionId: data.paymentSessionId,
+        redirectTarget: "_self"
+      });
+    } catch (e) {
+      setErrorMessage("Failed to reach the payment gateway. Please check your connection and try again.");
+    }
   };
 
   const closeSecureReader = () => {
     setReadingBookId(null);
-    setReadingCaseletIndex(null);
+    setReadingRentalId(null);
+    setActiveRentalReadData(null);
+    setReadingCaseletInfo(null);
+    setPdfError(null);
     try {
       if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
         if (document.exitFullscreen) {
@@ -712,7 +1290,9 @@ export default function TextbookPortal({
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && !(document as any).webkitFullscreenElement && !(document as any).mozFullScreenElement && !(document as any).msFullscreenElement) {
         setReadingBookId(null);
-        setReadingCaseletIndex(null);
+        setReadingRentalId(null);
+        setActiveRentalReadData(null);
+        setReadingCaseletInfo(null);
       }
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -733,6 +1313,7 @@ export default function TextbookPortal({
   const [pdfCurrentPage, setPdfCurrentPage] = useState(1);
   const [pdfTotalPages, setPdfTotalPages] = useState(0);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [pageInputVal, setPageInputVal] = useState("1");
   const [pdfZoom, setPdfZoom] = useState<number>(1.0); // 1.0 = 100% fit-to-screen scale
@@ -783,6 +1364,7 @@ export default function TextbookPortal({
 
   const loadPdfFile = async (url: string) => {
     setPdfLoading(true);
+    setPdfError(null);
     setPdfZoom(1.0);
     try {
       if (!(window as any).pdfjsLib) {
@@ -793,12 +1375,19 @@ export default function TextbookPortal({
       }
       const pdfjsLib = (window as any).pdfjsLib;
       pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+
+      // No silent fallback to a different document here — a caselet that fails to load
+      // must never quietly substitute the unrelated full textbook (that's exactly what
+      // used to make "Read Caselet PDF" open the book instead). Surface a clear error
+      // via the catch block below instead.
       const loadedPdf = await pdfjsLib.getDocument(url).promise;
+
       setPdfDocument(loadedPdf);
       setPdfTotalPages(loadedPdf.numPages);
       setPdfCurrentPage(1);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error loading PDF:", err);
+      setPdfError("Unable to load the PDF document. Please ensure the file exists or try again.");
     } finally {
       setPdfLoading(false);
     }
@@ -870,17 +1459,21 @@ export default function TextbookPortal({
 
   useEffect(() => {
     const isReadingBook = !!readingBookId;
-    const isReadingCaselet = readingCaseletIndex !== null;
+    const isReadingRental = !!readingRentalId;
+    const isReadingCaselet = readingCaseletInfo !== null;
 
     if (isReadingBook) {
-      const book = PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId);
+      const book = PORTAL_PUBLISHED_BOOKS.find(b => String(b.id) === String(readingBookId));
       if (book) {
         loadPdfFile(`/portal_textbooks/${book.pdfFileName}`);
       }
+    } else if (isReadingRental) {
+      if (activeRentalReadData?.pdfUrl) {
+        loadPdfFile(activeRentalReadData.pdfUrl);
+      }
     } else if (isReadingCaselet) {
-      const studentBookId = user?.bookId || "1";
-      const caselets = BOOK_CASELETS[studentBookId] || [];
-      const currentCaselet = caselets[readingCaseletIndex];
+      const caselets = BOOK_CASELETS[readingCaseletInfo.bookId] || [];
+      const currentCaselet = caselets[readingCaseletInfo.index];
       if (currentCaselet) {
         loadPdfFile(`/portal_caselets/${currentCaselet.pdfFileName}`);
       }
@@ -889,8 +1482,9 @@ export default function TextbookPortal({
       setPdfTotalPages(0);
       setPdfCurrentPage(1);
       setPdfZoom(1.0);
+      setPdfError(null);
     }
-  }, [readingBookId, readingCaseletIndex]);
+  }, [readingBookId, readingRentalId, activeRentalReadData, readingCaseletInfo]);
 
   useEffect(() => {
     if (pdfDocument) {
@@ -939,25 +1533,14 @@ export default function TextbookPortal({
   // Plan tab allowance helper
   const isTabAllowed = (tab: string) => {
     if (user?.role !== "student") return true;
-    const plan = user?.plan || "complete";
-    const PLAN_ALLOWED_OPTIONS: Record<string, string[]> = {
-      book_only: ["mybooks"],
-      caselet: ["caselets"],
-      book_caselet: ["mybooks", "caselets"],
-      book_portal: ["mybooks", "join", "practice", "history", "studentCareerHub"],
-      book_caselet_portal: ["mybooks", "caselets", "join", "practice", "history", "studentCareerHub"],
-      complete: ["join", "practice", "history", "studentCareerHub"],
-      placements: ["studentCareerHub"],
-      practice: ["practice"]
-    };
 
-    if (tab === "studentProfile") return true;
+    // Options removed for student users: Join Active Quiz, Practice Questions, My Quiz History, Career Hub
+    if (["join", "practice", "history", "studentCareerHub"].includes(tab)) {
+      return false;
+    }
 
-    if (PLAN_ALLOWED_OPTIONS[plan]) {
-      if (tab === "mybooks") {
-        return PLAN_ALLOWED_OPTIONS[plan].includes(tab) && !!(user.bookId || (user.purchasedBooks && user.purchasedBooks.length > 0));
-      }
-      return PLAN_ALLOWED_OPTIONS[plan].includes(tab);
+    if (tab === "studentProfile" || tab === "mybooks" || tab === "caselets") {
+      return true;
     }
 
     return false;
@@ -975,6 +1558,47 @@ export default function TextbookPortal({
   const [editingUpdate, setEditingUpdate] = useState<CompanyUpdate | null>(null);
   const [cuCompany, setCuCompany] = useState("");
   const [cuBullets, setCuBullets] = useState(""); // newline separated
+
+  // Reading-app PWA setup: register the service worker, detect standalone/iOS, and capture
+  // the native install prompt so any "Download App" button — on this page or the login/store
+  // pages, wherever the browser is showing the reading-app manifest — can trigger the real
+  // install directly instead of just linking to /textbooks/app.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const ua = window.navigator.userAgent || "";
+    setIsIOS(/iphone|ipad|ipod/i.test(ua) && !(window as any).MSStream);
+    setIsStandalone(
+      window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true
+    );
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/textbook-app-sw.js", { scope: "/textbooks/app/" }).catch(err => {
+        console.error("Reading app service worker registration failed:", err);
+      });
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  // Shared by every "Download App" button on the site: install right where the click
+  // happened when the browser has a captured prompt ready, instead of always bouncing to
+  // /textbooks/app first. Falls back to opening the app (which shows install/iOS
+  // instructions once there) only when no native prompt is available yet.
+  const handleInstallApp = async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      setDeferredInstallPrompt(null);
+    } else {
+      router.push("/textbooks/app");
+    }
+  };
 
   // Safe window mount check
   useEffect(() => {
@@ -1000,8 +1624,8 @@ export default function TextbookPortal({
       try {
         const parsed = JSON.parse(savedUser);
         if (parsed.role !== "admin") {
-          const identifier = (parsed.role === "faculty" || parsed.role === "student") ? parsed.collegeEmail : parsed.mobileNumber;
-          const fresh = getUser(identifier, parsed.accessId);
+          const identifier = (parsed.role === "faculty" || parsed.role === "student") ? (parsed.collegeEmail || parsed.email || parsed.mobileNumber) : parsed.mobileNumber;
+          const fresh = identifier ? getUser(identifier, parsed.accessId) : null;
           if (fresh) {
             if (parsed.plan && parsed.plan !== fresh.plan) {
               fresh.plan = parsed.plan;
@@ -1026,16 +1650,10 @@ export default function TextbookPortal({
           else if (parsed.role === "faculty") setActiveTab(initialView || "create");
           else {
             const plan = parsed.plan || "complete";
-            if (plan === "placements") {
-              setActiveTab(initialView || "studentCareerHub");
-            } else if (plan === "book_only" || plan === "book_caselet") {
-              setActiveTab(initialView || "mybooks");
-            } else if (plan === "caselet") {
+            if (plan === "caselet") {
               setActiveTab(initialView || "caselets");
-            } else if (plan === "practice") {
-              setActiveTab(initialView || "practice");
             } else {
-              setActiveTab(initialView || "join");
+              setActiveTab(initialView || "mybooks");
             }
           }
         }
@@ -1048,7 +1666,7 @@ export default function TextbookPortal({
 
   // Screen protection / anti-screenshot effect
   useEffect(() => {
-    const isReading = !!readingBookId || readingCaseletIndex !== null;
+    const isReading = !!readingBookId || !!readingRentalId || readingCaseletInfo !== null;
     if (!isReading) {
       document.documentElement.classList.remove("force-secure-blur");
       setIsReaderBlurred(false);
@@ -1210,7 +1828,7 @@ export default function TextbookPortal({
       window.removeEventListener("click", handleUserInteraction);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [readingBookId, readingCaseletIndex]);
+  }, [readingBookId, readingRentalId, readingCaseletInfo]);
 
   // Tab restriction redirect effect for students
   useEffect(() => {
@@ -1373,6 +1991,7 @@ export default function TextbookPortal({
       }
       if (activeTab === "payments") {
         setAdminPurchases(getAllPurchases());
+        fetchAdminRentals();
       }
       if (activeTab === "qbank") {
         setAdminQuestions(getQuestionsByBook(adminQBankBook));
@@ -1417,6 +2036,7 @@ export default function TextbookPortal({
         }
         if (activeTab === "payments") {
           setAdminPurchases(getAllPurchases());
+          fetchAdminRentals();
         }
         if (activeTab === "qbank") {
           setAdminQuestions(getQuestionsByBook(adminQBankBook));
@@ -1717,6 +2337,153 @@ export default function TextbookPortal({
     };
   }, [activeStudentQuiz, practiceStarted, activePracticeTest]);
 
+  const checkAndPerformRedirect = (): boolean => {
+    if (typeof window === "undefined") return false;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("redirect") === "checkout") {
+        const bookId = urlParams.get("bookId");
+        const format = urlParams.get("format");
+        const plan = urlParams.get("plan");
+        let target = "/textbooks/store/checkout";
+        const paramsList: string[] = [];
+        if (bookId) paramsList.push(`bookId=${encodeURIComponent(bookId)}`);
+        if (format) paramsList.push(`format=${encodeURIComponent(format)}`);
+        if (plan) paramsList.push(`plan=${encodeURIComponent(plan)}`);
+        if (paramsList.length > 0) target += `?${paramsList.join("&")}`;
+        window.location.href = target;
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  };
+
+  // Email & Password Login Handler
+  async function handleEmailLoginSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!authEmail.trim() || !authPassword) {
+      setErrorMessage("Please enter your Gmail / Email address and password.");
+      return;
+    }
+
+    setIsAuthLoading(true);
+    try {
+      const res = await fetch("/api/textbooks/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authEmail.trim(), password: authPassword }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMessage(data.error || "Login failed. Please check your credentials.");
+        setIsAuthLoading(false);
+        return;
+      }
+
+      const loggedUser = data.user;
+      setUser(loggedUser);
+      sessionStorage.setItem("lurnexa_session_token", data.token);
+      sessionStorage.setItem("lurnexa_current_user", JSON.stringify(loggedUser));
+      localStorage.setItem("lurnexa_user_email", loggedUser.email);
+      localStorage.setItem("user_email", loggedUser.email);
+      localStorage.setItem("lurnexa_user", JSON.stringify(loggedUser));
+
+      setSuccessMessage("");
+      setErrorMessage("");
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthName("");
+      setAuthMobile("");
+      if (!checkAndPerformRedirect()) {
+        setActiveTab("mybooks");
+      }
+    } catch (err) {
+      setErrorMessage("Network error connecting to login server.");
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
+  // Email & Password Signup Handler
+  async function handleEmailSignupSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!authEmail.trim() || !authPassword || !authName.trim()) {
+      setErrorMessage("Full Name, Gmail / Email, and Password are required.");
+      return;
+    }
+
+    if (authPassword.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
+      return;
+    }
+    if (!/[A-Z]/.test(authPassword)) {
+      setErrorMessage("Password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[a-z]/.test(authPassword)) {
+      setErrorMessage("Password must contain at least one lowercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(authPassword)) {
+      setErrorMessage("Password must contain at least one number.");
+      return;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(authPassword)) {
+      setErrorMessage("Password must contain at least one special character (!@#$%^&* etc.).");
+      return;
+    }
+
+    setIsAuthLoading(true);
+    try {
+      const res = await fetch("/api/textbooks/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: authName.trim(),
+          email: authEmail.trim(),
+          password: authPassword,
+          mobileNumber: authMobile.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMessage(data.error || "Signup failed. Please try again.");
+        setIsAuthLoading(false);
+        return;
+      }
+
+      const loggedUser = data.user;
+      setUser(loggedUser);
+      sessionStorage.setItem("lurnexa_session_token", data.token);
+      sessionStorage.setItem("lurnexa_current_user", JSON.stringify(loggedUser));
+      localStorage.setItem("lurnexa_user_email", loggedUser.email);
+      localStorage.setItem("user_email", loggedUser.email);
+      localStorage.setItem("lurnexa_user", JSON.stringify(loggedUser));
+
+      setSuccessMessage("");
+      setErrorMessage("");
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthName("");
+      setAuthMobile("");
+      if (!checkAndPerformRedirect()) {
+        setActiveTab("mybooks");
+      }
+    } catch (err) {
+      setErrorMessage("Network error connecting to registration server.");
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingLogin) return;
@@ -1726,8 +2493,8 @@ export default function TextbookPortal({
     setIsSubmittingLogin(true);
 
     const isFacultyLogin = loginAccessId.trim().toUpperCase().startsWith("LF");
-    const isStudentLogin = loginAccessId.trim().toUpperCase().startsWith("LS");
-    const isAdminAccess = loginAccessId.trim().toUpperCase() === "ADMIN";
+    const isStudentLogin = loginAccessId.trim().toUpperCase().startsWith("LS") || loginAccessId.trim().toUpperCase().startsWith("LURN") || loginAccessId.trim().toUpperCase().startsWith("LR");
+    const isAdminAccess = loginAccessId.trim().toUpperCase() === "ADMIN" || loginAccessId.trim().toUpperCase() === "LURNEXA";
     const isEmailLogin = isFacultyLogin || isStudentLogin || isAdminAccess;
 
     if (!loginAccessId || !loginMobile) {
@@ -1745,36 +2512,17 @@ export default function TextbookPortal({
     const cleanMobile = loginMobile.trim();
 
     const adminCreds = getAdminCredentials();
-    const isLoginAdminAccess = cleanAccessId.toUpperCase() === adminCreds.accessId.trim().toUpperCase() || cleanAccessId.toUpperCase() === "LURNEXA";
+    const isLoginAdminAccess = (cleanAccessId.toUpperCase() === "LURNEXA" || cleanAccessId.toUpperCase() === "ADMIN" || cleanAccessId.toUpperCase() === adminCreds.accessId.trim().toUpperCase());
 
-    if (!isLoginAdminAccess) {
-      if (isEmailLogin) {
-        if (!isCollegeEmail(cleanMobile)) {
-          setErrorMessage("Please enter a valid college email ID. Generic domains (like Gmail, Yahoo, Outlook) are not allowed.");
-          setSuccessMessage("");
-          setIsSubmittingLogin(false);
-          return;
-        }
-      } else {
-        const cleanedMobile = cleanMobile.replace(/\D/g, "");
-        if (cleanedMobile.length !== 10) {
-          setErrorMessage("Please enter a valid 10-digit mobile number containing only numbers.");
-          setSuccessMessage("");
-          setIsSubmittingLogin(false);
-          return;
-        }
-      }
-    }
+    const isAdminLogin = isLoginAdminAccess && (
+      cleanMobile.toLowerCase() === adminCreds.email.trim().toLowerCase() ||
+      cleanMobile.toLowerCase() === "lurnexapublication@gmail.com" ||
+      (cleanMobile.replace(/\D/g, "") === adminCreds.mobileNumber.replace(/\D/g, "") && cleanMobile.replace(/\D/g, "") === "9347834904")
+    );
 
     let targetCoordinate = cleanMobile;
     let matchedUser: TextbookUser | null = null;
 
-    const isAdminLogin = isLoginAdminAccess && (
-      cleanMobile.toLowerCase() === adminCreds.email.trim().toLowerCase() ||
-      cleanMobile.replace(/\D/g, "") === adminCreds.mobileNumber.replace(/\D/g, "") ||
-      cleanMobile.toLowerCase() === "lurnexapublication@gmail.com" ||
-      cleanMobile.replace(/\D/g, "").slice(-10) === "9347834904"
-    );
     if (isAdminLogin) {
       targetCoordinate = cleanMobile.includes("@") ? adminCreds.email : adminCreds.mobileNumber;
     } else {
@@ -1789,12 +2537,7 @@ export default function TextbookPortal({
         setIsSubmittingLogin(false);
         return;
       }
-      if (!matchedUser.isActive) {
-        setErrorMessage("Your profile is inactive. Please contact the administrator.");
-        setSuccessMessage("");
-        setIsSubmittingLogin(false);
-        return;
-      }
+      
       targetCoordinate = isEmailLogin ? (matchedUser.collegeEmail || matchedUser.mobileNumber) : matchedUser.mobileNumber;
     }
 
@@ -1853,12 +2596,11 @@ export default function TextbookPortal({
     const cleanOtpInput = otpInput.trim();
 
     const adminCreds = getAdminCredentials();
-    const isLoginAdminAccess = cleanAccessId.toUpperCase() === adminCreds.accessId.trim().toUpperCase() || cleanAccessId.toUpperCase() === "LURNEXA";
+    const isLoginAdminAccess = (cleanAccessId.toUpperCase() === "LURNEXA" || cleanAccessId.toUpperCase() === "ADMIN" || cleanAccessId.toUpperCase() === adminCreds.accessId.trim().toUpperCase());
     const isAdminLogin = isLoginAdminAccess && (
       cleanMobile.toLowerCase() === adminCreds.email.trim().toLowerCase() ||
-      cleanMobile.replace(/\D/g, "") === adminCreds.mobileNumber.replace(/\D/g, "") ||
       cleanMobile.toLowerCase() === "lurnexapublication@gmail.com" ||
-      cleanMobile.replace(/\D/g, "").slice(-10) === "9347834904"
+      (cleanMobile.replace(/\D/g, "") === adminCreds.mobileNumber.replace(/\D/g, "") && cleanMobile.replace(/\D/g, "") === "9347834904")
     );
 
     if (isAdminLogin && cleanOtpInput === "783490") {
@@ -1893,7 +2635,7 @@ export default function TextbookPortal({
         setErrorMessage("Error retrieving user profile.");
         return;
       }
-      targetCoordinate = (cleanAccessId.toUpperCase().startsWith("LF") || cleanAccessId.toUpperCase().startsWith("LS")) ? (matchedUser.collegeEmail || matchedUser.mobileNumber) : matchedUser.mobileNumber;
+      targetCoordinate = (cleanAccessId.toUpperCase().startsWith("LF") || cleanAccessId.toUpperCase().startsWith("LS") || cleanAccessId.toUpperCase().startsWith("LURN") || cleanAccessId.toUpperCase().startsWith("LR")) ? (matchedUser.collegeEmail || matchedUser.mobileNumber) : matchedUser.mobileNumber;
     }
 
     try {
@@ -1911,7 +2653,7 @@ export default function TextbookPortal({
 
       // Success login
       let loggedInUser: TextbookUser;
-      if (isAdminLogin) {
+      if (isAdminLogin && !matchedUser) {
         loggedInUser = {
           name: adminCreds.name,
           bookId: "ADMIN",
@@ -1922,30 +2664,35 @@ export default function TextbookPortal({
           isActive: true,
           accessId: adminCreds.accessId
         };
+      } else if (matchedUser) {
+        loggedInUser = matchedUser;
       } else {
-        loggedInUser = matchedUser!;
+        setErrorMessage("Could not retrieve user account profile.");
+        return;
       }
 
       sessionStorage.setItem("lurnexa_session_token", data.token);
       sessionStorage.setItem("lurnexa_current_user", JSON.stringify(loggedInUser));
+      localStorage.setItem("lurnexa_user", JSON.stringify(loggedInUser));
+      localStorage.setItem("lurnexa_user_email", loggedInUser.collegeEmail || loggedInUser.email || "");
       setUser(loggedInUser);
       setOtpSent(false);
       setSuccessMessage("Logged in successfully!");
       
+      if (checkAndPerformRedirect()) return;
+
       if (loggedInUser.role === "admin") setActiveTab("users");
       else if (loggedInUser.role === "faculty") setActiveTab("create");
       else {
         const plan = loggedInUser.plan || "complete";
         if (plan === "placements") {
           setActiveTab("studentCareerHub");
-        } else if (plan === "book_only" || plan === "book_caselet") {
-          setActiveTab("mybooks");
         } else if (plan === "caselet") {
           setActiveTab("caselets");
         } else if (plan === "practice") {
           setActiveTab("practice");
         } else {
-          setActiveTab("join");
+          setActiveTab("mybooks");
         }
       }
     } catch (err) {
@@ -1971,7 +2718,7 @@ export default function TextbookPortal({
     }
 
     if (res.isAssigned) {
-      setErrorMessage("This Access ID has already been registered with another account.");
+      setErrorMessage("This Access ID is already registered! If you purchased a book, your account is active—please click 'Log In' above to access your account.");
       return;
     }
 
@@ -2009,7 +2756,7 @@ export default function TextbookPortal({
     }
 
     if (collegeEmail && !isCollegeEmail(collegeEmail)) {
-      setErrorMessage("Please enter a valid college email ID. Generic emails (like Gmail, Yahoo, Outlook) are not allowed.");
+      setErrorMessage("Please enter a valid email address.");
       return;
     }
 
@@ -2246,7 +2993,11 @@ export default function TextbookPortal({
   // Handle Logout
   const handleLogout = () => {
     sessionStorage.removeItem("lurnexa_current_user");
+    sessionStorage.removeItem("lurnexa_session_token");
     sessionStorage.removeItem("lurnexa_portal_active_tab");
+    localStorage.removeItem("lurnexa_user");
+    localStorage.removeItem("lurnexa_user_email");
+    localStorage.removeItem("user_email");
     setUser(null);
     setActiveTab("");
     setOtpSent(false);
@@ -2254,6 +3005,16 @@ export default function TextbookPortal({
     setGeneratedOtp("");
     setLoginAccessId("");
     setLoginMobile("");
+    setSignupAccessId("");
+    setSignupOtpSent(false);
+    setSignupOtpInput("");
+    setTwilioValidationCode("");
+    setAuthEmail("");
+    setAuthPassword("");
+    setAuthName("");
+    setAuthMobile("");
+    setSuccessMessage("");
+    setErrorMessage("");
     // Reset other screens
     setActiveStudentQuiz(null);
     setStudentQuizResult(null);
@@ -2928,7 +3689,7 @@ export default function TextbookPortal({
     // Identify only this teacher's assigned students for notifications
     const allUsers = getAllUsers();
     const assignedStudents = allUsers.filter(
-      u => u.role === 'student' && u.teachingFacultyAccessId?.toUpperCase() === user!.accessId.toUpperCase()
+      u => u.role === 'student' && u.teachingFacultyAccessId?.toUpperCase() === (user?.accessId || "").toUpperCase()
     );
 
     // Trigger email notifications to all assigned students
@@ -3134,7 +3895,7 @@ export default function TextbookPortal({
         const allUsers = getAllUsers();
         const matchedFaculty = allUsers.find(
           u => u.role === "faculty" && 
-          (u.accessId.toUpperCase() === input.toUpperCase() || 
+          ((u.accessId?.toUpperCase() || "") === input.toUpperCase() || 
            u.mobileNumber === input || 
            u.collegeEmail?.toLowerCase() === input.toLowerCase())
         );
@@ -3144,7 +3905,7 @@ export default function TextbookPortal({
             showToast(`Access Denied: The selected faculty teaches a different textbook than yours. Both must be assigned to the same book code prefix.`, "error");
             return;
           }
-          targetFaculty = matchedFaculty.accessId;
+          targetFaculty = matchedFaculty.accessId || "";
         } else {
           const allowedIds = getAllAccessIds();
           const preApprovedFaculty = allowedIds.find(
@@ -3169,10 +3930,15 @@ export default function TextbookPortal({
       return;
     }
     
+    const cleanedMobile = studentProfileMobile.trim();
     const updatedFields: Partial<TextbookUser> = { 
       name: studentProfileName.trim(),
       teachingFacultyAccessId: targetFaculty 
     };
+
+    if (cleanedMobile && !cleanedMobile.includes("@")) {
+      updatedFields.mobileNumber = cleanedMobile;
+    }
 
     const success = updateUser(user!.mobileNumber, updatedFields);
     if (success) {
@@ -3382,7 +4148,7 @@ export default function TextbookPortal({
     const creatorFaculty = getAllUsers().find(
       u => u.role === "faculty" && u.mobileNumber === quiz.createdBy
     );
-    if (!creatorFaculty || user!.teachingFacultyAccessId?.toUpperCase() !== creatorFaculty.accessId.toUpperCase()) {
+    if (!creatorFaculty || user!.teachingFacultyAccessId?.toUpperCase() !== (creatorFaculty.accessId || "").toUpperCase()) {
       setErrorMessage(`Access Denied: You are not assigned to the faculty who created this quiz (${creatorFaculty?.name || 'Unknown Faculty'}). Only their assigned students can join.`);
       return;
     }
@@ -3675,14 +4441,14 @@ export default function TextbookPortal({
   if (!mounted) {
     return (
       <div className={inter.className}>
-        <NavigationPage />
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-24 text-slate-900">
+        {!appMode && <NavigationPage />}
+        <div className={`min-h-screen bg-slate-50 flex items-center justify-center text-slate-900 ${appMode ? "" : "pt-24"}`}>
           <div className="flex flex-col items-center gap-4">
             <div className="w-12 h-12 border-4 border-fuchsia-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-slate-600 font-bold">Initializing Portal...</p>
           </div>
         </div>
-        <FooterSection />
+        {!appMode && <FooterSection />}
       </div>
     );
   }
@@ -3899,61 +4665,57 @@ export default function TextbookPortal({
           scrollbar-width: none !important;
         }
       `}} />
-      <NavigationPage />
+      {!appMode && <NavigationPage />}
 
-      <main className="min-h-screen bg-slate-50 text-slate-800 pt-28 pb-16 px-4 md:px-8">
+      <main className={`min-h-screen bg-slate-50 text-slate-800 pb-16 px-4 md:px-8 ${appMode ? "pt-6" : "pt-28"}`}>
         <div className="max-w-7xl mx-auto">
-          
-          {/* Header section */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-8 mb-8 gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-fuchsia-500 font-bold mb-2">
-                <Sparkles size={18} />
-                <span>Textbook Portal</span>
-              </div>
-              <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-                Quiz & Practice Center
-              </h1>
-            </div>
-            {user && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                {user.role === "student" && user.plan && (
-                  <div className="flex items-center gap-2 bg-white border border-slate-200 p-4 rounded-2xl shadow-lg">
-                    <span className="text-xs text-slate-500 font-medium">
-                      Plan: <span className="font-bold text-slate-800">{
-                        user.plan === "placements" ? "Placements Plan" : 
-                        user.plan === "practice" ? "Practice Plan" : 
-                        user.plan === "book_only" ? "Book Only" :
-                        user.plan === "caselet" ? "Caselet Only" :
-                        user.plan === "book_caselet" ? "Book + Caselet" :
-                        user.plan === "book_portal" ? "Book + Portal Access" :
-                        user.plan === "book_caselet_portal" ? "Book + Caselet + Portal" :
-                        "Full Access"
-                      }</span>
-                    </span>
-                    {(() => {
-                      const currentPrice = getSoftCopyPrice(user.plan || "complete", user.bookId || "1");
-                      const eligiblePlans = ALL_PLANS.filter(p => {
-                        if (p.key === user.plan) return false;
-                        if (!isPlanAllowedForBook(p.key, user.bookId || "1")) return false;
-                        return getSoftCopyPrice(p.key, user.bookId || "1") > currentPrice;
-                      });
-                      if (eligiblePlans.length === 0) return null;
 
-                      return (
-                        <button
-                          onClick={() => {
-                            setSelectedUpgradePlan(eligiblePlans[0]?.key || "");
-                            setShowUpgradeModal(true);
-                          }}
-                          className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-sm animate-pulse ml-2"
-                        >
-                          Upgrade Plan
-                        </button>
-                      );
-                    })()}
-                  </div>
-                )}
+          {/* Install-to-home-screen banner — app mode only, hidden once already installed */}
+          {appMode && !isStandalone && (deferredInstallPrompt || isIOS) && (
+            <div className="mb-6 bg-slate-950 text-white rounded-2xl px-4 py-3 flex items-center justify-between gap-3 shadow-lg animate-fadeIn">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                  <Download size={16} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold truncate">Install Lurnexa Textbooks</p>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {isIOS ? "Tap Share, then \"Add to Home Screen\"" : "Add it to your home screen for one-tap access"}
+                  </p>
+                </div>
+              </div>
+              {deferredInstallPrompt ? (
+                <button
+                  onClick={handleInstallApp}
+                  className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0"
+                >
+                  Install
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsIOS(false)}
+                  className="text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition shrink-0"
+                  aria-label="Dismiss"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Header section (Logged-in view) */}
+          {user && (
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-8 mb-8 gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-fuchsia-600 font-bold mb-2">
+                  <BookOpen size={18} />
+                  <span>Academic Bookstore & Digital Library</span>
+                </div>
+                <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
+                  Reader Portal
+                </h1>
+              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
 
                 <div className="flex items-center gap-4 bg-white border border-slate-200 p-4 rounded-2xl shadow-lg">
                   <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 flex items-center justify-center bg-fuchsia-600/20 text-fuchsia-500 font-black shrink-0">
@@ -3974,7 +4736,7 @@ export default function TextbookPortal({
                       {user.role === "admin" && <Shield size={12} className="text-red-400" />}
                       {user.role === "faculty" && <BookOpenCheck size={12} className="text-blue-400" />}
                       {user.role === "student" && <Users size={12} className="text-green-400" />}
-                      {user.role} Portal
+                      {user.role === "student" ? "Reader Portal" : `${user.role} Portal`}
                     </div>
                   </div>
                   <button
@@ -3986,8 +4748,8 @@ export default function TextbookPortal({
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Feedback messages */}
           {errorMessage && (
@@ -4003,33 +4765,25 @@ export default function TextbookPortal({
             </div>
           )}
 
-          {/* --- LOGGED OUT VIEW --- */}
+          {/* --- LOGGED OUT VIEW (SIMPLE CENTERED LOGIN CARD) --- */}
           {!user && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center py-4">
-              {/* Promo Info */}
-              <div className="lg:col-span-7 space-y-6">
-                <h2 className="text-3xl md:text-5xl font-black text-slate-900 leading-tight">
-                  Accelerate Learning through <span className="text-fuchsia-500">Interactive Assessment</span>
-                </h2>
-                <p className="text-slate-600 text-lg leading-relaxed max-w-xl">
-                  Lurnexa's Textbook Quiz portal connects teachers and students. Faculty can craft precise quizzes mapped to coursework, and students can attempt assessments or study from mock test banks.
-                </p>
+            <div className="max-w-md mx-auto py-8 sm:py-12 px-4 animate-fadeIn">
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-600/5 rounded-full blur-2xl pointer-events-none" />
 
-                <div className="bg-slate-100/60 border border-slate-200 p-6 rounded-2xl max-w-xl space-y-3">
-                  <div className="flex gap-2 items-center text-fuchsia-600 font-bold text-sm">
-                    <Key size={16} />
-                    <span>Enforced Access Registry</span>
+                {/* Brand Header */}
+                <div className="text-center space-y-2 mb-6">
+                  <div className="w-14 h-14 bg-fuchsia-50 rounded-2xl flex items-center justify-center mx-auto text-fuchsia-600 border border-fuchsia-100 shadow-sm">
+                    <BookOpen size={28} />
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    This platform uses a pre-approved Access ID system. Your credentials must correspond to a unique ID assigned by your administrator. If you do not have an Access ID (e.g. <b>LSML26001</b> for Machine Learning student access), please request one from the system Admin.
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {isSignup ? "Create Lurnexa Account" : "Sign In to Lurnexa"}
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {isSignup ? "Enter your details to access purchased books & rentals" : "Access your digital textbook library & reader"}
                   </p>
                 </div>
-              </div>
 
-              {/* Form Block */}
-              <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-2xl relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-fuchsia-600/5 rounded-full blur-2xl pointer-events-none" />
-                
                 {twilioValidationCode && (
                   <div className="bg-amber-500/10 border border-amber-500/30 text-amber-900 rounded-2xl p-4 mb-6 relative animate-pulse">
                     <button
@@ -4043,10 +4797,10 @@ export default function TextbookPortal({
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                       </span>
-                      <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider">Twilio Caller ID Verification</h4>
+                      <h4 className="text-xs font-black text-amber-800 uppercase tracking-wider">Twilio Verification</h4>
                     </div>
                     <p className="text-xs text-amber-800 mb-2.5">
-                      Twilio is calling your phone number now. Please answer and enter this verification code on your keypad:
+                      Enter verification code on your keypad:
                     </p>
                     <div className="flex justify-center">
                       <span className="font-mono text-2xl font-black bg-amber-500 text-white px-4 py-1.5 rounded-xl tracking-widest shadow-inner">
@@ -4056,377 +4810,249 @@ export default function TextbookPortal({
                   </div>
                 )}
 
-                {/* Switch Login/Signup */}
-                <div className="flex bg-slate-50 p-1.5 rounded-xl mb-8">
+                {/* Switch Login/Signup Tabs */}
+                <div className="flex bg-slate-100 p-1 rounded-2xl mb-6 shadow-inner border border-slate-200">
                   <button
-                    onClick={() => { router.push("/textbooks/portal/login"); }}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${!isSignup ? "bg-fuchsia-600 text-slate-900 shadow" : "text-slate-600 hover:text-slate-900"}`}
+                    onClick={() => {
+                      setIsSignup(false);
+                      setErrorMessage("");
+                      setSuccessMessage("");
+                      setAuthEmail("");
+                      setAuthPassword("");
+                      setAuthName("");
+                      setAuthMobile("");
+                    }}
+                    className={`flex-1 py-2.5 rounded-xl text-xs uppercase font-black tracking-wider transition-all ${!isSignup ? "bg-fuchsia-600 text-white shadow-md" : "text-slate-600 hover:text-slate-900"}`}
                   >
                     Log In
                   </button>
                   <button
-                    onClick={() => { router.push("/textbooks/portal/signup"); }}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${isSignup ? "bg-fuchsia-600 text-slate-900 shadow" : "text-slate-600 hover:text-slate-900"}`}
+                    onClick={() => {
+                      setIsSignup(true);
+                      setErrorMessage("");
+                      setSuccessMessage("");
+                      setAuthEmail("");
+                      setAuthPassword("");
+                      setAuthName("");
+                      setAuthMobile("");
+                    }}
+                    className={`flex-1 py-2.5 rounded-xl text-xs uppercase font-black tracking-wider transition-all ${isSignup ? "bg-fuchsia-600 text-white shadow-md" : "text-slate-600 hover:text-slate-900"}`}
                   >
                     Sign Up
                   </button>
                 </div>
 
-                {/* LOGIN FORM */}
+                {/* EMAIL & PASSWORD LOGIN FORM */}
                 {!isSignup && (
-                  <form onSubmit={handleLoginSubmit} className="space-y-5">
+                  <form onSubmit={handleEmailLoginSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Pre-approved Access ID</label>
-                      <div className="relative">
-                        <Key className="absolute left-4 top-3.5 text-slate-500 h-5 w-5" />
-                        <input
-                          type="text"
-                          placeholder="e.g. LSML26001 (Student) or LFML26001 (Faculty)"
-                          value={loginAccessId}
-                          onChange={(e) => setLoginAccessId(e.target.value.toUpperCase())}
-                          disabled={otpSent || isSubmittingLogin}
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-mono font-bold tracking-wide uppercase text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                        College Email ID
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Gmail / Email Address
                       </label>
                       <div className="relative">
-                        <span className="absolute left-5 top-3.5 text-slate-500 font-black text-sm">@</span>
+                        <User className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
                         <input
-                          type="text"
-                          placeholder="e.g. email@college.edu"
-                          value={loginMobile}
-                          onChange={(e) => setLoginMobile(e.target.value)}
-                          disabled={otpSent || isSubmittingLogin}
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium"
+                          type="email"
+                          placeholder="your.email@gmail.com"
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          required
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
                         />
                       </div>
                     </div>
 
-                    {otpSent && (
-                      <div className="bg-slate-50 p-4 border border-slate-200 rounded-xl space-y-4 animate-fadeIn">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-3 text-center">Enter 6-Digit OTP</label>
-                          <div className="flex justify-between gap-2 max-w-xs mx-auto mb-2">
-                            {Array.from({ length: 6 }).map((_, index) => {
-                              const char = otpInput[index] || "";
-                              return (
-                                <input
-                                  key={index}
-                                  id={`otp-digit-${index}`}
-                                  type="text"
-                                  maxLength={1}
-                                  value={char}
-                                  onChange={(e) => {
-                                    const val = e.target.value.replace(/[^0-9]/g, "");
-                                    const updated = otpInput.split("");
-                                    // Ensure we pad if necessary
-                                    while (updated.length < 6) updated.push("");
-                                    updated[index] = val;
-                                    const newOtp = updated.join("").slice(0, 6);
-                                    setOtpInput(newOtp);
-
-                                    if (val && index < 5) {
-                                      const nextInput = document.getElementById(`otp-digit-${index + 1}`);
-                                      if (nextInput) nextInput.focus();
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Backspace") {
-                                      if (!char && index > 0) {
-                                        const prevInput = document.getElementById(`otp-digit-${index - 1}`);
-                                        if (prevInput) {
-                                          prevInput.focus();
-                                          const updated = otpInput.split("");
-                                          updated[index - 1] = "";
-                                          setOtpInput(updated.join(""));
-                                        }
-                                      } else {
-                                        const updated = otpInput.split("");
-                                        updated[index] = "";
-                                        setOtpInput(updated.join(""));
-                                      }
-                                    }
-                                  }}
-                                  onPaste={(e) => {
-                                    e.preventDefault();
-                                    const pastedData = e.clipboardData.getData("text").replace(/[^0-9]/g, "").slice(0, 6);
-                                    setOtpInput(pastedData);
-                                    const focusIndex = Math.min(pastedData.length, 5);
-                                    const targetInput = document.getElementById(`otp-digit-${focusIndex}`);
-                                    if (targetInput) targetInput.focus();
-                                  }}
-                                  className="w-10 h-12 bg-white border-2 border-slate-200 text-slate-900 rounded-xl text-center font-bold text-lg focus:outline-none focus:border-fuchsia-500 transition-colors shadow-sm"
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={authPassword}
+                          onChange={(e) => setAuthPassword(e.target.value)}
+                          required
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-11 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                        />
                         <button
-                          onClick={handleVerifyOtp}
-                          className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl shadow-lg transition-all"
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
                         >
-                          Verify & Proceed
+                          <Eye size={16} />
                         </button>
                       </div>
-                    )}
+                    </div>
 
-                    {!otpSent && (
-                      <button
-                        type="submit"
-                        disabled={isSubmittingLogin}
-                        className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-fuchsia-600/20 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isSubmittingLogin ? "Requesting OTP..." : "Request OTP Code"}
-                        {!isSubmittingLogin && <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />}
-                      </button>
-                    )}
+                    <button
+                      type="submit"
+                      disabled={isAuthLoading}
+                      className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-fuchsia-600/30 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 mt-2"
+                    >
+                      {isAuthLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span>Log In to Account</span>
+                          <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </button>
                   </form>
                 )}
 
-                {/* SIGNUP WORKFLOW */}
+                {/* EMAIL & PASSWORD SIGNUP FORM */}
                 {isSignup && (
-                  <div className="space-y-4">
-                    {/* Step 1: Verification */}
-                    {!isAccessIdVerified ? (
-                      <form onSubmit={handleVerifyAccessId} className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Enter pre-approved Access ID</label>
-                          <div className="relative">
-                            <Key className="absolute left-4 top-3 text-slate-500 h-4 w-4" />
-                            <input
-                              type="text"
-                              placeholder="e.g. LSML26001"
-                              value={signupAccessId}
-                              onChange={(e) => setSignupAccessId(e.target.value.toUpperCase())}
-                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-mono uppercase font-bold tracking-wide text-sm"
-                            />
-                          </div>
-                          <p className="text-[10px] text-slate-500 mt-1">This ID starts with <b>LS</b> (Student) or <b>LF</b> (Faculty) mapping to your subject textbook.</p>
-                        </div>
+                  <form onSubmit={handleEmailSignupSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Full Name
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                        <input
+                          type="text"
+                          placeholder="Enter your full name"
+                          value={authName}
+                          onChange={(e) => setAuthName(e.target.value)}
+                          required
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Gmail / Email Address
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                        <input
+                          type="email"
+                          placeholder="your.email@gmail.com"
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                          required
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Password (Min 8 chars, with uppercase, lowercase, number & special char)
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={authPassword}
+                          onChange={(e) => setAuthPassword(e.target.value)}
+                          required
+                          minLength={8}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-11 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                        />
                         <button
-                          type="submit"
-                          className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3 rounded-xl shadow transition-all"
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
                         >
-                          Verify Access ID
+                          <Eye size={16} />
                         </button>
-                      </form>
-                    ) : signupOtpSent ? (
-                      // Step 2b: OTP Verification Form (Before user registration)
-                      <form onSubmit={handleVerifySignupOtp} className="space-y-4">
-                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-1">
-                          <div className="text-[10px] text-fuchsia-600 uppercase font-black tracking-wider">Verification Required</div>
-                          <div className="text-xs font-bold text-slate-700">
-                            We've sent a 6-digit OTP code to {(detectedRole === "faculty" || detectedRole === "student") ? signupForm.collegeEmail : signupForm.mobileNumber}.
-                          </div>
-                        </div>
+                      </div>
+                    </div>
 
-                        <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Enter Verification Code (OTP)</label>
-                          <input
-                            type="text"
-                            placeholder="------"
-                            value={signupOtpInput}
-                            onChange={(e) => setSignupOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:outline-none focus:border-fuchsia-500 font-mono text-center font-bold tracking-widest text-xl"
-                          />
-                        </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Mobile Number (Optional)
+                      </label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                        <input
+                          type="tel"
+                          placeholder="10-digit mobile number"
+                          value={authMobile}
+                          onChange={(e) => setAuthMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                        />
+                      </div>
+                    </div>
 
-                        <div className="flex gap-2 mt-4 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => { setSignupOtpSent(false); setErrorMessage(""); setSuccessMessage(""); }}
-                            className="flex-1 py-2.5 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold transition-all"
-                          >
-                            Back to Form
-                          </button>
-                          <button
-                            type="submit"
-                            className="flex-1 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-xl text-xs font-bold shadow-lg transition-all"
-                          >
-                            Verify & Register
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      // Step 2: Complete Details
-                      <form onSubmit={handleSignupSubmit} className="space-y-4">
-                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-1">
-                          <div className="text-[10px] text-fuchsia-600 uppercase font-black tracking-wider">Access ID Validated</div>
-                          <div className="text-sm font-bold text-slate-900 font-mono">{signupAccessId}</div>
-                          <div className="text-xs text-slate-600 flex items-center gap-1">
-                            <span className="capitalize font-bold text-green-400">{detectedRole} Role</span>
-                            <span>for</span>
-                            <span className="font-bold text-blue-400">
-                              {textbooks.find(b => b.id === detectedBookId)?.title || `Book ${detectedBookId}`}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Full Name</label>
-                          <input
-                            type="text"
-                            placeholder="John Doe"
-                            value={signupForm.name}
-                            onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Mobile Number</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 9876543210"
-                            value={signupForm.mobileNumber}
-                            onChange={(e) => setSignupForm({ ...signupForm, mobileNumber: e.target.value.replace(/\D/g, "").slice(0, 10) })}
-                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-sm"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">College / University Name</label>
-                          <input
-                            type="text"
-                            placeholder="IIT Delhi"
-                            value={signupForm.collegeName}
-                            onChange={(e) => setSignupForm({ ...signupForm, collegeName: e.target.value })}
-                            disabled={isCollegeAutoFilled}
-                            className={`w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-sm ${
-                              isCollegeAutoFilled ? "opacity-75 cursor-not-allowed select-none bg-slate-100 font-bold border-slate-300" : ""
-                            }`}
-                          />
-                          {isCollegeAutoFilled && (
-                            <span className="text-[10px] text-fuchsia-500 font-semibold mt-1 block">
-                              College automatically selected based on your Access ID.
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Conditional Student fields */}
-                        {detectedRole === "student" && (
-                          <div className="space-y-3 border-t border-slate-200/80 pt-3 animate-fadeIn">
-                            <div className="grid grid-cols-3 gap-3">
-                              <div>
-                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">College ID / Roll</label>
-                                <input
-                                  type="text"
-                                  placeholder="ID-88392"
-                                  value={signupForm.collegeId}
-                                  onChange={(e) => setSignupForm({ ...signupForm, collegeId: e.target.value })}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Department</label>
-                                <input
-                                  type="text"
-                                  placeholder="CSE"
-                                  value={signupForm.department}
-                                  onChange={(e) => setSignupForm({ ...signupForm, department: e.target.value })}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">College Email ID</label>
-                                <input
-                                  type="email"
-                                  placeholder="e.g. stud@college.edu"
-                                  value={signupForm.collegeEmail}
-                                  onChange={(e) => setSignupForm({ ...signupForm, collegeEmail: e.target.value })}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
-                                />
-                                {signupForm.collegeEmail && signupForm.collegeEmail.includes("@") && !isCollegeEmail(signupForm.collegeEmail) && (
-                                  <span className="text-[10px] text-red-500 font-bold block mt-1">Generic emails (Gmail/Yahoo/etc.) are not allowed!</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Conditional Faculty fields */}
-                        {detectedRole === "faculty" && (
-                          <div className="space-y-3 border-t border-slate-200/80 pt-3 animate-fadeIn">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Faculty ID</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. FAC-9901"
-                                  value={signupForm.facultyId}
-                                  onChange={(e) => setSignupForm({ ...signupForm, facultyId: e.target.value })}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">College Email ID</label>
-                                <input
-                                  type="email"
-                                  placeholder="e.g. prof@college.edu"
-                                  value={signupForm.collegeEmail}
-                                  onChange={(e) => setSignupForm({ ...signupForm, collegeEmail: e.target.value })}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
-                                />
-                                {signupForm.collegeEmail && signupForm.collegeEmail.includes("@") && !isCollegeEmail(signupForm.collegeEmail) && (
-                                  <span className="text-[10px] text-red-500 font-bold block mt-1">Generic emails (Gmail/Yahoo/etc.) are not allowed!</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Designation</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Assistant Professor"
-                                  value={signupForm.facultyRole}
-                                  onChange={(e) => setSignupForm({ ...signupForm, facultyRole: e.target.value })}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">Subject Taught</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Machine Learning"
-                                  value={signupForm.subjectTeaching}
-                                  onChange={(e) => setSignupForm({ ...signupForm, subjectTeaching: e.target.value })}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-fuchsia-500 font-medium text-xs"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 mt-4 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => { setIsAccessIdVerified(false); setErrorMessage(""); setSuccessMessage(""); }}
-                            className="flex-1 py-2.5 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold transition-all"
-                          >
-                            Back
-                          </button>
-                          <button
-                            type="submit"
-                            className="flex-1 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-xl text-xs font-bold shadow-lg transition-all"
-                          >
-                            Create Profile
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </div>
+                    <button
+                      type="submit"
+                      disabled={isAuthLoading}
+                      className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-fuchsia-600/30 transition-all flex items-center justify-center gap-2 group disabled:opacity-50 mt-2"
+                    >
+                      {isAuthLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span>Create Account & Start Reading</span>
+                          <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </button>
+                  </form>
                 )}
+
+                {/* Download App promo — installs directly when the browser has already
+                    offered the native prompt; only falls back to opening /textbooks/app
+                    (for iOS instructions, or if Chrome hasn't fired the prompt yet) otherwise.
+                    appMode already shows its own install banner, so this is main-site only. */}
+                {!appMode && !isStandalone && (
+                  <button
+                    type="button"
+                    onClick={handleInstallApp}
+                    className="mt-6 w-full flex items-center gap-3 bg-slate-950 hover:bg-slate-800 text-white rounded-2xl px-4 py-3.5 transition-all group"
+                  >
+                    <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                      <Download size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-xs font-bold">Get the Lurnexa Textbooks App</p>
+                      <p className="text-[11px] text-slate-400">
+                        {isIOS ? "Tap Share, then \"Add to Home Screen\"" : "Install for one-tap access to your library"}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-1 transition-transform shrink-0" />
+                  </button>
+                )}
+
+                {/* Return to Bookstore Link */}
+                <div className="mt-6 pt-4 border-t border-slate-100 text-center">
+                  <Link
+                    href="/textbooks/store"
+                    className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <ArrowLeft size={14} />
+                    <span>Return to Academic Bookstore</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* The reading app is scoped to login/signup + the library — admin tooling doesn't
+              belong there, so admins get pointed back to the full portal instead. */}
+          {appMode && user?.role === "admin" && (
+            <div className="max-w-md mx-auto py-16 px-4 text-center space-y-4 animate-fadeIn">
+              <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto text-red-500">
+                <Shield size={32} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">Admin Tools Aren't in the App</h2>
+              <p className="text-sm text-slate-500">This installed app is for reading purchased and rented textbooks. Manage the store and users from the full portal instead.</p>
+              <div className="flex flex-col gap-2 pt-2">
+                <a href="/textbooks/portal/login" className="bg-slate-950 hover:bg-slate-800 text-white font-bold text-sm px-5 py-3 rounded-xl transition">Open Full Portal</a>
+                <button onClick={handleLogout} className="text-slate-500 hover:text-slate-800 font-bold text-xs py-2 transition">Logout</button>
               </div>
             </div>
           )}
 
           {/* --- ADMIN DASHBOARD --- */}
-          {user?.role === "admin" && (
+          {!appMode && user?.role === "admin" && (
             <div className="space-y-6">
               {/* Admin Tabs */}
               <div className="flex flex-wrap items-center justify-between border-b border-slate-200 gap-4">
@@ -4440,15 +5066,7 @@ export default function TextbookPortal({
                     <Users size={16} />
                     User Profile Control
                   </button>
-                  <button
-                    onClick={() => { setActiveTab("accessIds"); setErrorMessage(""); setSuccessMessage(""); }}
-                    className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
-                      activeTab === "accessIds" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <Key size={16} />
-                    Access ID Generator
-                  </button>
+
                   <button
                     onClick={() => { setActiveTab("qbank"); setErrorMessage(""); setSuccessMessage(""); }}
                     className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
@@ -4563,123 +5181,281 @@ export default function TextbookPortal({
               </div>
 
               {/* Tab 1: Users Control */}
-              {activeTab === "users" && (
-                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl">
-                  <h3 className="text-xl font-bold text-slate-900 mb-4">Registered Profiles Management</h3>
-                  <p className="text-xs text-slate-600 mb-6">Activate or deactivate profiles. Deactivated profiles are denied login capability.</p>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-700">
-                      <thead className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wider">
-                        <tr>
-                          <th className="p-4 rounded-l-xl">Name</th>
-                          <th className="p-4">Access ID</th>
-                          <th className="p-4">Mobile</th>
-                          <th className="p-4">Role</th>
-                          <th className="p-4">College</th>
-                          <th className="p-4">Plan</th>
-                          <th className="p-4">Status</th>
-                          <th className="p-4 rounded-r-xl text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800">
-                        {(() => {
-                          const filtered = adminUsers.filter(u => matchesCollegeFilter(u.collegeName, u.accessId) && (!adminRoleFilter || u.role === adminRoleFilter));
-                          const itemsPerPage = 5;
-                          const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
-                          const startIdx = (usersPage - 1) * itemsPerPage;
-                          const paginatedItems = filtered.slice(startIdx, startIdx + itemsPerPage);
+              {activeTab === "users" && (() => {
+                // Scoped by the shared college/role filters above; search + status layer on top,
+                // same pattern as adminAllOrders' filtering on the Bookstore Payments tab.
+                const collegeRoleScoped = adminUsers.filter(u => matchesCollegeFilter(u.collegeName, u.accessId) && (!adminRoleFilter || u.role === adminRoleFilter));
+                const term = userSearchQuery.toLowerCase().trim();
+                const filteredUsers = collegeRoleScoped.filter(u => {
+                  const matchesSearch = !term ||
+                    (u.name || "").toLowerCase().includes(term) ||
+                    (u.accessId || "").toLowerCase().includes(term) ||
+                    (u.mobileNumber || "").toLowerCase().includes(term) ||
+                    (u.email || u.collegeEmail || "").toLowerCase().includes(term);
+                  const matchesStatus = userStatusFilter === "all" || (userStatusFilter === "active" ? u.isActive : !u.isActive);
+                  return matchesSearch && matchesStatus;
+                });
 
-                          return paginatedItems.map(u => (
-                            <tr key={u.mobileNumber} className="hover:bg-slate-50">
-                              <td className="p-4 font-bold text-slate-900">{u.name}</td>
-                              <td className="p-4 font-mono font-semibold text-fuchsia-600">{u.accessId}</td>
-                              <td className="p-4 font-mono">{u.mobileNumber}</td>
-                              <td className="p-4 capitalize">
-                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                  u.role === "admin" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-                                  u.role === "faculty" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
-                                  "bg-green-500/10 text-green-400 border border-green-500/20"
-                                }`}>
-                                  {u.role}
-                                </span>
-                              </td>
-                              <td className="p-4 max-w-xs truncate">{u.collegeName}</td>
-                              <td className="p-4 text-xs font-bold text-slate-800">
-                                {u.role === "student" ? getPlanLabel(u.plan) : "N/A"}
-                              </td>
-                              <td className="p-4">
-                                <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${u.isActive ? "text-green-400" : "text-slate-500"}`}>
-                                  <span className={`w-2 h-2 rounded-full ${u.isActive ? "bg-green-500 animate-pulse" : "bg-slate-500"}`} />
-                                  {u.isActive ? "Active" : "Inactive"}
-                                </span>
-                              </td>
-                              <td className="p-4 text-right">
-                                <div className="flex justify-end items-center gap-2">
-                                  {u.role !== "admin" ? (
-                                    <>
-                                      <button
-                                        onClick={() => handleToggleUserStatus(u.mobileNumber, u.isActive)}
-                                        className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
-                                          u.isActive 
-                                            ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200" 
-                                            : "bg-green-600 hover:bg-green-500 text-white"
-                                        }`}
-                                      >
-                                        {u.isActive ? "Deactivate" : "Activate"}
-                                      </button>
-                                      <button
-                                        onClick={() => handleAdminDeleteUser(u.mobileNumber)}
-                                        className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-xl font-bold text-xs transition-all"
-                                      >
-                                        Delete
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <span className="text-xs text-slate-500 font-medium">Protected</span>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ));
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
+                const totalCount = collegeRoleScoped.length;
+                const activeCount = collegeRoleScoped.filter(u => u.isActive).length;
+                const studentCount = collegeRoleScoped.filter(u => u.role === "student").length;
+                const facultyCount = collegeRoleScoped.filter(u => u.role === "faculty").length;
 
-                  {/* Pagination Controls */}
-                  {(() => {
-                    const filtered = adminUsers.filter(u => matchesCollegeFilter(u.collegeName, u.accessId) && (!adminRoleFilter || u.role === adminRoleFilter));
-                    const itemsPerPage = 5;
-                    const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
-                    if (filtered.length === 0) return null;
+                const itemsPerPage = 5;
+                const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
+                const startIdx = (usersPage - 1) * itemsPerPage;
+                const paginatedItems = filteredUsers.slice(startIdx, startIdx + itemsPerPage);
 
-                    return (
-                      <div className="flex items-center justify-between border-t border-slate-200 pt-4 mt-4 animate-fadeIn">
-                        <span className="text-xs text-slate-500 font-bold">
-                          Showing Page {usersPage} of {totalPages} ({filtered.length} total users)
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setUsersPage(prev => Math.max(1, prev - 1))}
-                            disabled={usersPage === 1}
-                            className="px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-xl transition"
-                          >
-                            Prev
-                          </button>
-                          <button
-                            onClick={() => setUsersPage(prev => Math.min(totalPages, prev + 1))}
-                            disabled={usersPage === totalPages}
-                            className="px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-xl transition"
-                          >
-                            Next
-                          </button>
+                const handleExportUsersCsv = () => {
+                  if (filteredUsers.length === 0) {
+                    showToast("No profiles to export with the current filters.", "error");
+                    return;
+                  }
+                  const escapeCsv = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+                  const headers = ["Name", "Access ID", "Mobile", "Email", "Role", "College", "Plan", "Status"];
+                  const rows = filteredUsers.map(u => [
+                    u.name,
+                    u.accessId || "",
+                    u.mobileNumber || "",
+                    u.email || u.collegeEmail || "",
+                    u.role,
+                    u.collegeName || "",
+                    u.role === "student" ? getPlanLabel(u.plan) : "N/A",
+                    u.isActive ? "Active" : "Inactive"
+                  ].map(escapeCsv).join(","));
+                  const csvContent = [headers.map(escapeCsv).join(","), ...rows].join("\n");
+                  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", url);
+                  link.setAttribute("download", `lurnexa_profiles_${new Date().toISOString().slice(0, 10)}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                };
+
+                return (
+                  <div className="space-y-6">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="bg-gradient-to-br from-fuchsia-50 to-fuchsia-100/50 border border-fuchsia-200/60 rounded-3xl p-6 shadow-md flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-fuchsia-600/10 text-fuchsia-600 flex items-center justify-center shrink-0">
+                          <Users size={24} />
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Total Profiles</span>
+                          <span className="text-2xl font-black text-slate-900">{totalCount}</span>
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
+
+                      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200/60 rounded-3xl p-6 shadow-md flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-emerald-600/10 text-emerald-700 flex items-center justify-center shrink-0">
+                          <CheckCircle2 size={24} />
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Active Profiles</span>
+                          <span className="text-2xl font-black text-slate-900">{activeCount}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-200/60 rounded-3xl p-6 shadow-md flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center shrink-0">
+                          <GraduationCap size={24} />
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Students</span>
+                          <span className="text-2xl font-black text-slate-900">{studentCount}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-200/60 rounded-3xl p-6 shadow-md flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-amber-600/10 text-amber-700 flex items-center justify-center shrink-0">
+                          <Briefcase size={24} />
+                        </div>
+                        <div>
+                          <span className="text-xs text-slate-500 font-extrabold uppercase tracking-wider block">Faculty</span>
+                          <span className="text-2xl font-black text-slate-900">{facultyCount}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Search & Status Filter */}
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-md">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="relative md:col-span-2">
+                          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <Search size={16} />
+                          </span>
+                          <input
+                            type="text"
+                            placeholder="Search by name, access ID, mobile, or email..."
+                            value={userSearchQuery}
+                            onChange={(e) => { setUserSearchQuery(e.target.value); setUsersPage(1); }}
+                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-all text-slate-900 placeholder:text-slate-400"
+                          />
+                        </div>
+                        <div>
+                          <select
+                            value={userStatusFilter}
+                            onChange={(e) => { setUserStatusFilter(e.target.value); setUsersPage(1); }}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-all text-slate-900"
+                          >
+                            <option value="all">All Statuses</option>
+                            <option value="active">Active Only</option>
+                            <option value="inactive">Inactive Only</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table Card */}
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl">
+                      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                        <div>
+                          <h3 className="text-xl font-bold text-slate-900">Registered Profiles Management</h3>
+                          <p className="text-xs text-slate-600 mt-1">Activate or deactivate profiles. Deactivated profiles are denied login capability.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleExportUsersCsv}
+                          className="flex items-center gap-2 bg-slate-950 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shrink-0"
+                        >
+                          <Download size={14} />
+                          Export CSV
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-700">
+                          <thead className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wider">
+                            <tr>
+                              <th className="p-4 rounded-l-xl">Profile</th>
+                              <th className="p-4">Access ID</th>
+                              <th className="p-4">Role</th>
+                              <th className="p-4">College</th>
+                              <th className="p-4">Plan</th>
+                              <th className="p-4">Status</th>
+                              <th className="p-4 rounded-r-xl text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {paginatedItems.length === 0 ? (
+                              <tr>
+                                <td colSpan={7} className="p-10 text-center">
+                                  <div className="flex flex-col items-center gap-2 text-slate-500">
+                                    <Users size={28} className="text-slate-300" />
+                                    <span className="font-bold text-sm">No profiles found</span>
+                                    <span className="text-xs">Try adjusting your search or filters.</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : paginatedItems.map(u => (
+                              <tr key={u.mobileNumber} className="hover:bg-slate-50 transition-colors">
+                                <td className="p-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`h-9 w-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
+                                      u.role === "admin" ? "bg-red-100 text-red-600" :
+                                      u.role === "faculty" ? "bg-blue-100 text-blue-600" :
+                                      "bg-fuchsia-100 text-fuchsia-600"
+                                    }`}>
+                                      {(u.name || "?").trim().charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-slate-900 truncate">{u.name}</div>
+                                      <div className="text-xs text-slate-500 flex items-center gap-1 truncate">
+                                        <Phone size={11} className="shrink-0" />
+                                        {u.mobileNumber || "—"}
+                                      </div>
+                                      {(u.email || u.collegeEmail) && (
+                                        <div className="text-xs text-slate-400 flex items-center gap-1 truncate">
+                                          <Mail size={11} className="shrink-0" />
+                                          {u.email || u.collegeEmail}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-4 font-mono font-semibold text-fuchsia-600">{u.accessId}</td>
+                                <td className="p-4 capitalize">
+                                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                    u.role === "admin" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                                    u.role === "faculty" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                                    "bg-green-500/10 text-green-400 border border-green-500/20"
+                                  }`}>
+                                    {u.role}
+                                  </span>
+                                </td>
+                                <td className="p-4 max-w-xs truncate">{u.collegeName || "—"}</td>
+                                <td className="p-4 text-xs font-bold text-slate-800">
+                                  {u.role === "student" ? getPlanLabel(u.plan) : "N/A"}
+                                </td>
+                                <td className="p-4">
+                                  <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${u.isActive ? "text-emerald-600" : "text-slate-500"}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                                    {u.isActive ? "Active" : "Inactive"}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-right">
+                                  <div className="flex justify-end items-center gap-2">
+                                    {u.role !== "admin" ? (
+                                      <>
+                                        <button
+                                          onClick={() => handleToggleUserStatus(u.mobileNumber, u.isActive)}
+                                          className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                                            u.isActive
+                                              ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+                                              : "bg-green-600 hover:bg-green-500 text-white"
+                                          }`}
+                                        >
+                                          {u.isActive ? "Deactivate" : "Activate"}
+                                        </button>
+                                        <button
+                                          onClick={() => handleAdminDeleteUser(u.mobileNumber)}
+                                          className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded-xl font-bold text-xs transition-all"
+                                        >
+                                          Delete
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <span className="text-xs text-slate-500 font-medium">Protected</span>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {filteredUsers.length > 0 && (
+                        <div className="flex items-center justify-between border-t border-slate-200 pt-4 mt-4 animate-fadeIn">
+                          <span className="text-xs text-slate-500 font-bold">
+                            Showing Page {usersPage} of {totalPages} ({filteredUsers.length} matching profile{filteredUsers.length === 1 ? "" : "s"})
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setUsersPage(prev => Math.max(1, prev - 1))}
+                              disabled={usersPage === 1}
+                              className="px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-xl transition"
+                            >
+                              Prev
+                            </button>
+                            <button
+                              onClick={() => setUsersPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={usersPage === totalPages}
+                              className="px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-xl transition"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Tab 2: Access ID Registry Generator */}
               {activeTab === "accessIds" && (
@@ -5826,7 +6602,7 @@ export default function TextbookPortal({
                           onChange={(e) => setNewBookCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-mono text-sm uppercase font-bold"
                         />
-                        <p className="text-[10px] text-slate-500 mt-1">Used to generate signup codes like LFCD26001 (Faculty) or LSCD26001 (Student).</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Used for textbook catalog mapping.</p>
                       </div>
 
                       <button
@@ -5909,12 +6685,11 @@ export default function TextbookPortal({
                               </div>
                             </>
                           );
-                        })()
-                      )}
+                        })())}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {activeTab === "colleges" && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -5966,7 +6741,7 @@ export default function TextbookPortal({
                           onChange={(e) => setNewCollegeCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                           className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-mono text-sm uppercase font-bold"
                         />
-                        <p className="text-[10px] text-slate-500 mt-1">Used to generate unique mapped Access IDs (e.g., NC for Narayana College will produce LSMLNC26001).</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Used to generate unique mapped Access IDs (e.g., NC for Narayana College will produce LURNNCSC26001).</p>
                       </div>
 
                       <button
@@ -6688,11 +7463,11 @@ export default function TextbookPortal({
                 <div className="space-y-6">
                   {/* Summary Cards */}
                   {(() => {
-                    const paidOnly = adminPurchases.filter(p => p.status === "PAID");
+                    const paidOnly = adminAllOrders.filter(p => p.status === "PAID");
                     const totalRevenueAmt = paidOnly.reduce((sum, p) => sum + p.amount, 0);
                     const paidOrders = paidOnly.length;
-                    const pendingOrders = adminPurchases.filter(p => p.status === "PENDING" || p.status === "PENDING_PAYMENT").length;
-                    const totalOrders = adminPurchases.length;
+                    const pendingOrders = adminAllOrders.filter(p => p.status === "PENDING" || p.status === "PENDING_PAYMENT").length;
+                    const totalOrders = adminAllOrders.length;
 
                     return (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -6780,6 +7555,7 @@ export default function TextbookPortal({
                           <option value="all">All Formats</option>
                           <option value="soft">Soft Copy (Digital)</option>
                           <option value="physical">Hard Copy (Physical)</option>
+                          <option value="rental">Rental (Digital)</option>
                           <option value="upgrade">Upgrade</option>
                         </select>
                       </div>
@@ -6795,8 +7571,11 @@ export default function TextbookPortal({
                           <option value="1">Indian Mineral Import Policy Options</option>
                           <option value="2">Machine Learning</option>
                           <option value="3">Database Management Systems</option>
-                          <option value="4">Entrepreneurship Development</option>
                           <option value="5">Principles of Microeconomics for Business and Management</option>
+                          <option value="6">Foundations of Artificial Intelligence</option>
+                          <option value="7">Data Streaming and Analysis</option>
+                          <option value="8">Python Programming</option>
+                          <option value="9">NoSQL Databases Using MongoDB</option>
                         </select>
                       </div>
                     </div>
@@ -6823,7 +7602,7 @@ export default function TextbookPortal({
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {(() => {
-                            const filtered = adminPurchases.filter(p => {
+                            const filtered = adminAllOrders.filter(p => {
                               const term = purchaseSearch.toLowerCase().trim();
                               const matchesSearch = !term ||
                                 (p.customerName || "").toLowerCase().includes(term) ||
@@ -6862,7 +7641,11 @@ export default function TextbookPortal({
                               "1": "Mineral Policy",
                               "2": "Machine Learning",
                               "3": "DBMS",
-                              "4": "Entrepreneurship"
+                              "5": "Microeconomics",
+                              "6": "AI",
+                              "7": "Data Streaming",
+                              "8": "Python Programming",
+                              "9": "NoSQL"
                             };
 
                             return paginated.map(p => {
@@ -6871,8 +7654,12 @@ export default function TextbookPortal({
                                 year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                               }) : "N/A";
 
+                              // Soft copy, upgrade, and rental orders are all digital (no shipping) and
+                              // are all priced the same way: subtotal + 18% GST + 2% online fee.
                               const isSoftOrUpgrade = p.purchaseFormat === "soft" || p.purchaseFormat === "upgrade";
-                              const computedTotal = isSoftOrUpgrade
+                              const isRental = p.purchaseFormat === "rental";
+                              const isDigitalDelivery = isSoftOrUpgrade || isRental;
+                              const computedTotal = isDigitalDelivery
                                 ? ((p.subtotal || 0) - (p.discountAmount || 0) + (p.gstAmount || 0) + Math.round(((p.subtotal || 0) - (p.discountAmount || 0) + (p.gstAmount || 0)) * 0.02))
                                 : ((p.subtotal || 0) - (p.discountAmount || 0) + (p.shippingAmount || 0));
 
@@ -6890,9 +7677,11 @@ export default function TextbookPortal({
                                     </td>
                                     <td className="p-4 capitalize text-xs">
                                       <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                                        isSoftOrUpgrade ? "bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                        isRental
+                                          ? "bg-indigo-50 text-indigo-600 border border-indigo-100"
+                                          : isSoftOrUpgrade ? "bg-fuchsia-50 text-fuchsia-600 border border-fuchsia-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"
                                       }`}>
-                                        {isSoftOrUpgrade ? (p.purchaseFormat === "upgrade" ? "Upgrade" : "Soft Copy") : "Hard Copy"}
+                                        {isRental ? "Rental" : isSoftOrUpgrade ? (p.purchaseFormat === "upgrade" ? "Upgrade" : "Soft Copy") : "Hard Copy"}
                                       </span>
                                       {p.purchasePlan && p.purchasePlan !== "physical" && (
                                         <div className="text-[10px] text-slate-400 font-semibold mt-1 uppercase">{(p.purchasePlan || "").replace(/_/g, " ")}</div>
@@ -6927,7 +7716,7 @@ export default function TextbookPortal({
                                               <span className="text-slate-400 font-bold">Phone:</span>
                                               <span className="col-span-2 text-slate-800 font-mono font-semibold">{p.customerPhone || "N/A"}</span>
                                             </div>
-                                            {!isSoftOrUpgrade ? (
+                                            {!isDigitalDelivery ? (
                                               <>
                                                 <div className="grid grid-cols-3 gap-1">
                                                   <span className="text-slate-400 font-bold">Address:</span>
@@ -6943,9 +7732,11 @@ export default function TextbookPortal({
                                                 </div>
                                               </>
                                             ) : (
-                                              <div className="bg-fuchsia-50/50 text-fuchsia-700 p-3 rounded-xl border border-fuchsia-100/50 font-bold flex items-center gap-2">
-                                                <span>💻</span>
-                                                <span>Digital Delivery. Student Access Activated instantly.</span>
+                                              <div className={`p-3 rounded-xl border font-bold flex items-center gap-2 ${
+                                                isRental ? "bg-indigo-50/50 text-indigo-700 border-indigo-100/50" : "bg-fuchsia-50/50 text-fuchsia-700 border-fuchsia-100/50"
+                                              }`}>
+                                                <span>{isRental ? "⏱️" : "💻"}</span>
+                                                <span>{isRental ? "Digital Rental. Time-limited access activated instantly." : "Digital Delivery. Student Access Activated instantly."}</span>
                                               </div>
                                             )}
                                           </div>
@@ -6963,7 +7754,7 @@ export default function TextbookPortal({
                                                 <span className="col-span-2 text-red-500 font-bold">-₹{p.discountAmount} {p.couponCode && `(${p.couponCode})`}</span>
                                               </div>
                                             ) : null}
-                                            {isSoftOrUpgrade ? (
+                                            {isDigitalDelivery ? (
                                               <>
                                                 <div className="grid grid-cols-3 gap-1">
                                                   <span className="text-slate-400 font-bold">GST (18%):</span>
@@ -7012,7 +7803,7 @@ export default function TextbookPortal({
 
                     {/* Pagination */}
                     {(() => {
-                      const filtered = adminPurchases.filter(p => {
+                      const filtered = adminAllOrders.filter(p => {
                         const term = purchaseSearch.toLowerCase().trim();
                         const matchesSearch = !term ||
                           (p.customerName || "").toLowerCase().includes(term) ||
@@ -7240,11 +8031,6 @@ export default function TextbookPortal({
                         </div>
 
                         <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                          <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Access ID</span>
-                          <span className="text-sm font-bold text-slate-900 font-mono">{user?.accessId}</span>
-                        </div>
-
-                        <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
                           <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Mobile Number</span>
                           <span className="text-sm font-bold text-slate-900">{user?.mobileNumber}</span>
                         </div>
@@ -7253,21 +8039,52 @@ export default function TextbookPortal({
                           <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Email Address</span>
                           <span className="text-sm font-bold text-slate-900">{user?.collegeEmail || "lurnexapublication@gmail.com"}</span>
                         </div>
-
-                        <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                          <span className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Organization</span>
-                          <span className="text-sm font-bold text-slate-900">{user?.collegeName}</span>
-                        </div>
                       </div>
                     )}
                   </div>
+
+                  <ChangePasswordCard
+                    showChangePassword={showChangePassword}
+                    onOpen={openChangePassword}
+                    oldPasswordInput={oldPasswordInput}
+                    setOldPasswordInput={setOldPasswordInput}
+                    newPasswordInput={newPasswordInput}
+                    setNewPasswordInput={setNewPasswordInput}
+                    confirmPasswordInput={confirmPasswordInput}
+                    setConfirmPasswordInput={setConfirmPasswordInput}
+                    showOldPasswordInput={showOldPasswordInput}
+                    setShowOldPasswordInput={setShowOldPasswordInput}
+                    showNewPasswordInput={showNewPasswordInput}
+                    setShowNewPasswordInput={setShowNewPasswordInput}
+                    changePasswordError={changePasswordError}
+                    changePasswordSuccess={changePasswordSuccess}
+                    isChangingPassword={isChangingPassword}
+                    resetChangePasswordForm={resetChangePasswordForm}
+                    handleChangePassword={handleChangePassword}
+                  />
                 </div>
               )}
             </div>
           )}
 
+          {/* The faculty dashboard (quiz tools, student roster) has no reading library of its
+              own — the app is scoped to reading, so point faculty back to the full portal. */}
+          {appMode && user?.role === "faculty" && (
+            <div className="max-w-md mx-auto py-16 px-4 text-center space-y-4 animate-fadeIn">
+              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto text-blue-500">
+                <BookOpenCheck size={32} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">Faculty Tools Aren't in the App</h2>
+              <p className="text-sm text-slate-500">This installed app is for reading purchased and rented textbooks. Quiz creation and student results are on the full portal instead.</p>
+              <div className="flex flex-col gap-2 pt-2">
+                <a href="/textbooks/portal/login" className="bg-slate-950 hover:bg-slate-800 text-white font-bold text-sm px-5 py-3 rounded-xl transition">Open Full Portal</a>
+                <button onClick={handleLogout} className="text-slate-500 hover:text-slate-800 font-bold text-xs py-2 transition">Logout</button>
+              </div>
+            </div>
+          )}
+
           {/* --- FACULTY DASHBOARD --- */}
-          {user?.role === "faculty" && (
+          {!appMode && user?.role === "faculty" && (
             <div className="space-y-6">
               {/* Faculty Tabs */}
                <div className="flex border-b border-slate-200 flex-wrap w-full gap-1">
@@ -8250,6 +9067,26 @@ export default function TextbookPortal({
                       </div>
                     )}
                   </div>
+
+                  <ChangePasswordCard
+                    showChangePassword={showChangePassword}
+                    onOpen={openChangePassword}
+                    oldPasswordInput={oldPasswordInput}
+                    setOldPasswordInput={setOldPasswordInput}
+                    newPasswordInput={newPasswordInput}
+                    setNewPasswordInput={setNewPasswordInput}
+                    confirmPasswordInput={confirmPasswordInput}
+                    setConfirmPasswordInput={setConfirmPasswordInput}
+                    showOldPasswordInput={showOldPasswordInput}
+                    setShowOldPasswordInput={setShowOldPasswordInput}
+                    showNewPasswordInput={showNewPasswordInput}
+                    setShowNewPasswordInput={setShowNewPasswordInput}
+                    changePasswordError={changePasswordError}
+                    changePasswordSuccess={changePasswordSuccess}
+                    isChangingPassword={isChangingPassword}
+                    resetChangePasswordForm={resetChangePasswordForm}
+                    handleChangePassword={handleChangePassword}
+                  />
                 </div>
               )}
 
@@ -8441,7 +9278,7 @@ export default function TextbookPortal({
                 {/* Caselets Tab */}
                 {isTabAllowed("caselets") && (
                   <button
-                    onClick={() => { setActiveTab("caselets"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); setReadingCaseletIndex(null); }}
+                    onClick={() => { setActiveTab("caselets"); setErrorMessage(""); setSuccessMessage(""); setStudentQuizResult(null); setActiveStudentQuiz(null); setReadingCaseletInfo(null); }}
                     className={`px-6 py-3 font-bold border-b-2 text-sm transition-all flex items-center gap-2 shrink-0 ${
                       activeTab === "caselets" ? "border-fuchsia-500 text-fuchsia-500" : "border-transparent text-slate-600 hover:text-slate-900"
                     }`}
@@ -8520,41 +9357,256 @@ export default function TextbookPortal({
               {/* Tab: My Books */}
               {activeTab === "mybooks" && (
                 <div className="space-y-6">
-                  {readingBookId ? null : (
+                  {(readingBookId || readingRentalId) ? null : (
                     // Library Grid
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
-                          <h4 className="text-xl font-bold text-slate-900 font-display">My Soft Copies</h4>
-                          <p className="text-sm text-slate-500">Access your purchased textbook digital editions.</p>
+                          <h4 className="text-xl font-bold text-slate-900 font-display">My Digital Bookshelf</h4>
+                          <p className="text-sm text-slate-500">Access your active eBook rentals and purchased textbook editions.</p>
                         </div>
+                        <a
+                          href="/textbooks/store"
+                          className="inline-flex items-center gap-2 bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-700 hover:to-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm hover:shadow-md transition-all shrink-0 self-start sm:self-auto"
+                        >
+                          <ShoppingBag size={14} />
+                          <span>+ Buy More Textbooks</span>
+                        </a>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                        {PORTAL_PUBLISHED_BOOKS.filter(book => book.id === user?.bookId || user?.purchasedBooks?.includes(book.id)).map((book) => (
-                          <div key={book.id} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-lg flex flex-col justify-between hover:shadow-xl transition-all">
-                            <div className="space-y-4">
-                              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150">
-                                <img
-                                  src={book.coverImg}
-                                  alt={book.title}
-                                  className="w-full h-full object-cover"
-                                />
+                      {(() => {
+                        const purchasedBookIds = (user?.purchasedBooks && user.purchasedBooks.length > 0)
+                          ? user.purchasedBooks.map((id: any) => String(id))
+                          : (user?.bookId ? [String(user.bookId)] : []);
+                        const userPurchasedBooks = PORTAL_PUBLISHED_BOOKS.filter(book => purchasedBookIds.includes(String(book.id)));
+                        const effectiveMyBooksFilter: 'rental' | 'purchased' = myBooksFilter ?? (portalRentals.length > 0 ? 'rental' : 'purchased');
+
+                        // Renewing a book creates a new linked rental row rather than mutating
+                        // the old one, so the original expired row sticks around forever as
+                        // history. Exclude any expired rental whose book already has an active
+                        // rental — otherwise a just-renewed book keeps showing a stale "Renew
+                        // Now" prompt for the row that got superseded.
+                        const activeRentalBookIds = new Set(portalRentals.map((r: any) => String(r.bookId)));
+                        const renewableExpiredRentals = expiredPortalRentals.filter((r: any) => !activeRentalBookIds.has(String(r.bookId)));
+
+                        if (portalRentals.length === 0 && userPurchasedBooks.length === 0) {
+                          return (
+                            <div className="bg-white border border-slate-200/80 rounded-3xl p-10 text-center space-y-4 shadow-sm max-w-lg mx-auto my-8 animate-fadeIn">
+                              <div className="w-16 h-16 bg-fuchsia-50 rounded-2xl flex items-center justify-center mx-auto text-fuchsia-600">
+                                <BookOpen size={32} />
                               </div>
-                              <div>
-                                <h5 className="font-bold text-slate-900 line-clamp-2">{book.title}</h5>
-                                <p className="text-xs text-slate-500 mt-1">By {book.author}</p>
-                              </div>
+                              <h5 className="text-lg font-bold text-slate-900">No Books Found in Your Library</h5>
+                              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                                You don't have any active digital book rentals or purchased editions attached to this account yet.
+                              </p>
+                              <a
+                                href="/textbooks/store"
+                                className="inline-flex items-center gap-2 bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-700 hover:to-indigo-700 text-white font-bold text-sm px-6 py-3 rounded-2xl shadow-md hover:shadow-lg transition-all"
+                              >
+                                <BookOpen size={16} />
+                                <span>Browse Academic Bookstore</span>
+                              </a>
                             </div>
-                            <button
-                              onClick={() => openSecureBook(book.id)}
-                              className="w-full mt-5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-sm transition-all"
-                            >
-                              Read Book
-                            </button>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-6">
+                            {/* Rental / Purchased toggle */}
+                            <div className="bg-[#F1F5F9] p-1 rounded-xl flex gap-1 self-start w-fit">
+                              <button
+                                onClick={() => setMyBooksFilter('rental')}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                  effectiveMyBooksFilter === 'rental' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                                }`}
+                              >
+                                <Clock size={13} />
+                                <span>Rental Books ({portalRentals.length})</span>
+                              </button>
+                              <button
+                                onClick={() => setMyBooksFilter('purchased')}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                  effectiveMyBooksFilter === 'purchased' ? "bg-white text-fuchsia-600 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                                }`}
+                              >
+                                <BookOpen size={13} />
+                                <span>Purchased Books ({userPurchasedBooks.length})</span>
+                              </button>
+                            </div>
+
+                        {/* Rented eBooks Section */}
+                        {effectiveMyBooksFilter === 'rental' && (
+                          <div className="space-y-4 pt-2">
+                            {portalRentals.length === 0 ? (
+                              <p className="text-sm text-slate-400 text-center py-10">You don't have any active eBook rentals yet.</p>
+                            ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                              {portalRentals.map((rental: any) => {
+                                const startedMs = rental.startedAt ? new Date(rental.startedAt).getTime() : null;
+                                const expiresMs = rental.expiresAt ? new Date(rental.expiresAt).getTime() : null;
+                                const timelinePct = (startedMs && expiresMs && expiresMs > startedMs)
+                                  ? Math.min(100, Math.max(0, ((Date.now() - startedMs) / (expiresMs - startedMs)) * 100))
+                                  : 0;
+
+                                return (
+                                  <div key={rental.rentalId} className="bg-gradient-to-br from-indigo-50/40 to-white border border-indigo-200/80 rounded-3xl p-5 shadow-lg flex flex-col justify-between hover:shadow-xl transition-all">
+                                    <div className="space-y-4">
+                                      <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150 shadow-inner">
+                                        <img
+                                          src={rental.bookCoverImg}
+                                          alt={rental.bookTitle}
+                                          className="w-full h-full object-cover"
+                                        />
+                                        <span className="absolute top-2 right-2 bg-indigo-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                                          {rental.planDisplayName}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <h5 className="font-bold text-slate-900 line-clamp-2">{rental.bookTitle}</h5>
+                                        <p className="text-xs text-slate-500 mt-1">By {rental.bookAuthors}</p>
+                                      </div>
+
+                                      {/* Rental Access Timeline */}
+                                      <div className="bg-white/80 border border-indigo-100 rounded-2xl p-3 space-y-2.5">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-[9px] font-extrabold uppercase tracking-wider text-indigo-500">
+                                            Rental Access Timeline
+                                          </span>
+                                          <RentalBadge status={rental.status} expiresAt={rental.expiresAt} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                          <div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 rounded-full transition-all"
+                                              style={{ width: `${timelinePct}%` }}
+                                            />
+                                          </div>
+                                          <div className="flex items-center justify-between text-[9px] font-bold text-slate-400">
+                                            <span>{rental.startedAt ? new Date(rental.startedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : "Start"}</span>
+                                            <span className="text-indigo-600">{rental.planDisplayName} Plan</span>
+                                            <span>{rental.expiresAt ? new Date(rental.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : "—"}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-5">
+                                      <button
+                                        onClick={() => openSecureRental(rental.rentalId)}
+                                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-md transition-all text-center flex items-center justify-center gap-1.5"
+                                      >
+                                        <BookOpen size={14} />
+                                        <span>Read</span>
+                                      </button>
+                                      <button
+                                        onClick={() => setRenewalRental({ rentalId: rental.rentalId, bookTitle: rental.bookTitle, expiresAt: rental.expiresAt, planCode: rental.planCode })}
+                                        title="Renew early — remaining time rolls over into the new period"
+                                        className="shrink-0 bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-600 font-bold text-sm px-3.5 py-2.5 rounded-2xl shadow-sm transition-all flex items-center justify-center gap-1.5"
+                                      >
+                                        <RefreshCw size={14} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
+                        )}
+
+                        {/* Expired Rentals — access has ended, but renewing brings it right back */}
+                        {effectiveMyBooksFilter === 'rental' && renewableExpiredRentals.length > 0 && (
+                          <div className="space-y-4 pt-2">
+                            <h5 className="text-xs font-extrabold uppercase tracking-wider text-red-500 flex items-center gap-1.5">
+                              <RefreshCw size={14} /> Expired — Renew to Continue Reading ({renewableExpiredRentals.length})
+                            </h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                              {renewableExpiredRentals.map((rental: any) => (
+                                <div key={rental.rentalId} className="bg-slate-50 border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col justify-between opacity-90 hover:opacity-100 transition-all">
+                                  <div className="space-y-4">
+                                    <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-200 border border-slate-150 grayscale">
+                                      <img
+                                        src={rental.bookCoverImg}
+                                        alt={rental.bookTitle}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                    <div>
+                                      <h5 className="font-bold text-slate-700 line-clamp-2">{rental.bookTitle}</h5>
+                                      <p className="text-xs text-slate-500 mt-1">By {rental.bookAuthors}</p>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2 bg-white border border-red-100 rounded-2xl p-3">
+                                      <RentalBadge status="expired" expiresAt={rental.expiresAt} />
+                                      <span className="text-[9px] font-bold text-slate-400">
+                                        {rental.expiresAt ? `Ended ${new Date(rental.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ""}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => setRenewalRental({ rentalId: rental.rentalId, bookTitle: rental.bookTitle, expiresAt: rental.expiresAt, planCode: rental.planCode })}
+                                    className="w-full mt-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-md transition-all text-center flex items-center justify-center gap-1.5"
+                                  >
+                                    <RefreshCw size={14} />
+                                    <span>Renew Now</span>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Purchased Soft Copies Section */}
+                        {effectiveMyBooksFilter === 'purchased' && (
+                          <div className="space-y-4 pt-2">
+                            {userPurchasedBooks.length === 0 ? (
+                              <p className="text-sm text-slate-400 text-center py-10">You don't have any purchased books yet.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                                {userPurchasedBooks.map((book) => {
+                                  const paidPlan = getLatestPaidPlanForBook(book.id);
+                                  return (
+                                    <div key={book.id} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-lg flex flex-col justify-between hover:shadow-xl transition-all">
+                                      <div className="space-y-4">
+                                        <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150">
+                                          <img
+                                            src={book.coverImg}
+                                            alt={book.title}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </div>
+                                        <div>
+                                          <h5 className="font-bold text-slate-900 line-clamp-2">{book.title}</h5>
+                                          <p className="text-xs text-slate-500 mt-1">By {book.author}</p>
+                                        </div>
+
+                                        {/* Purchase Access Timeline — lifetime, unlike rentals */}
+                                        <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-3 flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-1.5 text-emerald-700">
+                                            <CheckCircle2 size={13} />
+                                            <span className="text-[10px] font-extrabold uppercase tracking-wider">Permanent Access</span>
+                                          </div>
+                                          {paidPlan && (
+                                            <span className="text-[9px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                                              {getPlanLabel(paidPlan)}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <button
+                                        onClick={() => openSecureBook(book.id)}
+                                        className="w-full mt-5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-sm transition-all"
+                                      >
+                                        Read Book
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -9517,50 +10569,199 @@ export default function TextbookPortal({
               {activeTab === "caselets" && (
                 <div className="space-y-6">
                   {(() => {
-                    const studentBookId = user?.bookId || "1";
-                    const caselets = BOOK_CASELETS[studentBookId] || [];
-                    
-                    if (caselets.length === 0) {
+                    // Rentals grant full digital access, so any rented book's caselet
+                    // (if one exists for that book) is included automatically.
+                    const rentedBookIds = Array.from(new Set((portalRentals || []).map((r: any) => String(r.bookId || r.book_id))));
+                    const rentalByBookId = new Map((portalRentals || []).map((r: any) => [String(r.bookId || r.book_id), r]));
+
+                    // Outright purchases only unlock the caselet if the specific plan the
+                    // customer paid for that book actually included it — buying a plain
+                    // "book_only" copy should never surface a caselet on My Caselets.
+                    const purchasedBookIds = (user?.purchasedBooks && user.purchasedBooks.length > 0)
+                      ? user.purchasedBooks.map((id: any) => String(id))
+                      : (user?.bookId ? [String(user.bookId)] : []);
+                    const purchasedCaseletBookIds = Array.from(new Set(
+                      purchasedBookIds.filter((bId) =>
+                        userOrdersList.some((o: any) =>
+                          !o.isRental && String(o.bookId) === String(bId) &&
+                          (o.purchasePlan === "caselet" || o.purchasePlan === "book_caselet")
+                        )
+                      )
+                    ));
+
+                    const buildCaselets = (bookIds: string[], attachRental?: boolean) => bookIds.flatMap((bId) => {
+                      if (!BOOK_CASELETS[bId] || BOOK_CASELETS[bId].length === 0) {
+                        return [];
+                      }
+                      const caseletList = BOOK_CASELETS[bId] || [];
+                      const book = PORTAL_PUBLISHED_BOOKS.find(b => String(b.id) === String(bId));
+                      const rental = attachRental ? rentalByBookId.get(String(bId)) : undefined;
+                      return caseletList.map((c, idx) => ({ ...c, bookId: bId, book, caseletIndex: idx, rental }));
+                    });
+
+                    const rentalCaselets = buildCaselets(rentedBookIds, true);
+                    const purchasedCaselets = buildCaselets(purchasedCaseletBookIds);
+
+                    if (rentalCaselets.length === 0 && purchasedCaselets.length === 0) {
                       return (
-                        <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xl">
-                          <FileSpreadsheet className="mx-auto text-slate-300 mb-4" size={48} />
-                          <h4 className="text-lg font-bold text-slate-800 mb-1">No Caselets Available</h4>
-                          <p className="text-slate-500 text-sm">There are no caselets assigned to your mapped textbook.</p>
+                        <div className="bg-white border border-slate-200/80 rounded-3xl p-10 text-center space-y-4 shadow-sm max-w-lg mx-auto my-8 animate-fadeIn">
+                          <div className="w-16 h-16 bg-fuchsia-50 rounded-2xl flex items-center justify-center mx-auto text-fuchsia-600">
+                            <FileSpreadsheet size={32} />
+                          </div>
+                          <h4 className="text-lg font-bold text-slate-900">No Caselets Available</h4>
+                          <p className="text-sm text-slate-500 max-w-md mx-auto">
+                            You don't have any active caselets associated with your textbook purchases or rentals yet.
+                          </p>
+                          <a
+                            href="/textbooks/store"
+                            className="inline-flex items-center gap-2 bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-700 hover:to-indigo-700 text-white font-bold text-sm px-6 py-3 rounded-2xl shadow-md hover:shadow-lg transition-all"
+                          >
+                            <BookOpen size={16} />
+                            <span>Browse Academic Bookstore</span>
+                          </a>
                         </div>
                       );
                     }
 
-                    if (readingCaseletIndex !== null && caselets[readingCaseletIndex]) {
+                    if (readingCaseletInfo !== null) {
                       return null;
                     }
 
-                    return (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 animate-fadeIn">
-                        {caselets.map((c, idx) => {
-                          const book = PORTAL_PUBLISHED_BOOKS.find(b => b.id === studentBookId);
-                          return (
-                            <div key={idx} className="bg-white border border-slate-200 rounded-3xl p-5 shadow-lg flex flex-col justify-between hover:shadow-xl transition-all">
-                              <div className="space-y-4">
-                                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 border border-slate-150">
-                                  <img
-                                    src={book?.coverImg || "/portal_coverpages/minerals.jpeg"}
-                                    alt={c.title}
-                                    className="w-full h-full object-cover"
+                    const renderCaseletCard = (item: any, keyIdx: number) => {
+                      const rental = item.rental;
+                      const startedMs = rental?.startedAt ? new Date(rental.startedAt).getTime() : null;
+                      const expiresMs = rental?.expiresAt ? new Date(rental.expiresAt).getTime() : null;
+                      const timelinePct = (startedMs && expiresMs && expiresMs > startedMs)
+                        ? Math.min(100, Math.max(0, ((Date.now() - startedMs) / (expiresMs - startedMs)) * 100))
+                        : 0;
+
+                      return (
+                      <div key={keyIdx} className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-md hover:shadow-xl transition-all flex flex-col justify-between space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="inline-flex items-center gap-1.5 bg-fuchsia-50 text-fuchsia-700 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider border border-fuchsia-100">
+                              <FileSpreadsheet size={13} />
+                              Academic Caselet
+                            </span>
+                            <span className="text-[11px] font-bold text-slate-400">
+                              {item.questions?.length || 2} Questions
+                            </span>
+                          </div>
+
+                          <div>
+                            <h5 className="font-bold text-slate-900 text-base leading-snug">{item.title}</h5>
+                            {item.book?.title && (
+                              <p className="text-xs font-medium text-slate-500 mt-1 flex items-center gap-1">
+                                <BookOpen size={12} className="text-slate-400 shrink-0" />
+                                <span>From: {item.book.title}</span>
+                              </p>
+                            )}
+                          </div>
+
+                          {item.scenario && (
+                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3.5 text-xs text-slate-600 space-y-1">
+                              <p className="font-bold text-slate-700 text-[11px] uppercase tracking-wider">Case Study Scenario:</p>
+                              <p className="line-clamp-3 text-slate-600 leading-relaxed font-sans">{item.scenario}</p>
+                            </div>
+                          )}
+
+                          {rental ? (
+                            /* Rental Access Timeline — mirrors the "Rental Books" card so a caselet
+                               unlocked via rental clearly shows the same expiry it's tied to. */
+                            <div className="bg-indigo-50/40 border border-indigo-100 rounded-2xl p-3 space-y-2.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[9px] font-extrabold uppercase tracking-wider text-indigo-500">
+                                  Rental Access Timeline
+                                </span>
+                                <RentalBadge status={rental.status} expiresAt={rental.expiresAt} />
+                              </div>
+                              <div className="space-y-1.5">
+                                <div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 rounded-full transition-all"
+                                    style={{ width: `${timelinePct}%` }}
                                   />
                                 </div>
-                                <div>
-                                  <h5 className="font-bold text-slate-900 line-clamp-2">{c.title}</h5>
+                                <div className="flex items-center justify-between text-[9px] font-bold text-slate-400">
+                                  <span>{rental.startedAt ? new Date(rental.startedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : "Start"}</span>
+                                  <span className="text-indigo-600">{rental.planDisplayName} Plan</span>
+                                  <span>{rental.expiresAt ? new Date(rental.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : "—"}</span>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => openSecureCaselet(idx)}
-                                className="w-full mt-5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-sm transition-all"
-                              >
-                                Read Caselet
-                              </button>
                             </div>
-                          );
-                        })}
+                          ) : (
+                            <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-3 flex items-center gap-1.5 text-emerald-700">
+                              <CheckCircle2 size={13} />
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider">Permanent Access</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => openSecureCaselet(item.bookId, item.caseletIndex)}
+                          className="w-full bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-700 hover:to-indigo-700 text-white font-bold text-sm py-3 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 mt-2"
+                        >
+                          <FileSpreadsheet size={16} />
+                          <span>Read Caselet PDF</span>
+                        </button>
+                      </div>
+                      );
+                    };
+
+                    const effectiveCaseletsFilter: 'rental' | 'purchased' = myCaseletsFilter ?? (rentalCaselets.length > 0 ? 'rental' : 'purchased');
+
+                    return (
+                      <div className="space-y-6 animate-fadeIn">
+                        <div>
+                          <h4 className="text-xl font-bold text-slate-900 font-display">My Academic Caselets</h4>
+                          <p className="text-sm text-slate-500">Practical case studies and scenario analyses included with your textbooks.</p>
+                        </div>
+
+                        {/* Rental / Purchased toggle */}
+                        <div className="bg-[#F1F5F9] p-1 rounded-xl flex gap-1 self-start w-fit">
+                          <button
+                            onClick={() => setMyCaseletsFilter('rental')}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              effectiveCaseletsFilter === 'rental' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                            }`}
+                          >
+                            <Clock size={13} />
+                            <span>Rental Caselets ({rentalCaselets.length})</span>
+                          </button>
+                          <button
+                            onClick={() => setMyCaseletsFilter('purchased')}
+                            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              effectiveCaseletsFilter === 'purchased' ? "bg-white text-fuchsia-600 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                            }`}
+                          >
+                            <FileSpreadsheet size={13} />
+                            <span>Purchased Caselets ({purchasedCaselets.length})</span>
+                          </button>
+                        </div>
+
+                        {effectiveCaseletsFilter === 'rental' && (
+                          <div className="space-y-4 pt-2">
+                            {rentalCaselets.length === 0 ? (
+                              <p className="text-sm text-slate-400 text-center py-10">You don't have any rental caselets yet.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                                {rentalCaselets.map((item, keyIdx) => renderCaseletCard(item, keyIdx))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {effectiveCaseletsFilter === 'purchased' && (
+                          <div className="space-y-4 pt-2">
+                            {purchasedCaselets.length === 0 ? (
+                              <p className="text-sm text-slate-400 text-center py-10">You don't have any purchased caselets yet.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                                {purchasedCaselets.map((item, keyIdx) => renderCaseletCard(item, keyIdx))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -9569,11 +10770,11 @@ export default function TextbookPortal({
 
               {/* Tab 4: Student Profile */}
               {activeTab === "studentProfile" && (
-                <div className="max-w-4xl mx-auto space-y-6">
+                <div className="max-w-5xl mx-auto space-y-6">
                   {/* Profile Header & Avatar Card */}
                   <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-center gap-6 animate-fadeIn">
                     <div className="relative group">
-                      <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-fuchsia-500/20 shadow-md flex items-center justify-center bg-gradient-to-tr from-fuchsia-600 to-pink-500 text-white text-4xl font-black">
+                      <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-fuchsia-500/20 shadow-md flex items-center justify-center bg-gradient-to-tr from-fuchsia-600 to-pink-500 text-white text-3xl font-black">
                         {user?.profilePicture ? (
                           <img
                             src={user.profilePicture}
@@ -9584,8 +10785,8 @@ export default function TextbookPortal({
                           user?.name ? user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) : "ST"
                         )}
                       </div>
-                      <label className="absolute bottom-1 right-1 bg-fuchsia-600 text-white p-2 rounded-full cursor-pointer hover:bg-fuchsia-700 transition shadow-lg border border-white">
-                        <Camera size={16} />
+                      <label className="absolute bottom-0 right-0 bg-fuchsia-600 text-white p-2 rounded-full cursor-pointer hover:bg-fuchsia-700 transition shadow-lg border border-white">
+                        <Camera size={14} />
                         <input
                           type="file"
                           accept="image/*"
@@ -9595,46 +10796,91 @@ export default function TextbookPortal({
                       </label>
                     </div>
 
-                    <div className="flex-1 text-center md:text-left space-y-2">
-                      <h3 className="text-2xl font-black text-slate-900">{user?.name}</h3>
-                      <p className="text-sm font-semibold text-fuchsia-600 uppercase tracking-wider">
-                        Student Member
-                      </p>
+                    <div className="flex-1 text-center md:text-left space-y-1.5">
+                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                        <h3 className="text-2xl font-black text-slate-900">{user?.name}</h3>
+                        <span className="bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider">
+                          {(user?.role as string) === "faculty" ? "Faculty Instructor" : "Student Member"}
+                        </span>
+                      </div>
                       <p className="text-xs text-slate-500">
-                        Associated Book Code: <span className="font-bold text-slate-800 font-mono">{user?.bookId}</span>
+                        {user?.collegeEmail || user?.email || user?.mobileNumber} • Access ID: <span className="font-bold text-slate-800 font-mono">{user?.accessId || user?.bookId}</span>
                       </p>
                       
-                      <div className="pt-2 flex flex-wrap justify-center md:justify-start gap-2">
-                        {user?.profilePicture && (
+                      {user?.profilePicture && (
+                        <div className="pt-1 flex justify-center md:justify-start">
                           <button
                             onClick={handleDeleteProfileImage}
-                            className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 border border-red-200"
+                            className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1 rounded-xl text-[11px] font-bold transition flex items-center gap-1 border border-red-200"
                           >
                             <Trash2 size={12} />
                             Remove Photo
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  {/* Profile Details Form */}
-                  <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl">
-                    <div className="flex justify-between items-center mb-6">
-                      <h4 className="text-xl font-bold text-slate-900">Account Details</h4>
-                      {!isEditingStudentProfile && (
-                        <button
-                          onClick={() => {
-                            setStudentProfileName(user?.name || "");
-                            setStudentTeachingFacultyEdit(user?.teachingFacultyAccessId || "");
-                            setIsEditingStudentProfile(true);
-                          }}
-                          className="bg-slate-950 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-xs font-bold transition"
-                        >
-                          Edit Profile Details
-                        </button>
-                      )}
-                    </div>
+                  {/* Profile Navigation Sub-Tabs */}
+                  <div className="flex bg-slate-100 p-1.5 rounded-2xl shadow-inner border border-slate-200 gap-1">
+                    <button
+                      onClick={() => setProfileSubTab("account")}
+                      className={`flex-1 py-3 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all flex items-center justify-center gap-2 ${
+                        profileSubTab === "account"
+                          ? "bg-fuchsia-600 text-white shadow-md"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                      }`}
+                    >
+                      <User size={16} />
+                      <span>Account Details</span>
+                    </button>
+                    <button
+                      onClick={() => { setProfileSubTab("orders"); fetchUserOrders(); }}
+                      className={`flex-1 py-3 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all flex items-center justify-center gap-2 ${
+                        profileSubTab === "orders"
+                          ? "bg-fuchsia-600 text-white shadow-md"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                      }`}
+                    >
+                      <Package size={16} />
+                      <span>Order History {userOrdersList.length > 0 ? `(${userOrdersList.length})` : ""}</span>
+                    </button>
+                    <button
+                      onClick={() => { setProfileSubTab("addresses"); fetchUserAddresses(); }}
+                      className={`flex-1 py-3 rounded-xl text-xs uppercase font-extrabold tracking-wider transition-all flex items-center justify-center gap-2 ${
+                        profileSubTab === "addresses"
+                          ? "bg-fuchsia-600 text-white shadow-md"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                      }`}
+                    >
+                      <MapPin size={16} />
+                      <span>Address Book {userAddressesList.length > 0 ? `(${userAddressesList.length})` : ""}</span>
+                    </button>
+                  </div>
+
+                  {/* SUB-TAB 1: ACCOUNT DETAILS */}
+                  {profileSubTab === "account" && (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl animate-fadeIn">
+                      <div className="flex justify-between items-center mb-6">
+                        <div>
+                          <h4 className="text-xl font-bold text-slate-900">Account Details</h4>
+                          <p className="text-xs text-slate-500">Manage your identity and profile details</p>
+                        </div>
+                        {!isEditingStudentProfile && (
+                          <button
+                            onClick={() => {
+                              setStudentProfileName(user?.name || "");
+                              setStudentProfileMobile((user?.mobileNumber && !user.mobileNumber.includes("@")) ? user.mobileNumber : "");
+                              setStudentTeachingFacultyEdit(user?.teachingFacultyAccessId || "");
+                              setIsEditingStudentProfile(true);
+                            }}
+                            className="bg-slate-950 text-white hover:bg-slate-800 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                          >
+                            <Edit size={14} />
+                            <span>Edit Details</span>
+                          </button>
+                        )}
+                      </div>
 
                     {isEditingStudentProfile ? (
                       <form onSubmit={handleStudentNameUpdate} className="space-y-6">
@@ -9650,64 +10896,48 @@ export default function TextbookPortal({
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">Mobile Number (Read-only)</label>
-                            <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium cursor-not-allowed">
-                              {user?.mobileNumber}
-                            </div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">Mobile / Phone Number</label>
+                            <input
+                              type="text"
+                              value={studentProfileMobile}
+                              onChange={(e) => setStudentProfileMobile(e.target.value)}
+                              placeholder="Enter 10-digit mobile number"
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-850 rounded-xl px-4 py-2.5 font-medium focus:outline-none focus:border-fuchsia-500"
+                            />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">College Email ID (Read-only)</label>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">Email Address (Read-only)</label>
                             <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium cursor-not-allowed">
-                              {user?.collegeEmail || "N/A"}
+                              {user?.collegeEmail || user?.email || "N/A"}
                             </div>
                           </div>
-                           <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">College Name (Read-only)</label>
-                            <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium cursor-not-allowed">
-                              {user?.collegeName || "N/A"}
-                            </div>
-                          </div>
-                          {user?.collegeId && (
+                          {user?.collegeName && user.collegeName.trim() !== "" && user.collegeName.trim().toUpperCase() !== "N/A" && (
                             <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">College ID (Read-only)</label>
-                              <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium font-mono cursor-not-allowed">
-                                {user?.collegeId}
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">College Name (Read-only)</label>
+                              <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium cursor-not-allowed">
+                                {user.collegeName}
                               </div>
                             </div>
                           )}
-                          <div>
-                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">Assigned Teacher (Only Editable Once)</label>
-                            {user?.teachingFacultyAccessId ? (
+                          {user?.collegeId && user.collegeId.trim() !== "" && user.collegeId.trim().toUpperCase() !== "N/A" && (
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">College ID (Read-only)</label>
+                              <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium font-mono cursor-not-allowed">
+                                {user.collegeId}
+                              </div>
+                            </div>
+                          )}
+                          {user?.teachingFacultyAccessId && user.teachingFacultyAccessId.trim() !== "" && user.teachingFacultyAccessId.trim().toUpperCase() !== "N/A" && (
+                            <div>
+                              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">Assigned Teacher</label>
                               <div className="bg-slate-100 border border-slate-200 text-slate-400 rounded-xl px-4 py-2.5 font-medium font-mono cursor-not-allowed">
                                 {(() => {
-                                  const found = getAllUsers().find(u => u.role === "faculty" && u.accessId.toUpperCase() === user.teachingFacultyAccessId!.toUpperCase());
+                                  const found = getAllUsers().find(u => u.role === "faculty" && (u.accessId?.toUpperCase() || "") === user.teachingFacultyAccessId!.toUpperCase());
                                   return found ? `${found.name} (${user.teachingFacultyAccessId})` : user.teachingFacultyAccessId;
                                 })()}
                               </div>
-                            ) : (
-                              <select
-                                value={studentTeachingFacultyEdit}
-                                onChange={(e) => setStudentTeachingFacultyEdit(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 text-slate-850 rounded-xl px-4 py-2.5 font-medium focus:outline-none focus:border-fuchsia-500"
-                              >
-                                <option value="">-- Choose Your Faculty --</option>
-                                {getAllUsers()
-                                  .filter(u => 
-                                    u.role === "faculty" && 
-                                    u.bookId === user?.bookId &&
-                                    u.collegeName &&
-                                    user?.collegeName &&
-                                    u.collegeName.trim().toLowerCase() === user.collegeName.trim().toLowerCase()
-                                  )
-                                  .map(f => (
-                                    <option key={f.accessId} value={f.accessId}>
-                                      {f.name} ({f.collegeEmail || f.mobileNumber})
-                                    </option>
-                                  ))
-                                }
-                              </select>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
@@ -9737,38 +10967,321 @@ export default function TextbookPortal({
                         <div>
                           <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">Mobile Number</label>
                           <div className="bg-slate-50 border border-slate-200 text-slate-850 rounded-xl px-4 py-2.5 font-medium">
-                            {user?.mobileNumber}
+                            {(user?.mobileNumber && !user.mobileNumber.includes("@") && user.mobileNumber !== user?.email) ? user.mobileNumber : "Not Provided"}
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">College Email ID</label>
+                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">Email Address</label>
                           <div className="bg-slate-50 border border-slate-200 text-slate-855 rounded-xl px-4 py-2.5 font-medium">
-                            {user?.collegeEmail || "N/A"}
+                            {user?.collegeEmail || user?.email || "N/A"}
                           </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">College Name</label>
-                          <div className="bg-slate-50 border border-slate-200 text-slate-855 rounded-xl px-4 py-2.5 font-medium">
-                            {user?.collegeName || "N/A"}
-                          </div>
-                        </div>
-                        {user?.collegeId && (
+                        {user?.collegeName && user.collegeName.trim() !== "" && user.collegeName.trim().toUpperCase() !== "N/A" && (
                           <div>
-                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">College ID</label>
-                            <div className="bg-slate-50 border border-slate-200 text-slate-855 rounded-xl px-4 py-2.5 font-medium font-mono">
-                              {user?.collegeId}
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">College Name</label>
+                            <div className="bg-slate-50 border border-slate-200 text-slate-855 rounded-xl px-4 py-2.5 font-medium">
+                              {user.collegeName}
                             </div>
                           </div>
                         )}
-                        <div>
-                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono font-bold">Assigned Teacher Access ID</label>
-                          <div className="bg-slate-50 border border-slate-200 text-slate-855 rounded-xl px-4 py-2.5 font-medium font-mono text-slate-800 font-bold">
-                            {user?.teachingFacultyAccessId || "N/A"}
+                        {user?.collegeId && user.collegeId.trim() !== "" && user.collegeId.trim().toUpperCase() !== "N/A" && (
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono">College ID</label>
+                            <div className="bg-slate-50 border border-slate-200 text-slate-855 rounded-xl px-4 py-2.5 font-medium font-mono">
+                              {user.collegeId}
+                            </div>
                           </div>
-                        </div>
+                        )}
+                        {user?.teachingFacultyAccessId && user.teachingFacultyAccessId.trim() !== "" && user.teachingFacultyAccessId.trim().toUpperCase() !== "N/A" && (
+                          <div>
+                            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 font-mono font-bold">Assigned Teacher Access ID</label>
+                            <div className="bg-slate-50 border border-slate-200 text-slate-855 rounded-xl px-4 py-2.5 font-medium font-mono text-slate-800 font-bold">
+                              {user.teachingFacultyAccessId}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
+                  )}
+
+                  {/* SUB-TAB 2: ORDER HISTORY */}
+                  {profileSubTab === "orders" && (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 animate-fadeIn">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                        <div>
+                          <h4 className="text-xl font-bold text-slate-900">Order History & Receipts</h4>
+                          <p className="text-xs text-slate-500">View your purchased textbooks, eBook rentals, invoices, and delivery status</p>
+                        </div>
+                        <button
+                          onClick={fetchUserOrders}
+                          className="text-xs font-bold text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1 self-start sm:self-auto bg-fuchsia-50 border border-fuchsia-200 px-3 py-1.5 rounded-xl transition"
+                        >
+                          <RotateCcw size={13} />
+                          <span>Refresh Orders</span>
+                        </button>
+                      </div>
+
+                      {isFetchingOrders ? (
+                        <div className="py-12 text-center space-y-3">
+                          <div className="w-8 h-8 border-3 border-fuchsia-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                          <p className="text-xs font-bold text-slate-500">Loading order history from backend database...</p>
+                        </div>
+                      ) : userOrdersList.length === 0 ? (
+                        <div className="py-12 text-center space-y-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 p-8">
+                          <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                            <Package size={28} />
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-slate-800">No Orders Found</h5>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                              You haven't placed any textbook or eBook rental orders yet under this account.
+                            </p>
+                          </div>
+                          <a
+                            href="/textbooks/store"
+                            className="inline-flex items-center gap-2 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition"
+                          >
+                            <ShoppingBag size={14} />
+                            <span>Browse Textbook Store</span>
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {userOrdersList.map((ord: any) => (
+                            <div key={ord.id || ord.orderId} className="border border-slate-200 rounded-2xl p-5 hover:border-fuchsia-300 transition shadow-sm bg-slate-50/30 space-y-4">
+                              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                                <div>
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block font-mono">ORDER ID</span>
+                                  <span className="font-mono text-xs font-black text-slate-900">{ord.orderId}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block font-mono">ORDER DATE</span>
+                                  <span className="text-xs font-semibold text-slate-700">{new Date(ord.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block font-mono">TOTAL PAID</span>
+                                  <span className="text-sm font-black text-fuchsia-600">₹{ord.amount?.toLocaleString("en-IN")}</span>
+                                </div>
+                                <div>
+                                  <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${
+                                    ord.status === "PAID" || ord.paymentStatus === "SUCCESS"
+                                      ? "bg-green-100 text-green-700 border border-green-200"
+                                      : "bg-amber-100 text-amber-700 border border-amber-200"
+                                  }`}>
+                                    <CheckCircle2 size={12} />
+                                    <span>{ord.status || "COMPLETED"}</span>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                <div className="w-16 h-20 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-slate-200 shadow-sm">
+                                  <img src={ord.bookCover} alt={ord.bookTitle} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                  <h5 className="font-bold text-slate-900 text-sm line-clamp-2">{ord.bookTitle}</h5>
+                                  <p className="text-xs text-slate-500">By {ord.bookAuthor}</p>
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200">
+                                      Format: {ord.purchaseFormat}
+                                    </span>
+                                    <span className="bg-fuchsia-50 text-fuchsia-700 text-[10px] font-bold px-2 py-0.5 rounded border border-fuchsia-200">
+                                      Plan: {ord.purchasePlan}
+                                    </span>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setSelectedOrderInvoice(ord)}
+                                  className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-1.5 shrink-0"
+                                >
+                                  <FileText size={14} />
+                                  <span>View Receipt</span>
+                                </button>
+                              </div>
+
+                              {ord.shippingAddress && (
+                                <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs space-y-1">
+                                  <span className="font-bold text-slate-700 flex items-center gap-1 text-[11px]">
+                                    <MapPin size={12} className="text-fuchsia-600" /> Delivery Address:
+                                  </span>
+                                  <p className="text-slate-600">{ord.shippingAddress}, {ord.city}, {ord.state} - {ord.shippingPincode}</p>
+                                </div>
+                              )}
+
+                              {ord.isRental && ord.rentalExpiresAt && (
+                                <div className="bg-white p-3 rounded-xl border border-indigo-200 text-xs space-y-1">
+                                  <span className="font-bold text-indigo-700 flex items-center gap-1 text-[11px]">
+                                    <Clock size={12} className="text-indigo-600" />
+                                    {ord.rentalStatus === "expired" ? "Rental Expired:" : "Rental Access Valid Until:"}
+                                  </span>
+                                  <p className="text-slate-600">
+                                    {new Date(ord.rentalExpiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SUB-TAB 3: ADDRESS BOOK */}
+                  {profileSubTab === "addresses" && (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 animate-fadeIn">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                        <div>
+                          <h4 className="text-xl font-bold text-slate-900">Saved Address Book</h4>
+                          <p className="text-xs text-slate-500">Manage delivery addresses for physical textbook orders and rentals</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditingAddressObj(null);
+                            setAddressFormData({
+                              fullName: user?.name || "",
+                              phoneNumber: user?.mobileNumber || "",
+                              addressLine1: "",
+                              addressLine2: "",
+                              city: "",
+                              state: "",
+                              pincode: "",
+                              country: "India",
+                              addressType: "Home",
+                              isDefault: userAddressesList.length === 0
+                            });
+                            setIsAddressModalOpen(true);
+                          }}
+                          className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto"
+                        >
+                          <Plus size={15} />
+                          <span>+ Add New Address</span>
+                        </button>
+                      </div>
+
+                      {isFetchingAddresses ? (
+                        <div className="py-12 text-center space-y-3">
+                          <div className="w-8 h-8 border-3 border-fuchsia-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                          <p className="text-xs font-bold text-slate-500">Loading saved addresses from backend database...</p>
+                        </div>
+                      ) : userAddressesList.length === 0 ? (
+                        <div className="py-12 text-center space-y-4 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 p-8">
+                          <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                            <MapPin size={28} />
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-slate-800">No Delivery Addresses Saved</h5>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
+                              Save your home, college, or hostel address to quickly place physical textbook orders.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {userAddressesList.map((addr: any) => (
+                            <div
+                              key={addr.id}
+                              className={`border rounded-2xl p-5 shadow-sm space-y-3 relative transition flex flex-col justify-between ${
+                                addr.isDefault ? "bg-fuchsia-50/30 border-fuchsia-300 ring-2 ring-fuchsia-500/20" : "bg-white border-slate-200"
+                              }`}
+                            >
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="bg-slate-900 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider flex items-center gap-1">
+                                    {addr.addressType === "Home" && <Home size={10} />}
+                                    {addr.addressType === "Work" && <Briefcase size={10} />}
+                                    {addr.addressType === "College" && <GraduationCap size={10} />}
+                                    <span>{addr.addressType || "Address"}</span>
+                                  </span>
+                                  {addr.isDefault && (
+                                    <span className="bg-fuchsia-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-xs flex items-center gap-1">
+                                      <CheckCircle2 size={10} /> DEFAULT
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <h5 className="font-bold text-slate-900 text-sm">{addr.fullName}</h5>
+                                  <p className="text-xs font-semibold text-slate-600 font-mono mt-0.5">📞 {addr.phoneNumber}</p>
+                                </div>
+
+                                <p className="text-xs text-slate-600 leading-relaxed">
+                                  {addr.addressLine1}
+                                  {addr.addressLine2 ? `, ${addr.addressLine2}` : ""}
+                                  <br />
+                                  <span className="font-semibold text-slate-800">{addr.city}, {addr.state} - {addr.pincode}</span>
+                                  <br />
+                                  <span className="text-[11px] text-slate-400">{addr.country}</span>
+                                </p>
+                              </div>
+
+                              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                                {!addr.isDefault && (
+                                  <button
+                                    onClick={() => handleSetDefaultAddress(addr.id)}
+                                    className="text-xs font-bold text-fuchsia-600 hover:underline flex items-center gap-1"
+                                  >
+                                    Set as Default
+                                  </button>
+                                )}
+                                <div className="flex items-center gap-2 ml-auto">
+                                  <button
+                                    onClick={() => {
+                                      setEditingAddressObj(addr);
+                                      setAddressFormData({
+                                        fullName: addr.fullName,
+                                        phoneNumber: addr.phoneNumber,
+                                        addressLine1: addr.addressLine1,
+                                        addressLine2: addr.addressLine2 || "",
+                                        city: addr.city,
+                                        state: addr.state,
+                                        pincode: addr.pincode,
+                                        country: addr.country || "India",
+                                        addressType: addr.addressType || "Home",
+                                        isDefault: addr.isDefault
+                                      });
+                                      setIsAddressModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
+                                    title="Edit Address"
+                                  >
+                                    <Edit size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteAddress(addr.id)}
+                                    className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                                    title="Delete Address"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <ChangePasswordCard
+                    showChangePassword={showChangePassword}
+                    onOpen={openChangePassword}
+                    oldPasswordInput={oldPasswordInput}
+                    setOldPasswordInput={setOldPasswordInput}
+                    newPasswordInput={newPasswordInput}
+                    setNewPasswordInput={setNewPasswordInput}
+                    confirmPasswordInput={confirmPasswordInput}
+                    setConfirmPasswordInput={setConfirmPasswordInput}
+                    showOldPasswordInput={showOldPasswordInput}
+                    setShowOldPasswordInput={setShowOldPasswordInput}
+                    showNewPasswordInput={showNewPasswordInput}
+                    setShowNewPasswordInput={setShowNewPasswordInput}
+                    changePasswordError={changePasswordError}
+                    changePasswordSuccess={changePasswordSuccess}
+                    isChangingPassword={isChangingPassword}
+                    resetChangePasswordForm={resetChangePasswordForm}
+                    handleChangePassword={handleChangePassword}
+                  />
                 </div>
               )}
 
@@ -10176,9 +11689,9 @@ export default function TextbookPortal({
         </div>
       )}
 
-      {readingBookId && (
-        <div 
-          className="fixed inset-0 z-[9999] bg-slate-950 flex flex-col w-screen h-screen select-none overflow-hidden" 
+      {(readingBookId || readingRentalId) && (
+        <div
+          className="fixed inset-0 z-[9999] bg-slate-950 flex flex-col w-screen h-screen select-none overflow-hidden"
           style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
         >
           {/* Print protection style tag */}
@@ -10195,7 +11708,9 @@ export default function TextbookPortal({
             <div className="flex items-center justify-between w-full md:w-auto">
               <div>
                 <h4 className="text-sm md:text-lg font-bold text-white tracking-tight truncate max-w-[220px] sm:max-w-md">
-                  {PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId)?.title || "Secure Textbook"}
+                  {readingRentalId
+                    ? (activeRentalReadData?.bookTitle || "Rented eBook")
+                    : (PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId)?.title || "Secure Textbook")}
                 </h4>
                 <p className="text-[11px] text-slate-400 hidden sm:block">Secure e-Reader Mode — Printing, copying, and screenshots are restricted.</p>
               </div>
@@ -10407,8 +11922,29 @@ export default function TextbookPortal({
               </div>
             )}
 
-            {/* Loading spinner */}
-            {pdfLoading ? (
+            {/* Loading spinner or Error display */}
+            {pdfError ? (
+              <div className="flex flex-col items-center justify-center space-y-4 py-32 text-center px-6">
+                <div className="p-6 bg-slate-900/90 border border-slate-800 rounded-2xl text-slate-300 max-w-md shadow-2xl">
+                  <AlertCircle className="mx-auto mb-3 text-red-500 animate-pulse" size={36} />
+                  <h4 className="font-bold text-base text-white mb-1">Document Load Error</h4>
+                  <p className="text-xs text-slate-400 mb-4">{pdfError}</p>
+                  <button
+                    onClick={() => {
+                      if (readingBookId) {
+                        const book = PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId);
+                        if (book) loadPdfFile(`/portal_textbooks/${book.pdfFileName}`);
+                      } else if (readingRentalId && activeRentalReadData?.pdfUrl) {
+                        loadPdfFile(activeRentalReadData.pdfUrl);
+                      }
+                    }}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Retry Loading
+                  </button>
+                </div>
+              </div>
+            ) : pdfLoading ? (
               <div className="flex flex-col items-center justify-center space-y-4 py-32 text-slate-350">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-fuchsia-500"></div>
                 <p className="text-sm font-medium">Securing and loading textbook page...</p>
@@ -10430,10 +11966,9 @@ export default function TextbookPortal({
         </div>
       )}
 
-      {readingCaseletIndex !== null && (() => {
-        const studentBookId = user?.bookId || "1";
-        const caselets = BOOK_CASELETS[studentBookId] || [];
-        const currentCaselet = caselets[readingCaseletIndex];
+      {readingCaseletInfo !== null && (() => {
+        const caselets = BOOK_CASELETS[readingCaseletInfo.bookId] || [];
+        const currentCaselet = caselets[readingCaseletInfo.index];
         if (!currentCaselet) return null;
 
         return (
@@ -10685,7 +12220,311 @@ export default function TextbookPortal({
         );
       })()}
 
-      <FooterSection />
+      {/* --- ORDER RECEIPT / INVOICE MODAL --- */}
+      {selectedOrderInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={() => setSelectedOrderInvoice(null)}
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+          />
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl relative z-10 flex flex-col max-h-[90vh] shadow-2xl overflow-hidden animate-scaleIn">
+            <div className="bg-slate-900 text-white p-6 flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-fuchsia-600 rounded-lg flex items-center justify-center font-black text-xs">LP</div>
+                  <h3 className="text-lg font-black tracking-tight">LURNEXA PUBLICATIONS</h3>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Official Payment Receipt & Tax Invoice</p>
+              </div>
+              <button
+                onClick={() => setSelectedOrderInvoice(null)}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar text-slate-800 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Order ID</span>
+                  <span className="font-mono font-bold text-slate-900 text-xs">{selectedOrderInvoice.orderId}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Date</span>
+                  <span className="font-bold text-slate-800">{new Date(selectedOrderInvoice.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Payment Status</span>
+                  <span className="font-bold text-green-600 uppercase">{selectedOrderInvoice.status || "PAID"}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider block">Billed Customer</span>
+                  <p className="font-bold text-slate-900 text-xs">{selectedOrderInvoice.customerName || user?.name}</p>
+                  <p className="text-slate-500">{selectedOrderInvoice.customerEmail || user?.email}</p>
+                  <p className="text-slate-500">{selectedOrderInvoice.customerPhone || user?.mobileNumber}</p>
+                </div>
+                {selectedOrderInvoice.shippingAddress ? (
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-1">
+                    <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider block">Shipping Address</span>
+                    <p className="text-slate-700">{selectedOrderInvoice.shippingAddress}</p>
+                    <p className="text-slate-700">{selectedOrderInvoice.city}, {selectedOrderInvoice.state} - {selectedOrderInvoice.shippingPincode}</p>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200 space-y-1">
+                    <span className="font-bold text-slate-700 text-[11px] uppercase tracking-wider block">Delivery Type</span>
+                    <p className="font-bold text-fuchsia-600">Digital eBook Reader & Access Key</p>
+                    <p className="text-slate-500">Instant Access on Digital Bookshelf</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-bold tracking-wider">
+                      <th className="p-3">Item Description</th>
+                      <th className="p-3">Format</th>
+                      <th className="p-3 text-center">Qty</th>
+                      <th className="p-3 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    <tr>
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900">{selectedOrderInvoice.bookTitle}</div>
+                        <div className="text-[11px] text-slate-500">Plan: {selectedOrderInvoice.purchasePlan}</div>
+                      </td>
+                      <td className="p-3 font-medium text-slate-600">{selectedOrderInvoice.purchaseFormat}</td>
+                      <td className="p-3 text-center font-bold">{selectedOrderInvoice.quantity || 1}</td>
+                      <td className="p-3 text-right font-bold text-slate-900">₹{selectedOrderInvoice.amount?.toLocaleString("en-IN")}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs font-semibold">
+                {selectedOrderInvoice.subtotal > 0 && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>Subtotal</span>
+                    <span>₹{selectedOrderInvoice.subtotal?.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
+                {selectedOrderInvoice.discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount ({selectedOrderInvoice.couponCode})</span>
+                    <span>- ₹{selectedOrderInvoice.discountAmount?.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
+                {selectedOrderInvoice.gstAmount > 0 && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>GST / Taxes</span>
+                    <span>+ ₹{selectedOrderInvoice.gstAmount?.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-200">
+                  <span>Grand Total Paid</span>
+                  <span className="text-fuchsia-600">₹{selectedOrderInvoice.amount?.toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+              <button
+                onClick={() => setSelectedOrderInvoice(null)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition"
+              >
+                Close Receipt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ADD / EDIT ADDRESS MODAL --- */}
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={() => setIsAddressModalOpen(false)}
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+          />
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg relative z-10 flex flex-col shadow-2xl overflow-hidden animate-scaleIn">
+            <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {editingAddressObj ? "Edit Delivery Address" : "Add New Delivery Address"}
+                </h3>
+                <p className="text-xs text-slate-500">Save address for physical textbook shipping</p>
+              </div>
+              <button
+                onClick={() => setIsAddressModalOpen(false)}
+                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAddressSubmit} className="p-6 space-y-4 text-xs font-medium">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Full Recipient Name *
+                </label>
+                <input
+                  type="text"
+                  value={addressFormData.fullName}
+                  onChange={(e) => setAddressFormData({ ...addressFormData, fullName: e.target.value })}
+                  placeholder="e.g. Sai Reddy"
+                  required
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Phone / Mobile Number *
+                </label>
+                <input
+                  type="text"
+                  value={addressFormData.phoneNumber}
+                  onChange={(e) => setAddressFormData({ ...addressFormData, phoneNumber: e.target.value })}
+                  placeholder="10-digit mobile number"
+                  required
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Flat, House No., Building, Street *
+                </label>
+                <input
+                  type="text"
+                  value={addressFormData.addressLine1}
+                  onChange={(e) => setAddressFormData({ ...addressFormData, addressLine1: e.target.value })}
+                  placeholder="e.g. Door 4-12, Plot 85, Academic Block Road"
+                  required
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Area, Landmark, Colony (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={addressFormData.addressLine2}
+                  onChange={(e) => setAddressFormData({ ...addressFormData, addressLine2: e.target.value })}
+                  placeholder="e.g. Near University Gate"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    City / Town *
+                  </label>
+                  <input
+                    type="text"
+                    value={addressFormData.city}
+                    onChange={(e) => setAddressFormData({ ...addressFormData, city: e.target.value })}
+                    placeholder="e.g. Hyderabad"
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    State *
+                  </label>
+                  <input
+                    type="text"
+                    value={addressFormData.state}
+                    onChange={(e) => setAddressFormData({ ...addressFormData, state: e.target.value })}
+                    placeholder="e.g. Telangana"
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Pincode / Zip Code *
+                  </label>
+                  <input
+                    type="text"
+                    value={addressFormData.pincode}
+                    onChange={(e) => setAddressFormData({ ...addressFormData, pincode: e.target.value })}
+                    placeholder="6-digit pincode"
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Address Tag
+                  </label>
+                  <select
+                    value={addressFormData.addressType}
+                    onChange={(e: any) => setAddressFormData({ ...addressFormData, addressType: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-2.5 focus:outline-none focus:border-fuchsia-500 font-medium"
+                  >
+                    <option value="Home">Home</option>
+                    <option value="Work">Work</option>
+                    <option value="College">College</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="isDefaultAddress"
+                  checked={addressFormData.isDefault}
+                  onChange={(e) => setAddressFormData({ ...addressFormData, isDefault: e.target.checked })}
+                  className="w-4 h-4 rounded text-fuchsia-600 focus:ring-fuchsia-500 cursor-pointer"
+                />
+                <label htmlFor="isDefaultAddress" className="text-xs font-bold text-slate-700 cursor-pointer">
+                  Set as Primary Default Delivery Address
+                </label>
+              </div>
+
+              <div className="p-4 border-t border-slate-200 flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAddressModalOpen(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-md transition"
+                >
+                  Save Address
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- RENEW RENTAL MODAL --- */}
+      <RenewModal
+        isOpen={renewalRental !== null}
+        onClose={() => setRenewalRental(null)}
+        rental={renewalRental}
+        onConfirmRenewal={handleConfirmRenewal}
+      />
+
+      {!appMode && <FooterSection />}
     </div>
   );
 }

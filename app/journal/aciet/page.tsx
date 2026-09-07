@@ -20,12 +20,14 @@ export default function ACIETPage() {
 
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
-              <Image src="/Aciet.png" alt="Journal cover for Advanced Computational Intelligence & Emerging Technologies, ACIET. The cover features an abstract design with interconnected lines and glowing nodes set against a dark background, conveying themes of advanced technology and digital networks."
-          width={300}
-          height={400}
-          className="object-cover rounded-lg shadow-xl border"
-          priority
-          />
+              <Image
+                src="/Aciet.png"
+                alt="Journal cover for Advanced Computational Intelligence & Emerging Technologies (ACIET). The cover features an abstract design with interconnected lines and glowing nodes set against a dark background, conveying themes of advanced technology and digital networks."
+                width={320}
+                height={453}
+                className="object-cover rounded-xl shadow-lg border border-gray-200 bg-white"
+                priority
+              />
             </div>
 
             <div className="flex-[1.5] flex flex-col items-end gap-3 w-full">

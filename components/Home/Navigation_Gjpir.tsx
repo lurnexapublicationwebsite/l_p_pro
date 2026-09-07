@@ -51,7 +51,7 @@ const menuItems = [
     ] 
   },
   {label:"Archives" ,ariaLabel:"Archives" , link:"/Archive",},
-  {label:"Editorial Login " ,ariaLabel:"editorial Login " , link:"/EditoralLogins"},
+  {label:"Login" ,ariaLabel:"Login" , link:"/EditoralLogins"},
   {label:"Sub Division Journals" ,ariaLabel:"Sub Division Journals" , link:"/journal/explore",},
   // { label: "Login / Sign up", ariaLabel: "Access your account or sign up", link: "/signup" },
 ];

@@ -2,6 +2,7 @@
 import NavigationPage from "@/components/Home/Navigation_SubJournals_CIMS";
 import FooterSection from "@/components/Home/FooterSection";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function CIMSPage() {
   return (
@@ -20,7 +21,14 @@ export default function CIMSPage() {
 
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
-              <img src="/Cimss.png" alt="CIMS Cover" className="w-[240px] h-[320px] object-cover rounded-lg shadow-md border"/>
+              <Image
+                src="/Cimss.png"
+                alt="Journal cover for the Center for Innovative Management Studies (CIMS)"
+                width={320}
+                height={453}
+                className="object-cover rounded-xl shadow-lg border border-gray-200 bg-white"
+                priority
+              />
             </div>
 
             <div className="flex-[1.5] flex flex-col items-end gap-3 w-full">

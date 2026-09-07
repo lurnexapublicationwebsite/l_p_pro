@@ -1,8 +1,38 @@
 "use client";
+import { useState } from "react";
 import NavigationPage from "@/components/Home/nav/page";
 import FooterSection from "@/components/Home/FooterSection";
-import { Upload, CreditCard, Send, Info, UserPlus } from 'lucide-react';
+import { Upload, CreditCard, Send, Info, UserPlus, Newspaper } from 'lucide-react';
+
+// The four sub-journal sections — matches /journal/{aciet,aress,cims,iaees}. GJPIR itself is
+// the main journal these fall under, not a subdivision, so it isn't offered as a choice here.
+const JOURNAL_SECTIONS = [
+  {
+    code: "ACIET",
+    name: "Advanced Computational Intelligence & Emerging Technologies (ACIET)",
+    scope: "AI, Machine Learning, Data Science, Cybersecurity, Emerging Digital Technologies",
+  },
+  {
+    code: "ARESS",
+    name: "Advanced Research in Economics and Social Sciences (ARESS)",
+    scope: "Economics, Development Studies, Policy, Behavioural & Social Sciences",
+  },
+  {
+    code: "CIMS",
+    name: "Center for Innovative Management Studies (CIMS)",
+    scope: "Strategic Management, Operations, Entrepreneurship, Finance, Governance",
+  },
+  {
+    code: "IAEES",
+    name: "Institute of Advanced Electrical & Electronics Studies (IAEES)",
+    scope: "Power Systems, Renewable Energy, Electronics, VLSI, Communication Systems",
+  },
+];
+
 export default function Page() {
+  const [selectedSection, setSelectedSection] = useState("");
+  const selectedSectionInfo = JOURNAL_SECTIONS.find((j) => j.code === selectedSection);
+
   return (
     <>
       <NavigationPage />
@@ -24,6 +54,30 @@ export default function Page() {
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                    <Newspaper size={15} className="text-slate-400" />
+                    Journal / Subdivision
+                  </label>
+                  <select
+                    value={selectedSection}
+                    onChange={(e) => setSelectedSection(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white text-slate-900"
+                  >
+                    <option value="" disabled>Select which journal section fits your research...</option>
+                    {JOURNAL_SECTIONS.map((section) => (
+                      <option key={section.code} value={section.code}>
+                        {section.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedSectionInfo && (
+                    <p className="text-xs text-slate-500 pt-0.5">
+                      <span className="font-semibold text-slate-600">Scope: </span>
+                      {selectedSectionInfo.scope}
+                    </p>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">Full Name</label>
                   <input type="text" placeholder="Enter your name" className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />

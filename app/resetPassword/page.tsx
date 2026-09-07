@@ -41,7 +41,7 @@ const ResetPasswordForm = () => {
 
     try {
       // Connects to your /reset-password API
-      const response = await fetch("https://api-lurnexa.in/reset-password", {
+      const response = await fetch("https://api.lurnexa.in/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData), 

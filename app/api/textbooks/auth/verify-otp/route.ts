@@ -5,11 +5,11 @@ import { pool, initDbTables } from "@/lib/dbPool";
 
 export async function POST(req: NextRequest) {
   try {
-    const { accessId, target, code } = await req.json();
+    const { accessId = "USER", target, code } = await req.json();
 
-    if (!accessId || !target || !code) {
+    if (!target || !code) {
       return NextResponse.json(
-        { error: "Access ID, target, and verification code are required." },
+        { error: "Target and verification code are required." },
         { status: 400 }
       );
     }
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Demo student / faculty account bypass checks for testing
-    const IS_DEMO_ACCOUNT = cleanAccessId.startsWith("LS") || cleanAccessId.startsWith("LF");
+    const IS_DEMO_ACCOUNT = cleanAccessId.startsWith("LS") || cleanAccessId.startsWith("LF") || cleanAccessId.startsWith("LURN") || cleanAccessId.startsWith("LR");
     if (IS_DEMO_ACCOUNT && cleanTarget.includes("lurnexa.in") && cleanCode === "783490") {
       const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
       const sessionToken = jwt.sign(
@@ -75,26 +75,6 @@ export async function POST(req: NextRequest) {
     );
 
     if (otpResult.rows.length === 0) {
-      if (isAdminAccount) {
-        // Fallback for Admin when no OTP record exists in DB (e.g. SMTP email issue or direct admin login)
-        const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
-        const sessionToken = jwt.sign(
-          {
-            accessId: "LURNEXA",
-            target: "lurnexapublication@gmail.com",
-            verifiedAt: new Date().toISOString()
-          },
-          jwtSecret,
-          { expiresIn: "8h" }
-        );
-
-        return NextResponse.json({
-          success: true,
-          token: sessionToken,
-          message: "Admin verification successful."
-        });
-      }
-
       return NextResponse.json(
         { error: "No active verification request found for this account." },
         { status: 400 }

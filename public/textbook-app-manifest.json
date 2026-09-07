@@ -1,0 +1,32 @@
+{
+  "name": "Lurnexa Textbooks",
+  "short_name": "Lurnexa Textbooks",
+  "description": "Sign in and read your purchased or rented Lurnexa textbooks and caselets.",
+  "start_url": "/textbooks/app/",
+  "scope": "/textbooks/app/",
+  "id": "/textbooks/app/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icons/reader-app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/reader-app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/reader-app-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

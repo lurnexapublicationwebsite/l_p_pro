@@ -3,6 +3,8 @@
 import NavigationPage from "@/components/Home/Navigation_Gjpir";
 import FooterSection from "@/components/Home/FooterSection";
 import Link from "next/link";
+import Image from "next/image";
+import { Send } from "lucide-react";
 
 export default function PublicationsPage() {
   return (
@@ -21,10 +23,13 @@ export default function PublicationsPage() {
 
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
-              <img
+              <Image
                 src="/Gjpir.png"
-                alt="GJPIR Cover"
-                className="w-[520px] h-[500px] object-contain rounded-lg shadow-md border bg-white p-2"
+                alt="Journal cover for the Global Journal for Progressive Innovation and Research (GJPIR)"
+                width={320}
+                height={453}
+                className="object-cover rounded-xl shadow-lg border border-gray-200 bg-white"
+                priority
               />
             </div>
 
@@ -155,6 +160,19 @@ export default function PublicationsPage() {
             </div>
           </div>
         </div>
+        </div>
+
+        {/* ==== SUBMISSION CTA (outside the card, tied to the section with a divider so it
+             reads as a deliberate call-to-action rather than a button floating in blank
+             space) ==== */}
+        <div className="max-w-7xl mx-auto mt-10 pt-8 border-t border-gray-200 flex flex-col items-center gap-3">
+          <p className="text-sm text-gray-600">Ready to share your research with GJPIR?</p>
+          <Link href="/submityourarticle">
+            <button className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm sm:text-base px-8 py-3.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer">
+              <Send size={18} />
+              Article / Case Submission
+            </button>
+          </Link>
         </div>
       </section>
 
