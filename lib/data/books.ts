@@ -21,6 +21,8 @@ export interface Book {
   keywords: string[];
   tableOfContents?: string[];
   hasCaselet?: boolean;
+  rentalEnabled?: boolean; // Whether this book is available for rental
+  rentalPriceOverride?: { [planCode: string]: number }; // Per-book custom rental pricing
 }
 
 export function bookHasCaselet(bookId?: string): boolean {
@@ -112,6 +114,7 @@ export const PUBLISHED_BOOKS_DATA: Book[] = [
     publishedDate: "May 18, 2026",
     tag: "Best Seller",
     stockStatus: "in-stock",
+    rentalEnabled: true,
     description: "This book offers a systematic and in-depth exploration of machine learning, designed to help readers build a strong foundation while progressing toward advanced applications. It begins by introducing the core principles of machine learning, including data representation, statistical thinking, and the fundamental paradigms of supervised, unsupervised, and reinforcement learning.",
     longDescription: `MACHINE LEARNING: A Structured Approach to Algorithms and Intelligent Systems is an essential textbook designed for university students, researchers, and software engineers. Authored by esteemed computer science educators Dr. Halavath Balaji, Jogu Saritha, and Pallavi B, this comprehensive guide delivers mathematical rigor alongside real-world Python implementation.
 
@@ -165,6 +168,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     publishedDate: "May 18, 2026",
     tag: "Staff Pick",
     stockStatus: "in-stock",
+    rentalEnabled: true,
     hasCaselet: true,
     description: "This textbook provides a comprehensive and structured introduction to the fundamental concepts, design principles, and implementation techniques of Database Management Systems (DBMS). It is designed to guide learners from foundational topics such as data models and relational theory to advanced areas including SQL, schema refinement (normalization), and transaction management.",
     longDescription: `Database Management Systems: Concepts, Design and Implementation serves as a definitive textbook for mastering relational databases, SQL queries, ER diagram modeling, indexing strategies, transaction processing, and modern NoSQL architectures.`,
@@ -294,6 +298,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     publishedDate: "August 2026",
     tag: "Policy Study",
     stockStatus: "in-stock",
+    rentalEnabled: true,
     description: "This study presents a comprehensive and data-driven examination of India's mineral import landscape, offering a distinctive economy-wide perspective. By integrating long-term trade trends with advanced simulation and modelling techniques, it evaluates the real economic implications of mineral import decisions on output, employment, prices, and trade dynamics.",
     longDescription: `Indian Mineral Import Policy Options: An Economywide Analysis is a seminal economic policy research book authored by Dr. Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, and Kannan Kumar.`,
     keywords: [
@@ -333,6 +338,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     publishedDate: "May 18, 2026",
     tag: "Academic Choice",
     stockStatus: "in-stock",
+    rentalEnabled: true,
     hasCaselet: true,
     description: "This textbook provides a comprehensive and structured introduction to the core principles of microeconomics tailored for business and management. It covers demand and supply analysis, consumer behavior, production theory, market structures, factor pricing, and real-world managerial decision making.",
     longDescription: `Principles of Microeconomics for Business and Management by Dr. Aruna Kumar Dash is a core university textbook for MBA, BBA, and Commerce students covering microeconomic principles and managerial economics.`,
@@ -377,6 +383,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     publishedDate: "August 2026",
     tag: "New Release",
     stockStatus: "in-stock",
+    rentalEnabled: true,
     description: "This book provides a comprehensive and hands-on foundation in Python programming, designed for students, educators, and software development professionals. It covers essential syntax, core data structures, object-oriented concepts, and practical problem-solving techniques. Emphasizing real-world applications, industry coding standards, and algorithmic thinking, the text guides readers through structured examples and project-oriented learning to build proficiency in modern Python software development.",
     longDescription: `PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE is an essential textbook designed for university students, researchers, and software engineers. Authored by Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, and Mr. Shiva Prasad Munukuntla, this comprehensive guide delivers theoretical rigor alongside real-world Python implementation and hands-on programming projects.`,
     keywords: [
@@ -418,6 +425,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     publishedDate: "August 2026",
     tag: "Digital Exclusive",
     stockStatus: "in-stock",
+    rentalEnabled: true,
     description: "This textbook provides a comprehensive and practical exploration of NoSQL database systems with a primary focus on MongoDB. It covers foundational document store concepts, schema design strategies, CRUD operations, aggregation frameworks, indexing, and enterprise scalability.",
     longDescription: `NOSQL DATABASES USING MONGODB is a definitive academic and practical guide authored by Dr. Sujeet S. Jagtap. Designed for computer science students, database administrators, and software architects, this book covers modern document-oriented database paradigms, high-performance querying, and distributed database deployment.`,
     keywords: [

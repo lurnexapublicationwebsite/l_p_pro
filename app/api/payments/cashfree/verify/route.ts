@@ -85,8 +85,35 @@ export async function POST(req: Request) {
       const country = tags.country || "India";
       const quantity = Number(tags.quantity || 1);
       const subtotal = Number(tags.subtotal || amount);
-      const accessId = tags.access_id || "";
+      let accessId = tags.access_id || "";
       const plan = tags.purchase_plan || "physical";
+
+      if (!accessId && (customerEmail || customerPhone)) {
+        try {
+          const existingUserRes = await pool.query(
+            "SELECT access_id FROM textbooks_users WHERE (email IS NOT NULL AND LOWER(email) = $1) OR (college_email IS NOT NULL AND LOWER(college_email) = $1) OR mobile_number = $2",
+            [customerEmail ? customerEmail.trim().toLowerCase() : "", customerPhone ? customerPhone.trim() : ""]
+          );
+          if (existingUserRes.rows.length > 0 && existingUserRes.rows[0].access_id) {
+            accessId = existingUserRes.rows[0].access_id;
+          } else {
+            const existingPurchaseRes = await pool.query(
+              "SELECT access_id FROM textbooks_purchases WHERE ((customer_email IS NOT NULL AND LOWER(customer_email) = $1) OR customer_phone = $2) AND access_id != '' AND access_id != 'LURNEXA'",
+              [customerEmail ? customerEmail.trim().toLowerCase() : "", customerPhone ? customerPhone.trim() : ""]
+            );
+            if (existingPurchaseRes.rows.length > 0 && existingPurchaseRes.rows[0].access_id) {
+              accessId = existingPurchaseRes.rows[0].access_id;
+            }
+          }
+        } catch (err) {
+          console.error("Error looking up accessId fallback in verify route:", err);
+        }
+      }
+
+      if (!accessId) {
+        const randomDigits = Math.floor(10000 + Math.random() * 90000);
+        accessId = `LURNOT${randomDigits}`;
+      }
 
       const orderObj = {
         order_id: orderId,
@@ -112,9 +139,9 @@ export async function POST(req: Request) {
         cashfree_payment_id: transactionId,
         payment_status: "PAID",
         order_status: "CONFIRMED",
-        purchase_format: tags.purchase_format || (shippingAddress === "Soft Copy Access" ? "soft" : "physical"),
+        purchase_format: tags.purchase_format || (shippingAddress.includes("Digital") || shippingAddress === "Soft Copy Access" ? "soft" : "physical"),
         purchase_plan: tags.purchase_plan || "physical",
-        access_id: tags.access_id || ""
+        access_id: accessId
       };
 
       // Create order ONLY AFTER successful payment verification
@@ -157,45 +184,78 @@ export async function POST(req: Request) {
         ]
       );
 
-      // Always update user's plan and add the purchased book to their profile if they have an account
+      // Always update user's plan and add the purchased book(s) to their profile under their 1 Access ID
       const userCheck = await pool.query(
-        "SELECT plan, purchased_books FROM textbooks_users WHERE mobile_number = $1",
-        [customerPhone]
+        "SELECT access_id, plan, purchased_books FROM textbooks_users WHERE mobile_number = $1 OR (email IS NOT NULL AND LOWER(email) = $2) OR (college_email IS NOT NULL AND LOWER(college_email) = $2)",
+        [customerPhone, customerEmail.toLowerCase()]
       );
+
+      const newBookIds = bookId.includes(",") ? bookId.split(",").map(b => b.trim()) : [bookId];
+
       if (userCheck.rows.length > 0) {
         const currentUser = userCheck.rows[0];
-        let pBooks = Array.isArray(currentUser.purchased_books) ? currentUser.purchased_books : [];
-        if (!pBooks.includes(bookId)) {
-          pBooks.push(bookId);
+        if (currentUser.access_id) {
+          accessId = currentUser.access_id;
+          orderObj.access_id = currentUser.access_id;
+          // Update order record with exact user access ID
+          try {
+            await pool.query("UPDATE textbooks_purchases SET access_id = $1 WHERE order_id = $2", [accessId, orderId]);
+          } catch (e) {}
         }
+        let pBooks = Array.isArray(currentUser.purchased_books) ? currentUser.purchased_books : [];
+        newBookIds.forEach(id => {
+          if (id && id !== "CART" && !pBooks.includes(id)) {
+            pBooks.push(id);
+          }
+        });
         const targetPlan = tags.purchase_plan || "complete";
         await pool.query(
-          `UPDATE textbooks_users SET plan = $1, purchased_books = $2 WHERE mobile_number = $3`,
-          [targetPlan, JSON.stringify(pBooks), customerPhone]
+          `UPDATE textbooks_users SET plan = $1, purchased_books = $2 WHERE mobile_number = $3 OR (email IS NOT NULL AND LOWER(email) = $4) OR (college_email IS NOT NULL AND LOWER(college_email) = $4)`,
+          [targetPlan, JSON.stringify(pBooks), customerPhone, customerEmail.toLowerCase()]
+        );
+      } else if (accessId) {
+        // Create user record for new customer with their single unique Access ID
+        const initialBooks = newBookIds.filter(id => id && id !== "CART");
+        await pool.query(
+          `INSERT INTO textbooks_users (name, mobile_number, book_id, role, college_name, college_email, email, is_active, access_id, plan, purchased_books)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            customerName,
+            customerPhone,
+            bookId,
+            'student',
+            tags.college_name || 'General',
+            customerEmail,
+            customerEmail,
+            true,
+            accessId,
+            plan,
+            JSON.stringify(initialBooks)
+          ]
         );
       }
 
       if (accessId) {
-        // Pre-approve the access ID (unassigned)
+        // Pre-approve/assign the access ID
         await pool.query(
           `INSERT INTO textbooks_allowed_access_ids (access_id, book_id, role, assigned_to, plan)
            VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (access_id) DO UPDATE SET plan = EXCLUDED.plan`,
-          [accessId, bookId, 'student', null, plan]
+           ON CONFLICT (access_id) DO UPDATE SET plan = EXCLUDED.plan, assigned_to = EXCLUDED.assigned_to`,
+          [accessId, bookId, 'student', customerPhone, plan]
         );
       }
 
-      // Dispatch order confirmation email notifications
-      try {
-        await sendOrderConfirmationEmails(orderObj);
-      } catch (err) {
+      // Dispatch order confirmation email notifications in the background — email delivery
+      // (SMTP handshake, provider latency) must never block the customer's "payment succeeded"
+      // response, which otherwise leaves them staring at a spinner for many seconds.
+      sendOrderConfirmationEmails(orderObj).catch((err) => {
         console.error("❌ Failed to send order emails:", err);
-      }
+      });
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         status: "PAID",
-        order: orderObj 
+        order: orderObj
       });
     } else {
       return NextResponse.json({ 

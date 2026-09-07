@@ -23,10 +23,11 @@ export default function ARESSPage() {
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
               <Image
                 src="/Aress.png"
-                alt="ARESS Cover"
-                width={240}
-                height={320}
-                className="object-cover rounded-lg shadow-md border border-gray-200"
+                alt="Journal cover for Advanced Research in Economics and Social Sciences (ARESS)"
+                width={320}
+                height={453}
+                className="object-cover rounded-xl shadow-lg border border-gray-200 bg-white"
+                priority
               />
             </div>
 

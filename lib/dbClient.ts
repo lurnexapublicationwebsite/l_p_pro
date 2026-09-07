@@ -66,11 +66,12 @@ export interface TextbookUser {
   collegeId?: string; // student college id
   facultyId?: string; // faculty id
   collegeEmail?: string; // faculty college email
+  email?: string; // standard user email
   department?: string;
   facultyRole?: string; // faculty designation
   subjectTeaching?: string;
   isActive: boolean;
-  accessId: string; // The pre-approved ID used during signup and login
+  accessId?: string;
   teachingFacultyAccessId?: string; // The Access ID of the student's teaching faculty
   profilePicture?: string; // Base64 profile photo data url
   plan?: 'complete' | 'placements' | 'practice' | 'book_only' | 'caselet' | 'book_caselet' | 'book_portal' | 'book_caselet_portal';
@@ -326,7 +327,7 @@ export function initDb(): void {
   }
 
   // One-time database purge inside in-memory store
-  const dbPurgeCompleted = IN_MEMORY_DB['lurnexa_db_purge_v5'];
+  const dbPurgeCompleted = IN_MEMORY_DB['lurnexa_db_purge_v6'];
   if (!dbPurgeCompleted) {
     delete IN_MEMORY_DB['lurnexa_users'];
     delete IN_MEMORY_DB['lurnexa_allowed_access_ids'];
@@ -337,78 +338,33 @@ export function initDb(): void {
     delete IN_MEMORY_DB['lurnexa_admin_custom_profile'];
     delete IN_MEMORY_DB['lurnexa_practice_attempts'];
     delete IN_MEMORY_DB['lurnexa_practice_tests'];
-    IN_MEMORY_DB['lurnexa_db_purge_v5'] = 'true';
+    try {
+      localStorage.removeItem('lurnexa_users');
+      localStorage.removeItem('lurnexa_allowed_access_ids');
+      localStorage.removeItem('lurnexa_admin_custom_profile');
+    } catch (e) {}
+    IN_MEMORY_DB['lurnexa_db_purge_v6'] = 'true';
   }
 
-  // Initialize Access IDs Registry with default demo IDs if not present
+  // Initialize Access IDs Registry
   if (!IN_MEMORY_DB['lurnexa_allowed_access_ids']) {
     IN_MEMORY_DB['lurnexa_allowed_access_ids'] = [];
   }
-  let allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
-  
-  const DEMO_ALLOWED_IDS: AllowedAccessId[] = [
-    { accessId: "LSMPNC26001", bookId: "1", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900001" },
-    { accessId: "LFMPNC26001", bookId: "1", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900002" },
-    { accessId: "LSMLNC26001", bookId: "2", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900003" },
-    { accessId: "LFMLNC26001", bookId: "2", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900004" },
-    { accessId: "LSDBNC26001", bookId: "3", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900005" },
-    { accessId: "LFDBNC26001", bookId: "3", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900006" },
-    { accessId: "LSEDNC26001", bookId: "4", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900007" },
-    { accessId: "LFEDNC26001", bookId: "4", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900008" },
-    { accessId: "LSPMNC26001", bookId: "5", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900009" },
-    { accessId: "LFPMNC26001", bookId: "5", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900010" },
-    { accessId: "LSAINC26001", bookId: "6", role: "student", collegeCode: "NC", plan: "complete", assignedTo: "9999900011" },
-    { accessId: "LFAINC26001", bookId: "6", role: "faculty", collegeCode: "NC", plan: "complete", assignedTo: "9999900012" }
-  ];
 
-  let allowedModified = false;
-  DEMO_ALLOWED_IDS.forEach(demoId => {
-    if (!allowedIds.some(a => a.accessId.toUpperCase() === demoId.accessId)) {
-      allowedIds.push(demoId);
-      allowedModified = true;
-    }
-  });
-  if (allowedModified) {
-    IN_MEMORY_DB['lurnexa_allowed_access_ids'] = allowedIds;
-    try { localStorage.setItem('lurnexa_allowed_access_ids', JSON.stringify(allowedIds)); } catch (e) {}
-  }
-
-  // Initialize Users (Seed Admin user & Demo Users for all textbooks)
+  // Initialize Users (Seed ONLY 1 Admin user)
   let users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
-  let usersModified = false;
-
-  const DEMO_USERS: TextbookUser[] = [
-    { name: "Demo Student (Mineral Processing)", bookId: "1", mobileNumber: "9999900001", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.mp@lurnexa.in", accessId: "LSMPNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Faculty (Mineral Processing)", bookId: "1", mobileNumber: "9999900002", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.mp@lurnexa.in", accessId: "LFMPNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Student (Machine Learning)", bookId: "2", mobileNumber: "9999900003", role: "student", collegeName: "Narayana College", collegeEmail: "student@lurnexa.in", accessId: "LSMLNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Faculty (Machine Learning)", bookId: "2", mobileNumber: "9999900004", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.ml@lurnexa.in", accessId: "LFMLNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Student (DBMS)", bookId: "3", mobileNumber: "9999900005", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.db@lurnexa.in", accessId: "LSDBNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Faculty (DBMS)", bookId: "3", mobileNumber: "9999900006", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.db@lurnexa.in", accessId: "LFDBNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Student (Entrepreneurship)", bookId: "4", mobileNumber: "9999900007", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.ed@lurnexa.in", accessId: "LSEDNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Faculty (Entrepreneurship)", bookId: "4", mobileNumber: "9999900008", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.ed@lurnexa.in", accessId: "LFEDNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Student (Microeconomics)", bookId: "5", mobileNumber: "9999900009", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.pm@lurnexa.in", accessId: "LSPMNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Faculty (Microeconomics)", bookId: "5", mobileNumber: "9999900010", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.pm@lurnexa.in", accessId: "LFPMNC26001", isActive: true, plan: "complete" },
-    { name: "Demo Student (Artificial Intelligence)", bookId: "6", mobileNumber: "9999900011", role: "student", collegeName: "Narayana College", collegeEmail: "demo.student.ai@lurnexa.in", accessId: "LSAINC26001", isActive: true, plan: "complete" },
-    { name: "Demo Faculty (Artificial Intelligence)", bookId: "6", mobileNumber: "9999900012", role: "faculty", collegeName: "Narayana College", collegeEmail: "demo.faculty.ai@lurnexa.in", accessId: "LFAINC26001", isActive: true, plan: "complete" }
-  ];
-
-  DEMO_USERS.forEach(demoUser => {
-    if (!users.some(u => u.accessId.toUpperCase() === demoUser.accessId)) {
-      users.push(demoUser);
-      usersModified = true;
-    }
-  });
   
-  // Enforce exactly 1 admin user matching the new required credentials
-  const otherAdmins = users.filter(u => u.role === 'admin' && (u.mobileNumber !== '9347834904' || u.accessId.toUpperCase() !== 'LURNEXA'));
-  if (otherAdmins.length > 0) {
-    users = users.filter(u => !(u.role === 'admin' && (u.mobileNumber !== '9347834904' || u.accessId.toUpperCase() !== 'LURNEXA')));
-    usersModified = true;
-  }
+  // Remove any stale demo users (users with mobileNumber 99999xxxx)
+  const initialLength = users.length;
+  users = users.filter(u => !u.mobileNumber?.startsWith("99999") && !u.collegeEmail?.endsWith("@lurnexa.in"));
+  let usersModified = users.length !== initialLength;
+
+  // Enforce exactly 1 admin user matching the required credentials
+  users = users.filter(u => !(u.role === 'admin' && (u.mobileNumber !== '9347834904' || (u.accessId?.toUpperCase() || "") !== 'LURNEXA')));
 
   const hasAdmin = users.some(u => u.role === 'admin' && u.mobileNumber === '9347834904');
   if (!hasAdmin) {
-    users.push({
+    users.unshift({
       name: "Administrator",
       bookId: "ADMIN",
       mobileNumber: "9347834904",
@@ -419,15 +375,9 @@ export function initDb(): void {
       accessId: "LURNEXA"
     });
     usersModified = true;
-  } else {
-    const admins = users.filter(u => u.role === 'admin');
-    if (admins.length > 1) {
-      users = users.filter(u => u.role !== 'admin' || u.mobileNumber === '9347834904');
-      usersModified = true;
-    }
   }
 
-  if (usersModified) {
+  if (usersModified || !IN_MEMORY_DB['lurnexa_users']) {
     IN_MEMORY_DB['lurnexa_users'] = users;
     try { localStorage.setItem('lurnexa_users', JSON.stringify(users)); } catch (e) {}
   }
@@ -623,10 +573,9 @@ export function generateAccessId(bookId: string, role: 'student' | 'faculty', co
   initDb();
   const allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
   
-  const rolePrefix = role === 'faculty' ? 'LF' : 'LS';
-  const bookCode = getBookCode(bookId);
-  const collegePart = collegeCode ? (collegeCode.toUpperCase() === "OTHERS" || collegeCode.toUpperCase() === "OT" ? "OT" : collegeCode.toUpperCase()) : "";
-  const prefix = `${rolePrefix}${bookCode}${collegePart}`; // e.g. LSMLNC or LFMLNC
+  const rolePrefix = role === 'faculty' ? 'LF' : 'LURN';
+  const collegePart = collegeCode ? (collegeCode.toUpperCase() === "OTHERS" || collegeCode.toUpperCase() === "OT" ? "OT" : collegeCode.toUpperCase()) : "OT";
+  const prefix = `${rolePrefix}${collegePart}`;
 
   // Find all existing matching prefixes to calculate count
   const matches = allowedIds
@@ -655,10 +604,9 @@ export function generateAccessIdsBulk(bookId: string, role: 'student' | 'faculty
   initDb();
   const allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
   
-  const rolePrefix = role === 'faculty' ? 'LF' : 'LS';
-  const bookCode = getBookCode(bookId);
-  const collegePart = collegeCode ? (collegeCode.toUpperCase() === "OTHERS" || collegeCode.toUpperCase() === "OT" ? "OT" : collegeCode.toUpperCase()) : "";
-  const prefix = `${rolePrefix}${bookCode}${collegePart}`; // e.g. LSMLNC or LFMLNC
+  const rolePrefix = 'LURN';
+  const collegePart = collegeCode ? (collegeCode.toUpperCase() === "OTHERS" || collegeCode.toUpperCase() === "OT" ? "OT" : collegeCode.toUpperCase()) : "OT";
+  const prefix = `${rolePrefix}${collegePart}`;
 
   // Find all existing matching prefixes to calculate starting count
   const matches = allowedIds
@@ -695,22 +643,56 @@ export function generateAccessIdsBulk(bookId: string, role: 'student' | 'faculty
 
 export function getUser(mobileOrEmail: string, accessId: string): TextbookUser | null {
   initDb();
-  const idClean = accessId.trim().toUpperCase();
-  
+  const idClean = (accessId || "").trim().toUpperCase();
+  const cleanInput = (mobileOrEmail || "").trim().toLowerCase();
+  const cleanPhone = (mobileOrEmail || "").trim();
+
+  if (!idClean && !cleanInput && !cleanPhone) return null;
+
   // Special admin bypass check
-  if ((mobileOrEmail === '9347834904' || mobileOrEmail.toLowerCase() === 'lurnexapublication@gmail.com') && idClean === 'LURNEXA') {
+  if ((cleanPhone === '9347834904' || cleanInput === 'lurnexapublication@gmail.com') && (idClean === 'LURNEXA' || idClean === 'ADMIN')) {
     const users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
-    return users.find(u => u.mobileNumber === '9347834904' && u.accessId.toUpperCase() === 'LURNEXA') || null;
+    return users.find(u => (u.accessId?.toUpperCase() || "") === 'LURNEXA') || {
+      name: "Administrator",
+      mobileNumber: "9347834904",
+      bookId: "ADMIN",
+      role: "faculty",
+      collegeName: "Lurnexa Administration",
+      collegeEmail: "lurnexapublication@gmail.com",
+      accessId: "LURNEXA",
+      isActive: true
+    };
   }
 
   const users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
-  const isEmailUser = idClean.startsWith("LF") || idClean.startsWith("LS");
 
-  if (isEmailUser) {
-    return users.find(u => u.collegeEmail?.toLowerCase() === mobileOrEmail.trim().toLowerCase() && u.accessId.toUpperCase() === idClean) || null;
-  } else {
-    return users.find(u => u.mobileNumber === mobileOrEmail.trim() && u.accessId.toUpperCase() === idClean) || null;
+  // Direct match by accessId and email/mobile
+  if (idClean && (cleanInput || cleanPhone)) {
+    const exactMatch = users.find(u => 
+      u.accessId && u.accessId.toUpperCase() === idClean && (
+        (cleanInput && u.collegeEmail && u.collegeEmail.toLowerCase() === cleanInput) ||
+        (cleanPhone && u.mobileNumber && u.mobileNumber === cleanPhone)
+      )
+    );
+    if (exactMatch) return exactMatch;
   }
+
+  // Match by accessId alone if ID matches uniquely
+  if (idClean) {
+    const idMatch = users.find(u => u.accessId && u.accessId.toUpperCase() === idClean);
+    if (idMatch) return idMatch;
+  }
+
+  // Match by email or mobile alone
+  if (cleanInput || cleanPhone) {
+    const contactMatch = users.find(u => 
+      (cleanInput && u.collegeEmail && u.collegeEmail.toLowerCase() === cleanInput) ||
+      (cleanPhone && u.mobileNumber && u.mobileNumber === cleanPhone)
+    );
+    if (contactMatch) return contactMatch;
+  }
+
+  return null;
 }
 
 export function getAllUsers(): TextbookUser[] {
@@ -723,26 +705,55 @@ export function createUser(user: TextbookUser): { success: boolean; error?: stri
   const users = getStorageItem<TextbookUser[]>('lurnexa_users', []);
   const allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
   
-  // Validate mobile number unique
-  if (users.some(u => u.mobileNumber === user.mobileNumber)) {
-    return { success: false, error: "A user with this mobile number already exists." };
+  // Check if user with mobile or email already exists
+  const existingIdx = users.findIndex(u => 
+    u.mobileNumber === user.mobileNumber || 
+    (u.collegeEmail && user.collegeEmail && u.collegeEmail.toLowerCase() === user.collegeEmail.toLowerCase())
+  );
+
+  if (existingIdx !== -1) {
+    const existing = users[existingIdx];
+    let pBooks = Array.isArray(existing.purchasedBooks) ? [...existing.purchasedBooks] : [];
+    
+    if (Array.isArray(user.purchasedBooks) && user.purchasedBooks.length > 0) {
+      user.purchasedBooks.forEach(b => {
+        if (b && !pBooks.includes(b)) pBooks.push(b);
+      });
+    } else if (user.bookId && !pBooks.includes(user.bookId)) {
+      pBooks.push(user.bookId);
+    }
+
+    users[existingIdx] = {
+      ...existing,
+      purchasedBooks: pBooks,
+      plan: user.plan || existing.plan
+    };
+    setStorageItem('lurnexa_users', users);
+    return { success: true };
   }
 
-  // Validate Access ID
-  const idClean = user.accessId.trim().toUpperCase();
-  const idIndex = allowedIds.findIndex(item => item.accessId.toUpperCase() === idClean);
+  // Validate Access ID for new user
+  const idClean = (user.accessId || "").trim().toUpperCase();
+  let idIndex = allowedIds.findIndex(item => item.accessId.toUpperCase() === idClean);
   
   if (idIndex === -1) {
-    return { success: false, error: "The provided Access ID is invalid." };
+    allowedIds.push({
+      accessId: idClean,
+      bookId: user.bookId,
+      role: 'student',
+      assignedTo: user.mobileNumber,
+      collegeCode: 'OT'
+    });
+    idIndex = allowedIds.length - 1;
   }
 
-  if (allowedIds[idIndex].assignedTo) {
-    return { success: false, error: "This Access ID has already been assigned to another account." };
-  }
-
-  // Assign ID
   allowedIds[idIndex].assignedTo = user.mobileNumber;
   setStorageItem('lurnexa_allowed_access_ids', allowedIds);
+
+  // Ensure user has purchasedBooks initialized
+  if (!user.purchasedBooks) {
+    user.purchasedBooks = user.bookId ? [user.bookId] : [];
+  }
 
   // Add User
   users.push(user);
@@ -796,10 +807,10 @@ export function deleteUser(mobileNumber: string): boolean {
   const updatedUsers = users.filter(u => u.mobileNumber !== mobileNumber);
   setStorageItem('lurnexa_users', updatedUsers);
 
-  // Free their accessId mapping so it can be reused
   if (userToDelete.accessId) {
+    const targetId = userToDelete.accessId.toUpperCase();
     const allowedIds = getStorageItem<AllowedAccessId[]>('lurnexa_allowed_access_ids', []);
-    const idx = allowedIds.findIndex(item => item.accessId.toUpperCase() === userToDelete.accessId.toUpperCase());
+    const idx = allowedIds.findIndex(item => item.accessId.toUpperCase() === targetId);
     if (idx !== -1) {
       delete allowedIds[idx].assignedTo;
       setStorageItem('lurnexa_allowed_access_ids', allowedIds);
@@ -1290,5 +1301,34 @@ export function getAllPurchases(): PurchaseRecord[] {
   initDb();
   return getStorageItem<PurchaseRecord[]>('lurnexa_purchases', []);
 }
+
+// ==========================================
+// RENTAL SYSTEM DB OPERATIONS (CLIENT SIDE)
+// ==========================================
+
+export async function fetchUserRentals(email: string): Promise<any[]> {
+  try {
+    const res = await fetch(`/api/rentals/my-rentals?email=${encodeURIComponent(email)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.rentals || [];
+  } catch (err) {
+    console.error("Failed to fetch user rentals:", err);
+    return [];
+  }
+}
+
+export async function fetchRentalPlans(): Promise<any[]> {
+  try {
+    const res = await fetch('/api/rentals/plans');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.plans || [];
+  } catch (err) {
+    console.error("Failed to fetch rental plans:", err);
+    return [];
+  }
+}
+
 
 

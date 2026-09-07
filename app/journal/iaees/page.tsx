@@ -3,6 +3,7 @@ import React from "react";
 import NavigationPage from "@/components/Home/Navigation_SubJournals_IAEES";
 import FooterSection from "@/components/Home/FooterSection";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function IAEESPage() {
   return (
@@ -22,10 +23,13 @@ export default function IAEESPage() {
           <div className="flex flex-col lg:flex-row gap-10 items-start">
             {/* Left Image */}
             <div className="flex-[0.6] flex justify-center lg:mt-[52px]">
-              <img
+              <Image
                 src="/Iaees.png"
-                alt="IAEES Cover"
-                className="w-[240px] h-[320px] object-cover rounded-lg shadow-md border border-gray-200"
+                alt="Journal cover for the Institute of Advanced Electrical & Electronics Studies (IAEES)"
+                width={320}
+                height={453}
+                className="object-cover rounded-xl shadow-lg border border-gray-200 bg-white"
+                priority
               />
             </div>
 

@@ -158,7 +158,9 @@ function readJSONTable(name: string): any[] {
   }
   try {
     const data = fs.readFileSync(p, "utf-8");
-    return JSON.parse(data || "[]");
+    const parsed = JSON.parse(data || "[]");
+    if (!parsed) return [];
+    return Array.isArray(parsed) ? parsed : [parsed];
   } catch (err) {
     return [];
   }
@@ -279,15 +281,30 @@ export const pool = {
         return { rows: purchases };
       }
 
+      // SELECT ... WHERE LOWER(user_identifier) = $1 OR LOWER(customer_email) = $1 OR customer_phone = $1
+      // — used by /api/textbooks/user/orders (Order History). The LOWER() wrapping means this
+      // must be matched before the plain "USER_IDENTIFIER = $1" branch below, which won't see it.
+      if (cleanSql.includes("FROM TEXTBOOKS_PURCHASES") && cleanSql.includes("CUSTOMER_EMAIL") && cleanSql.includes("CUSTOMER_PHONE")) {
+        const needle = String(params[0] || "").toLowerCase();
+        const filtered = purchases.filter((p: any) =>
+          (p.user_identifier && p.user_identifier.toLowerCase() === needle) ||
+          (p.customer_email && p.customer_email.toLowerCase() === needle) ||
+          (p.customer_phone && p.customer_phone === params[0])
+        );
+        filtered.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return { rows: filtered };
+      }
+
       // SELECT FROM textbooks_purchases BY user_identifier
-      if (cleanSql.includes("SELECT * FROM TEXTBOOKS_PURCHASES") && cleanSql.includes("USER_IDENTIFIER = $1")) {
+      if (cleanSql.includes("FROM TEXTBOOKS_PURCHASES") && cleanSql.includes("USER_IDENTIFIER = $1")) {
         const [user_identifier] = params;
         const filtered = purchases.filter(p => p.user_identifier === user_identifier);
         return { rows: filtered };
       }
 
-      // SELECT FROM textbooks_purchases BY order_id
-      if (cleanSql.includes("SELECT * FROM TEXTBOOKS_PURCHASES") && cleanSql.includes("ORDER_ID = $1")) {
+      // SELECT FROM textbooks_purchases BY order_id (column list varies — e.g. the "already
+      // paid?" check only selects status/order_status — so match on FROM+WHERE, not SELECT *)
+      if (cleanSql.includes("FROM TEXTBOOKS_PURCHASES") && cleanSql.includes("ORDER_ID = $1")) {
         const [order_id] = params;
         const filtered = purchases.filter(p => p.order_id === order_id);
         return { rows: filtered };
@@ -802,27 +819,102 @@ export const pool = {
     }
 
     if (cleanSql.includes("TEXTBOOKS_USERS")) {
+      // Handle ALTER TABLE silently (used by login route for migration)
+      if (cleanSql.startsWith("ALTER TABLE")) {
+        return { rows: [] };
+      }
       const list = readJSONTable("textbooks_users");
       if (cleanSql.startsWith("SELECT")) {
+        if (cleanSql.includes("WHERE") && params.length > 0) {
+          const paramVal = String(params[0] || "").trim().toLowerCase();
+          if (paramVal) {
+            const filtered = list.filter((u: any) =>
+              (u.email && u.email.toLowerCase() === paramVal) ||
+              (u.college_email && u.college_email.toLowerCase() === paramVal) ||
+              (u.mobile_number && u.mobile_number.toLowerCase() === paramVal) ||
+              (u.access_id && u.access_id.toLowerCase() === paramVal) ||
+              (u.id && String(u.id).toLowerCase() === paramVal)
+            );
+            return { rows: filtered };
+          }
+        }
         return { rows: list };
       }
       if (cleanSql.startsWith("INSERT")) {
-        const [
-          mobile_number, name, book_id, role, college_name, college_id, faculty_id,
-          college_email, department, faculty_role, subject_teaching, is_active,
-          access_id, teaching_faculty_access_id, profile_picture, plan, purchased_books
-        ] = params;
-        const record = {
-          mobile_number, name, book_id, role, college_name, college_id, faculty_id,
-          college_email, department, faculty_role, subject_teaching, is_active,
-          access_id, teaching_faculty_access_id, profile_picture, plan,
-          purchased_books: typeof purchased_books === "string" ? JSON.parse(purchased_books) : purchased_books
-        };
-        const idx = list.findIndex((x: any) => x.mobile_number === mobile_number);
-        if (idx !== -1) list[idx] = record;
-        else list.push(record);
+        const match = cleanSql.match(/INSERT\s+INTO\s+TEXTBOOKS_USERS\s*\(([^)]+)\)/i);
+        const record: Record<string, any> = {};
+        if (match) {
+          const colNames = match[1].split(",").map(c => c.trim().toLowerCase());
+          colNames.forEach((col, idx) => {
+            let val = params[idx];
+            if (col === "purchased_books" && typeof val === "string") {
+              try { val = JSON.parse(val); } catch (e) {}
+            }
+            record[col] = val;
+          });
+        } else {
+          const [
+            mobile_number, name, book_id, role, college_name, college_id, faculty_id,
+            college_email, department, faculty_role, subject_teaching, is_active,
+            access_id, teaching_faculty_access_id, profile_picture, plan, purchased_books
+          ] = params;
+          Object.assign(record, {
+            mobile_number, name, book_id, role, college_name, college_id, faculty_id,
+            college_email, department, faculty_role, subject_teaching, is_active,
+            access_id, teaching_faculty_access_id, profile_picture, plan,
+            purchased_books: typeof purchased_books === "string" ? JSON.parse(purchased_books) : purchased_books
+          });
+        }
+
+        const userEmail = (record.email || record.college_email || record.mobile_number || "").toLowerCase();
+        const idx = list.findIndex((x: any) => {
+          const xEmail = (x.email || x.college_email || x.mobile_number || "").toLowerCase();
+          return (userEmail && xEmail === userEmail) || (record.access_id && x.access_id === record.access_id);
+        });
+
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...record };
+        } else {
+          list.push(record);
+        }
         writeJSONTable("textbooks_users", list);
         return { rows: [record] };
+      }
+      if (cleanSql.startsWith("UPDATE")) {
+        const setMatch = cleanSql.match(/SET\s+(.*?)\s+WHERE/i);
+        const updatedList = list.map((u: any) => {
+          const isMatch = params.some((p: any) => {
+            if (p === undefined || p === null) return false;
+            const strP = String(p).trim().toLowerCase();
+            if (!strP) return false;
+            const uEmail = (u.email || "").toLowerCase();
+            const uCollegeEmail = (u.college_email || "").toLowerCase();
+            const uMobile = (u.mobile_number || "").toLowerCase();
+            const uId = String(u.id || "").toLowerCase();
+            const uAccessId = (u.access_id || "").toLowerCase();
+            return strP === uEmail || strP === uCollegeEmail || strP === uMobile || strP === uId || strP === uAccessId;
+          });
+
+          if (isMatch && setMatch) {
+            const setPart = setMatch[1];
+            const assignments = setPart.split(",");
+            assignments.forEach((assign, idx) => {
+              const eqIdx = assign.indexOf("=");
+              if (eqIdx !== -1) {
+                const col = assign.substring(0, eqIdx).trim().toLowerCase();
+                let val = params[idx];
+                if (col === "purchased_books" && typeof val === "string") {
+                  try { val = JSON.parse(val); } catch (e) {}
+                }
+                u[col] = val;
+              }
+            });
+          }
+          return u;
+        });
+
+        writeJSONTable("textbooks_users", updatedList);
+        return { rows: [] };
       }
       if (cleanSql.startsWith("DELETE")) {
         if (cleanSql.includes("WHERE MOBILE_NUMBER = $1")) {
@@ -1154,6 +1246,343 @@ export const pool = {
       }
     }
 
+    // ─── BOOK RENTAL PLANS FALLBACK ───
+    if (cleanSql.includes("BOOK_RENTAL_PLANS")) {
+      const plans = readJSONTable("book_rental_plans");
+      if (plans.length === 0) {
+        // Auto-seed default plans
+        const defaults = [
+          { id: 1, plan_code: '1_month', display_name: '1 Month', duration_days: 30, price: 59, currency: 'INR', is_active: true, sort_order: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          { id: 2, plan_code: '3_months', display_name: '3 Months', duration_days: 90, price: 99, currency: 'INR', is_active: true, sort_order: 2, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          { id: 3, plan_code: '6_months', display_name: '6 Months', duration_days: 180, price: 149, currency: 'INR', is_active: true, sort_order: 3, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+        ];
+        writeJSONTable("book_rental_plans", defaults);
+      }
+      const currentPlans = readJSONTable("book_rental_plans");
+
+      if (cleanSql.includes("SELECT")) {
+        if (cleanSql.includes("IS_ACTIVE = TRUE") || cleanSql.includes("IS_ACTIVE")) {
+          return { rows: currentPlans.filter((p: any) => p.is_active).sort((a: any, b: any) => a.sort_order - b.sort_order) };
+        }
+        if (cleanSql.includes("PLAN_CODE = $1")) {
+          return { rows: currentPlans.filter((p: any) => p.plan_code === params[0]) };
+        }
+        return { rows: currentPlans.sort((a: any, b: any) => a.sort_order - b.sort_order) };
+      }
+      if (cleanSql.startsWith("INSERT")) {
+        if (!currentPlans.some((p: any) => p.plan_code === params[0])) {
+          const newPlan = {
+            id: currentPlans.length > 0 ? Math.max(...currentPlans.map((p: any) => p.id)) + 1 : 1,
+            plan_code: params[0], display_name: params[1], duration_days: params[2],
+            price: params[3], sort_order: params[4] || 0, currency: 'INR',
+            is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+          };
+          currentPlans.push(newPlan);
+          writeJSONTable("book_rental_plans", currentPlans);
+          return { rows: [newPlan] };
+        }
+        return { rows: [] };
+      }
+      return { rows: [] };
+    }
+
+    // ─── BOOK RENTALS FALLBACK ───
+    if (cleanSql.includes("BOOK_RENTALS") && !cleanSql.includes("BOOK_RENTAL_PLANS")) {
+      const rentals = readJSONTable("book_rentals");
+
+      // INSERT — column order must mirror the real schema exactly:
+      // rental_id, user_email, user_phone, user_name, book_id, plan_code, status,
+      // amount_paid, gst_amount, total_amount, cashfree_order_id, payment_status,
+      // is_renewal, parent_rental_id, renewal_count, ip_address, user_agent (17 cols).
+      // started_at/expires_at are NOT set at insert time — they're written later by
+      // the "activate" UPDATE once payment is verified.
+      if (cleanSql.startsWith("INSERT INTO BOOK_RENTALS")) {
+        const newRental: any = {
+          id: rentals.length > 0 ? Math.max(...rentals.map((r: any) => r.id || 0)) + 1 : 1,
+          rental_id: params[0], user_email: params[1], user_phone: params[2] || '',
+          user_name: params[3] || '', book_id: params[4], plan_code: params[5],
+          status: params[6] || 'pending', started_at: null, expires_at: null,
+          amount_paid: Number(params[7] || 0), gst_amount: Number(params[8] || 0),
+          total_amount: Number(params[9] || 0), cashfree_order_id: params[10] || '',
+          payment_status: params[11] || 'pending', is_renewal: Boolean(params[12]),
+          parent_rental_id: params[13] || null, renewal_count: Number(params[14] || 0),
+          ip_address: params[15] || '', user_agent: params[16] || '',
+          expiry_7d_sent: false, expiry_1d_sent: false, expiry_sent: false,
+          cashfree_payment_id: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+        };
+        rentals.push(newRental);
+        writeJSONTable("book_rentals", rentals);
+        return { rows: [newRental] };
+      }
+
+      // SELECT by user_email OR user_phone OR rental_id (case-insensitive) — used by
+      // /api/rentals/my-rentals to list everything a customer has rented.
+      if (cleanSql.includes("SELECT") && cleanSql.includes("LOWER(USER_EMAIL)") && cleanSql.includes("USER_PHONE = $1") && cleanSql.includes("RENTAL_ID)")) {
+        const needle = String(params[0] || "").toLowerCase();
+        const filtered = rentals.filter((r: any) =>
+          r.user_email?.toLowerCase() === needle ||
+          r.user_phone === params[0] ||
+          r.rental_id?.toLowerCase() === needle
+        );
+        filtered.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return { rows: filtered };
+      }
+      // SELECT by user_email OR user_phone (case-insensitive email) — used by
+      // /api/textbooks/user/orders to fold rentals into unified order history.
+      if (cleanSql.includes("SELECT") && cleanSql.includes("LOWER(USER_EMAIL)") && cleanSql.includes("USER_PHONE = $1") && !cleanSql.includes("RENTAL_ID)")) {
+        const needle = String(params[0] || "").toLowerCase();
+        const filtered = rentals.filter((r: any) => r.user_email?.toLowerCase() === needle || r.user_phone === params[0]);
+        filtered.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return { rows: filtered };
+      }
+      // SELECT by rental_id (with or without an additional email ownership check)
+      if (cleanSql.includes("SELECT") && cleanSql.includes("RENTAL_ID = $1")) {
+        let filtered = rentals.filter((r: any) => r.rental_id === params[0]);
+        if (cleanSql.includes("LOWER(USER_EMAIL)") && params[1] !== undefined) {
+          const needle = String(params[1] || "").toLowerCase();
+          filtered = filtered.filter((r: any) => r.user_email?.toLowerCase() === needle);
+        }
+        return { rows: filtered };
+      }
+      // SELECT by user_email
+      if (cleanSql.includes("SELECT") && cleanSql.includes("USER_EMAIL = $1") && !cleanSql.includes("RENTAL_ID")) {
+        const filtered = rentals.filter((r: any) => r.user_email?.toLowerCase() === params[0]?.toLowerCase());
+        return { rows: filtered };
+      }
+      // SELECT by user_email + book_id + status active
+      if (cleanSql.includes("SELECT") && cleanSql.includes("USER_EMAIL = $1") && cleanSql.includes("BOOK_ID = $2") && cleanSql.includes("STATUS = $3")) {
+        const filtered = rentals.filter((r: any) =>
+          r.user_email?.toLowerCase() === params[0]?.toLowerCase() &&
+          r.book_id === params[1] &&
+          r.status === params[2]
+        );
+        return { rows: filtered };
+      }
+      // SELECT DISTINCT book_id ... WHERE LOWER(user_email) = $1 AND status = 'active'
+      // — used by login/signup/me to report which books this one account has rented.
+      // Must be checked before the bare status-only branch below, or every user's
+      // rentedBooks would leak every other user's active rentals.
+      if (cleanSql.includes("SELECT") && cleanSql.includes("LOWER(USER_EMAIL)") && cleanSql.includes("STATUS = 'ACTIVE'")) {
+        const needle = String(params[0] || "").toLowerCase();
+        const active = rentals.filter((r: any) => r.user_email?.toLowerCase() === needle && r.status === 'active');
+        return { rows: active };
+      }
+      // SELECT active rentals — no user filter (expiry cron sweep, "expiring soon" listings)
+      if (cleanSql.includes("SELECT") && cleanSql.includes("STATUS = 'ACTIVE'")) {
+        const active = rentals.filter((r: any) => r.status === 'active');
+        return { rows: active };
+      }
+      // SELECT all
+      if (cleanSql.includes("SELECT * FROM BOOK_RENTALS") && !cleanSql.includes("WHERE")) {
+        return { rows: rentals };
+      }
+      // SELECT by cashfree_order_id
+      if (cleanSql.includes("SELECT") && cleanSql.includes("CASHFREE_ORDER_ID = $1")) {
+        return { rows: rentals.filter((r: any) => r.cashfree_order_id === params[0]) };
+      }
+
+      // UPDATE status = 'expired' (status is a literal in the SQL, not a bound param —
+      // the only param is the rental_id to match on)
+      if (cleanSql.includes("SET STATUS = 'EXPIRED'")) {
+        const rentalId = params[0];
+        const idx = rentals.findIndex((r: any) => r.rental_id === rentalId);
+        if (idx !== -1) {
+          rentals[idx].status = 'expired';
+          rentals[idx].updated_at = new Date().toISOString();
+          writeJSONTable("book_rentals", rentals);
+          return { rows: [rentals[idx]] };
+        }
+        return { rows: [] };
+      }
+
+      // UPDATE status (status passed as a bound param — rental activation)
+      if (cleanSql.includes("UPDATE BOOK_RENTALS SET STATUS")) {
+        const rentalId = params[params.length - 1];
+        const idx = rentals.findIndex((r: any) => r.rental_id === rentalId);
+        if (idx !== -1) {
+          rentals[idx].status = params[0];
+          if (params[1]) rentals[idx].started_at = params[1];
+          if (params[2]) rentals[idx].expires_at = params[2];
+          if (params[3]) rentals[idx].payment_status = params[3];
+          if (params[4] !== undefined) rentals[idx].cashfree_payment_id = params[4];
+          rentals[idx].updated_at = new Date().toISOString();
+          writeJSONTable("book_rentals", rentals);
+          return { rows: [rentals[idx]] };
+        }
+        return { rows: [] };
+      }
+
+      // UPDATE notification flags
+      if (cleanSql.includes("UPDATE BOOK_RENTALS SET EXPIRY")) {
+        const rentalId = params[params.length - 1];
+        const idx = rentals.findIndex((r: any) => r.rental_id === rentalId);
+        if (idx !== -1) {
+          if (cleanSql.includes("EXPIRY_7D_SENT")) rentals[idx].expiry_7d_sent = true;
+          if (cleanSql.includes("EXPIRY_1D_SENT")) rentals[idx].expiry_1d_sent = true;
+          if (cleanSql.includes("EXPIRY_SENT")) rentals[idx].expiry_sent = true;
+          rentals[idx].updated_at = new Date().toISOString();
+          writeJSONTable("book_rentals", rentals);
+          return { rows: [rentals[idx]] };
+        }
+        return { rows: [] };
+      }
+
+      // Generic UPDATE
+      if (cleanSql.startsWith("UPDATE BOOK_RENTALS")) {
+        const rentalId = params[params.length - 1];
+        const idx = rentals.findIndex((r: any) => r.rental_id === rentalId);
+        if (idx !== -1) {
+          rentals[idx].updated_at = new Date().toISOString();
+          writeJSONTable("book_rentals", rentals);
+          return { rows: [rentals[idx]] };
+        }
+        return { rows: [] };
+      }
+
+      return { rows: [] };
+    }
+
+    // ─── RENTAL SESSIONS FALLBACK ───
+    if (cleanSql.includes("RENTAL_SESSIONS")) {
+      const sessions = readJSONTable("rental_sessions");
+
+      if (cleanSql.startsWith("INSERT INTO RENTAL_SESSIONS")) {
+        const newSession: any = {
+          id: sessions.length > 0 ? Math.max(...sessions.map((s: any) => s.id || 0)) + 1 : 1,
+          rental_id: params[0], session_token: params[1], user_email: params[2],
+          ip_address: params[3] || '', user_agent: params[4] || '',
+          last_active_at: new Date().toISOString(), expires_at: params[5],
+          created_at: new Date().toISOString()
+        };
+        sessions.push(newSession);
+        writeJSONTable("rental_sessions", sessions);
+        return { rows: [newSession] };
+      }
+      if (cleanSql.includes("SELECT") && cleanSql.includes("SESSION_TOKEN = $1")) {
+        return { rows: sessions.filter((s: any) => s.session_token === params[0]) };
+      }
+      if (cleanSql.includes("SELECT") && cleanSql.includes("RENTAL_ID = $1")) {
+        return { rows: sessions.filter((s: any) => s.rental_id === params[0]) };
+      }
+      if (cleanSql.includes("DELETE") && cleanSql.includes("RENTAL_ID = $1")) {
+        const updated = sessions.filter((s: any) => s.rental_id !== params[0]);
+        writeJSONTable("rental_sessions", updated);
+        return { rows: [] };
+      }
+      if (cleanSql.includes("DELETE") && cleanSql.includes("SESSION_TOKEN = $1")) {
+        const updated = sessions.filter((s: any) => s.session_token !== params[0]);
+        writeJSONTable("rental_sessions", updated);
+        return { rows: [] };
+      }
+      if (cleanSql.includes("UPDATE") && cleanSql.includes("LAST_ACTIVE_AT")) {
+        const token = params[params.length - 1];
+        const idx = sessions.findIndex((s: any) => s.session_token === token);
+        if (idx !== -1) {
+          sessions[idx].last_active_at = new Date().toISOString();
+          writeJSONTable("rental_sessions", sessions);
+          return { rows: [sessions[idx]] };
+        }
+        return { rows: [] };
+      }
+      return { rows: [] };
+    }
+
+    // ─── TEXTBOOKS ADDRESSES FALLBACK ───
+    if (cleanSql.includes("TEXTBOOKS_ADDRESSES")) {
+      const addresses = readJSONTable("textbooks_addresses");
+
+      if (cleanSql.startsWith("INSERT INTO TEXTBOOKS_ADDRESSES")) {
+        const isDefault = Boolean(params[10]);
+        if (isDefault) {
+          addresses.forEach((a: any) => {
+            if (a.user_identifier?.toLowerCase() === String(params[0]).toLowerCase()) {
+              a.is_default = false;
+            }
+          });
+        }
+        const newAddress: any = {
+          id: addresses.length > 0 ? Math.max(...addresses.map((a: any) => Number(a.id) || 0)) + 1 : 1,
+          user_identifier: params[0],
+          full_name: params[1],
+          phone_number: params[2],
+          address_line1: params[3],
+          address_line2: params[4] || '',
+          city: params[5],
+          state: params[6],
+          pincode: params[7],
+          country: params[8] || 'India',
+          address_type: params[9] || 'Home',
+          is_default: isDefault,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        addresses.push(newAddress);
+        writeJSONTable("textbooks_addresses", addresses);
+        return { rows: [newAddress] };
+      }
+
+      if (cleanSql.includes("SELECT") && cleanSql.includes("USER_IDENTIFIER")) {
+        const user = String(params[0]).toLowerCase();
+        const filtered = addresses.filter((a: any) => a.user_identifier?.toLowerCase() === user);
+        filtered.sort((a: any, b: any) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0));
+        return { rows: filtered };
+      }
+
+      if (cleanSql.includes("UPDATE TEXTBOOKS_ADDRESSES") && cleanSql.includes("SET IS_DEFAULT = FALSE")) {
+        const user = String(params[0]).toLowerCase();
+        addresses.forEach((a: any) => {
+          if (a.user_identifier?.toLowerCase() === user) {
+            a.is_default = false;
+          }
+        });
+        writeJSONTable("textbooks_addresses", addresses);
+        return { rows: [] };
+      }
+
+      if (cleanSql.includes("UPDATE TEXTBOOKS_ADDRESSES") && cleanSql.includes("SET IS_DEFAULT = TRUE")) {
+        const id = Number(params[0]);
+        const user = String(params[1]).toLowerCase();
+        addresses.forEach((a: any) => {
+          if (a.user_identifier?.toLowerCase() === user) {
+            a.is_default = (a.id === id);
+          }
+        });
+        writeJSONTable("textbooks_addresses", addresses);
+        return { rows: [] };
+      }
+
+      if (cleanSql.includes("UPDATE TEXTBOOKS_ADDRESSES")) {
+        const id = Number(params[params.length - 1]);
+        const idx = addresses.findIndex((a: any) => a.id === id);
+        if (idx !== -1) {
+          addresses[idx].full_name = params[0];
+          addresses[idx].phone_number = params[1];
+          addresses[idx].address_line1 = params[2];
+          addresses[idx].address_line2 = params[3] || '';
+          addresses[idx].city = params[4];
+          addresses[idx].state = params[5];
+          addresses[idx].pincode = params[6];
+          addresses[idx].country = params[7] || 'India';
+          addresses[idx].address_type = params[8] || 'Home';
+          if (params[9] !== undefined) addresses[idx].is_default = Boolean(params[9]);
+          addresses[idx].updated_at = new Date().toISOString();
+          writeJSONTable("textbooks_addresses", addresses);
+          return { rows: [addresses[idx]] };
+        }
+        return { rows: [] };
+      }
+
+      if (cleanSql.includes("DELETE FROM TEXTBOOKS_ADDRESSES")) {
+        const id = Number(params[0]);
+        const user = String(params[1]).toLowerCase();
+        const updated = addresses.filter((a: any) => !(a.id === id && a.user_identifier?.toLowerCase() === user));
+        writeJSONTable("textbooks_addresses", updated);
+        return { rows: [] };
+      }
+
+      return { rows: addresses };
+    }
+
     // Catch-all empty rows
     return { rows: [] };
   }
@@ -1211,6 +1640,107 @@ export async function initDbTables() {
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS purchase_format VARCHAR(50) DEFAULT '';");
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS purchase_plan VARCHAR(50) DEFAULT '';");
     await pool.query("ALTER TABLE textbooks_purchases ADD COLUMN IF NOT EXISTS access_id VARCHAR(100) DEFAULT '';");
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS textbooks_addresses (
+          id SERIAL PRIMARY KEY,
+          user_identifier VARCHAR(100) NOT NULL,
+          full_name VARCHAR(255) NOT NULL,
+          phone_number VARCHAR(50) NOT NULL,
+          address_line1 TEXT NOT NULL,
+          address_line2 TEXT DEFAULT '',
+          city VARCHAR(100) NOT NULL,
+          state VARCHAR(100) NOT NULL,
+          pincode VARCHAR(20) NOT NULL,
+          country VARCHAR(100) DEFAULT 'India',
+          address_type VARCHAR(20) DEFAULT 'Home',
+          is_default BOOLEAN DEFAULT false,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // ─── Rental System Tables ───────────────────────────────
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS book_rental_plans (
+          id SERIAL PRIMARY KEY,
+          plan_code VARCHAR(20) UNIQUE NOT NULL,
+          display_name VARCHAR(50) NOT NULL,
+          duration_days INTEGER NOT NULL,
+          price DECIMAL(10, 2) NOT NULL,
+          currency VARCHAR(3) DEFAULT 'INR',
+          is_active BOOLEAN DEFAULT TRUE,
+          sort_order INTEGER DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Seed default rental plans (upsert to avoid duplicates)
+    const rentalPlansSeed = [
+      { code: '1_month',  name: '1 Month',  days: 30,  price: 59,  sort: 1 },
+      { code: '3_months', name: '3 Months', days: 90,  price: 99,  sort: 2 },
+      { code: '6_months', name: '6 Months', days: 180, price: 149, sort: 3 }
+    ];
+    for (const plan of rentalPlansSeed) {
+      await pool.query(
+        `INSERT INTO book_rental_plans (plan_code, display_name, duration_days, price, sort_order)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (plan_code) DO NOTHING`,
+        [plan.code, plan.name, plan.days, plan.price, plan.sort]
+      );
+    }
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS book_rentals (
+          id SERIAL PRIMARY KEY,
+          rental_id VARCHAR(50) UNIQUE NOT NULL,
+          user_email VARCHAR(255) NOT NULL,
+          user_phone VARCHAR(20),
+          user_name VARCHAR(255),
+          book_id VARCHAR(20) NOT NULL,
+          plan_code VARCHAR(20) NOT NULL,
+          status VARCHAR(20) DEFAULT 'pending',
+          started_at TIMESTAMP WITH TIME ZONE,
+          expires_at TIMESTAMP WITH TIME ZONE,
+          amount_paid DECIMAL(10, 2) NOT NULL,
+          gst_amount DECIMAL(10, 2) DEFAULT 0,
+          total_amount DECIMAL(10, 2) NOT NULL,
+          cashfree_order_id VARCHAR(100),
+          cashfree_payment_id VARCHAR(100),
+          payment_status VARCHAR(20) DEFAULT 'pending',
+          is_renewal BOOLEAN DEFAULT FALSE,
+          parent_rental_id VARCHAR(50),
+          renewal_count INTEGER DEFAULT 0,
+          expiry_7d_sent BOOLEAN DEFAULT FALSE,
+          expiry_1d_sent BOOLEAN DEFAULT FALSE,
+          expiry_sent BOOLEAN DEFAULT FALSE,
+          ip_address VARCHAR(50),
+          user_agent TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create indexes for fast rental queries
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_rentals_user_email ON book_rentals(user_email);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_rentals_status ON book_rentals(status);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_rentals_expires ON book_rentals(expires_at);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_rentals_book ON book_rentals(book_id);`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS rental_sessions (
+          id SERIAL PRIMARY KEY,
+          rental_id VARCHAR(50) NOT NULL,
+          session_token VARCHAR(255) UNIQUE NOT NULL,
+          user_email VARCHAR(255) NOT NULL,
+          ip_address VARCHAR(50),
+          user_agent TEXT,
+          last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
     // Book Quotation Tables
     await pool.query(`

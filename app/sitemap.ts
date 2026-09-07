@@ -20,6 +20,10 @@ const EXCLUDED_ROUTES = new Set([
   '/textbooks/portal/login',
   '/textbooks/portal/signup',
   '/textbooks/store/checkout',
+  // Login gate for the installable reading app — same reasoning as portal/login above.
+  '/textbooks/app',
+  // Dead stub that immediately redirects to portal/login — nothing to index here.
+  '/textbooks/library',
   '/feedback-form',
   '/quotation/admin',
   '/quotation/admin/books',
@@ -365,22 +369,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     });
   });
 
-  // ── 16. Subject-specific textbook landing pages ──
-  const subjectPages = [
-    { route: '/machine-learning', image: '/portal_coverpages/ml.jpeg' },
-    { route: '/dbms', image: '/portal_coverpages/dbms.jpeg' },
-    { route: '/artificial-intelligence', image: '/portal_coverpages/ai.jpeg' },
-  ];
-
-  subjectPages.forEach(({ route, image }) => {
-    sitemapMap.set(route, {
-      url: `${baseUrl}${route}`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-      images: [`${baseUrl}${image}`, ...defaultSiteImages],
-    });
-  });
+  // Note: subject-specific short-alias landing pages (/machine-learning, /dbms,
+  // /artificial-intelligence, /data-streaming, /mineral-policy, /microeconomics,
+  // /python-programming, /nosql-mongodb) are already covered above in section 7's
+  // rootAliasRoute loop — that runs off the same book list these pages render, so it
+  // can't silently drift out of sync the way a second hardcoded list here could
+  // (previously only 3 of the 8 books were listed here, and the other 5 had no page.tsx
+  // behind their sitemap entry at all — a real 404-in-sitemap bug, now fixed by adding
+  // the missing app/{shortSlug}/page.tsx files).
 
   // ── 17. Company page ──
   sitemapMap.set('/company', {

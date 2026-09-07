@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { pool } from "./dbPool";
 
 export const getTransporter = () => {
   const host = process.env.SMTP_HOST;
@@ -113,6 +114,23 @@ export async function sendOrderConfirmationEmails(order: {
     return;
   }
 
+  // Ensure we fetch the user's true Access ID from DB if available
+  let effectiveAccessId = order.access_id;
+  if ((!effectiveAccessId || effectiveAccessId === "LURNEXA") && (order.customer_email || order.customer_phone)) {
+    try {
+      const userRes = await pool.query(
+        "SELECT access_id FROM textbooks_users WHERE (college_email IS NOT NULL AND LOWER(college_email) = $1) OR mobile_number = $2",
+        [order.customer_email ? order.customer_email.trim().toLowerCase() : "", order.customer_phone ? order.customer_phone.trim() : ""]
+      );
+      if (userRes.rows.length > 0 && userRes.rows[0].access_id) {
+        effectiveAccessId = userRes.rows[0].access_id;
+      }
+    } catch (e) {
+      console.error("Error looking up access ID in mailService:", e);
+    }
+  }
+  order.access_id = effectiveAccessId;
+
   const transporter = getTextbookTransporter();
   const from = process.env.TEXTBOOK_SMTP_FROM || process.env.TEXTBOOK_SMTP_USER || process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@lurnexa.in";
 
@@ -131,6 +149,7 @@ export async function sendOrderConfirmationEmails(order: {
   const bookTitle = bookTitles[order.book_id] || `Textbook ID: ${order.book_id}`;
 
     const isUpgrade = order.purchase_format === "upgrade";
+    const isRental = order.purchase_format === "rental" || (order.shipping_address && order.shipping_address.toLowerCase().includes("rental"));
     const isSoftCopy = order.purchase_format === "soft" || order.shipping_address === "Soft Copy Access";
 
   let customerHtml = "";
@@ -190,6 +209,54 @@ export async function sendOrderConfirmationEmails(order: {
         </p>
       </div>
     `;
+  } else if (isRental) {
+    customerHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #cbd5e1; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: #4F46E5; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Digital eBook Rental Activated!</h2>
+          <div style="height: 4px; width: 60px; background-color: #4F46E5; margin: 0 auto; border-radius: 2px;"></div>
+        </div>
+        <p style="font-size: 15px; color: #334155; line-height: 1.6;">Dear ${order.customer_name || 'Customer'},</p>
+        <p style="font-size: 15px; color: #334155; line-height: 1.6;">Thank you for renting from Lurnexa Publications! Your digital eBook rental is active immediately. You can start reading right away in your Access Portal.</p>
+        <p><strong>Payment Status:</strong> Paid Online (Prepaid via Cashfree)</p>
+        ${order.cashfree_payment_id ? `<p><strong>Transaction ID:</strong> ${order.cashfree_payment_id}</p>` : ''}
+        
+        <div style="background-color: #f8fafc; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #e2e8f0;">
+          <h3 style="margin-top: 0; color: #1e293b; font-size: 16px; font-weight: 700; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;">Rental & Access Details</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569; width: 150px;">Order ID:</td>
+              <td style="padding: 8px 0; color: #0f172a; font-family: monospace; font-weight: bold;">${order.order_id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569;">Textbook Rented:</td>
+              <td style="padding: 8px 0; color: #0f172a; font-weight: bold;">${bookTitle}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569;">Rental Plan:</td>
+              <td style="padding: 8px 0; color: #4F46E5; font-weight: bold; text-transform: uppercase;">${(order.purchase_plan || 'Digital Rental').replace(/_/g, ' ')}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #475569;">Amount Paid:</td>
+              <td style="padding: 8px 0; color: #10B981; font-weight: bold;">₹${order.amount}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background-color: #eef2ff; padding: 18px; border-radius: 10px; margin: 20px 0; border: 1px solid #c7d2fe; text-align: center;">
+          <h3 style="margin-top: 0; color: #4338ca; font-size: 16px; font-weight: 700;">Access Your Rented eBook</h3>
+          <p style="margin: 0 0 15px 0; font-size: 14px; color: #1e1b4b; line-height: 1.6;">
+            We have sent your confirmation details to <strong>${order.customer_email}</strong>.<br/>
+            Log in to the Portal using your registered email address and password to read your textbook online.
+          </p>
+          <a href="https://www.lurnexa.in/textbooks/portal/login" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);">Go to Access Portal</a>
+        </div>
+
+        <p style="font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 30px; text-align: center;">
+          Lurnexa Publications &copy; 2026. All rights reserved.
+        </p>
+      </div>
+    `;
   } else if (isSoftCopy) {
     customerHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #cbd5e1; border-radius: 12px; background-color: #ffffff;">
@@ -222,16 +289,15 @@ export async function sendOrderConfirmationEmails(order: {
         </div>
 
         <div style="background-color: #eef2ff; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #c7d2fe;">
-          <h3 style="margin-top: 0; color: #4338ca;">Student Portal Registration</h3>
+          <h3 style="margin-top: 0; color: #4338ca;">Student Portal Account Access</h3>
           <p style="margin: 0; font-size: 14px; color: #1e1b4b; line-height: 1.6;">
-            Please create your account on the Student Portal to access your textbook and learning materials.<br/>
-            <strong>Unique Access ID:</strong> <span style="font-family: monospace; font-weight: bold; background-color: #ffffff; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; color: #4f46e5;">${order.access_id || 'N/A'}</span><br/>
-            <strong>Sign Up Link:</strong> <a href="https://www.lurnexa.in/textbooks/portal/signup" style="color: #4f46e5; font-weight: bold; text-decoration: underline;">Click Here to Sign Up</a>
+            Log in or sign up on the Student Portal using your email address to access your textbook and learning materials.<br/>
+            <strong>Sign Up Link:</strong> <a href="https://www.lurnexa.in/textbooks/portal/signup" style="color: #4f46e5; font-weight: bold; text-decoration: underline;">Click Here to Access Portal</a>
           </p>
         </div>
 
         <p style="font-size: 14px; color: #475569;">
-          Sign up using your College Email, Mobile Number, and Unique Access ID. You will receive an OTP code to verify your email address during signup.
+          Sign up using your Gmail / Email Address, Mobile Number, and Password to log in.
         </p>
 
         <p style="font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 30px; text-align: center;">
@@ -255,6 +321,12 @@ export async function sendOrderConfirmationEmails(order: {
               <td style="padding: 6px 0; font-weight: bold; color: #475569; width: 150px;">Order ID:</td>
               <td style="padding: 6px 0; color: #0f172a;">${order.order_id}</td>
             </tr>
+            ${order.access_id ? `
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; color: #475569;">Access ID:</td>
+              <td style="padding: 6px 0; color: #4F46E5; font-family: monospace; font-weight: bold;">${order.access_id}</td>
+            </tr>
+            ` : ''}
             <tr>
               <td style="padding: 6px 0; font-weight: bold; color: #475569;">Book Title:</td>
               <td style="padding: 6px 0; color: #0f172a;">${bookTitle}</td>
@@ -288,13 +360,19 @@ export async function sendOrderConfirmationEmails(order: {
   const customerMailOptions = {
     from,
     to: order.customer_email,
-    subject: isUpgrade ? `Access Plan Upgraded Successfully – Lurnexa Portal` : (isSoftCopy ? `Soft Copy Order Confirmed – Lurnexa Publications` : `Order Confirmed – Lurnexa Publications`),
+    subject: isUpgrade 
+      ? `Access Plan Upgraded Successfully – Lurnexa Portal` 
+      : isRental 
+      ? `Digital eBook Rental Confirmed – Lurnexa Publications` 
+      : isSoftCopy 
+      ? `Soft Copy Order Confirmed – Lurnexa Publications` 
+      : `Order Confirmed – Lurnexa Publications`,
     html: customerHtml
   };
 
   const adminHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 650px; margin: auto; padding: 20px; border: 1px solid #cbd5e1; border-radius: 12px; background-color: #f8fafc;">
-        <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-top: 0;">New Prepaid Order Received (${isUpgrade ? 'Plan Upgrade' : (isSoftCopy ? 'Digital Access' : 'Physical Textbook')})</h2>
+        <h2 style="color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-top: 0;">New Prepaid Order Received (${isUpgrade ? 'Plan Upgrade' : isRental ? 'Digital Rental' : isSoftCopy ? 'Digital Access' : 'Physical Textbook'})</h2>
         <p>A new prepaid order has been successfully processed on the Lurnexa Bookstore via Cashfree.</p>
         
         <table style="width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; font-size: 14px; margin-bottom: 20px;">
@@ -452,5 +530,27 @@ export async function sendFailedPaymentEmail(order: {
     console.log(`✅ Failed payment email sent to customer: ${order.customer_email}`);
   } catch (err) {
     console.error("❌ Error sending failed payment email:", err);
+  }
+}
+
+export async function sendMail(options: { to: string; subject: string; html: string }) {
+  const transporter = getTextbookTransporter();
+  const from = process.env.TEXTBOOK_SMTP_FROM || process.env.TEXTBOOK_SMTP_USER || process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@lurnexa.in";
+
+  if (!transporter) {
+    console.warn(`[MAIL FALLBACK LOG] Email to ${options.to} skipped (SMTP not configured). Subject: ${options.subject}`);
+    return;
+  }
+
+  try {
+    await transporter.sendMail({
+      from,
+      to: options.to,
+      subject: options.subject,
+      html: options.html
+    });
+    console.log(`✅ Email sent successfully to ${options.to}`);
+  } catch (err) {
+    console.error(`❌ Error sending email to ${options.to}:`, err);
   }
 }

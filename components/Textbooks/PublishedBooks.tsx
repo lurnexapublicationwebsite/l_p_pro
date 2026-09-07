@@ -87,7 +87,7 @@ export default function PublishedBooks() {
                     <span>View Details</span>
                   </Link>
                   <Link
-                    href={`/textbooks/store/checkout?bookId=${bookItem.id}`}
+                    href="/textbooks/store"
                     className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-2 rounded-xl text-[11px] text-center flex items-center justify-center gap-1 transition-all shadow-sm"
                   >
                     <ShoppingBag size={11} />
