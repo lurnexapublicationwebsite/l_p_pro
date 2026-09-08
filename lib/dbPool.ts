@@ -4,13 +4,20 @@ import path from "path";
 
 const connectionString = process.env.DATABASE_URL;
 
-// Create pg Pool
+// Create pg Pool. Tuned for serverless (Amplify/Lambda): many concurrent function
+// instances each hold their own small pool against the same database, so `max` is kept
+// low to avoid exhausting the database's total connection limit, and idle connections are
+// released quickly rather than held open across invocations. connectionTimeoutMillis is
+// long enough to tolerate a cold Lambda container's normal connection latency without
+// falsely triggering the "database unreachable" path below.
 const pgPool = new Pool({
   connectionString,
   ssl: connectionString && !connectionString.includes("localhost") && !connectionString.includes("127.0.0.1")
     ? { rejectUnauthorized: false }
     : false,
-  connectionTimeoutMillis: 3000,
+  connectionTimeoutMillis: 8000,
+  max: 5,
+  idleTimeoutMillis: 10_000,
 });
 
 // A flag to indicate whether we should fall back to JSON storage
@@ -183,22 +190,42 @@ let pgFailedAt: number | null = null;
 const PG_RETRY_COOLDOWN_MS = 30_000;
 
 export const pool = {
-  async query(sql: string, params: any[] = []): Promise<{ rows: any[] }> {
-    const pgFailed = pgFailedAt !== null && (Date.now() - pgFailedAt < PG_RETRY_COOLDOWN_MS);
-    if (!useLocalFallback && !pgFailed) {
+  async query(sql: string, params: any[] = [], _isRetry = false): Promise<{ rows: any[] }> {
+    if (!useLocalFallback) {
+      // A real database is configured (production) — this branch never falls through to
+      // the local JSON fallback below. It used to: any transient Postgres hiccup (a brief
+      // network blip, a cold connection) would silently switch that request to the local
+      // JSON files as if that were a real database. On Lambda (Amplify's SSR runtime)
+      // those files live in /tmp, which is empty and freshly ephemeral for every separate
+      // container — so different concurrent requests would randomly see fabricated empty
+      // data instead of the real data ("sometimes loading, sometimes not"), and any write
+      // that happened to land during that window was silently lost forever the moment the
+      // Lambda container recycled, never reaching the real database at all. Now a genuine
+      // failure is surfaced as an honest error instead of masquerading as success.
+      const pgFailed = pgFailedAt !== null && (Date.now() - pgFailedAt < PG_RETRY_COOLDOWN_MS);
+      if (pgFailed) {
+        throw new Error("Database temporarily unavailable. Please try again in a moment.");
+      }
       try {
-        // Attempt real PG query
         const result = await pgPool.query(sql, params);
         pgFailedAt = null; // reset on success
         return result;
       } catch (err: any) {
-        console.error("❌ PostgreSQL query failed, falling back to local JSON database:", err.message || err);
+        // Most production failures are a transient blip rather than the database actually
+        // being down, so retry once before giving up.
+        if (!_isRetry) {
+          console.error("⚠️ PostgreSQL query failed, retrying once:", err.message || err);
+          await new Promise((r) => setTimeout(r, 300));
+          return pool.query(sql, params, true);
+        }
+        console.error("❌ PostgreSQL query failed after retry:", err.message || err);
         pgFailedAt = Date.now();
-        // Fall through to local JSON fallback
+        throw new Error("Database temporarily unavailable. Please try again in a moment.");
       }
     }
 
-    // Fallback: Mock queries locally using JSON file
+    // Fallback: Mock queries locally using JSON file — local dev only (DATABASE_URL is a
+    // placeholder or unset). Never reached once a real database is configured; see above.
     const cleanSql = sql.trim().replace(/\s+/g, " ").toUpperCase();
 
     // Handle Textbooks Purchases fallbacks
