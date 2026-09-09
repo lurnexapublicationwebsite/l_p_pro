@@ -22,6 +22,16 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 export function LoginCopy({
   className,
   ...props
@@ -30,6 +40,7 @@ export function LoginCopy({
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginRole, setLoginRole] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -45,7 +56,7 @@ export function LoginCopy({
       const res = await fetch("https://api.lurnexa.in/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role: loginRole }),
       });
 
       const data = await res.json();
@@ -87,6 +98,11 @@ export function LoginCopy({
   const handleLoginClick = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!loginRole) {
+      setError("Please select whether you're logging in as an Author or a Reviewer");
+      return;
+    }
+
     if (!agreeTerms) {
       setError("Please accept Terms & Conditions");
       return;
@@ -114,6 +130,22 @@ export function LoginCopy({
         <CardContent>
           <form onSubmit={handleLoginClick}>
             <FieldGroup>
+              <Field>
+                <FieldLabel>Logging in as</FieldLabel>
+                <Select value={loginRole} onValueChange={setLoginRole}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Role</SelectLabel>
+                      <SelectItem value="author">Author</SelectItem>
+                      <SelectItem value="reviewer">Reviewer</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+
               <Field>
                 <FieldLabel>Email</FieldLabel>
                 <Input
@@ -161,7 +193,7 @@ export function LoginCopy({
 
               <Button
                 type="submit"
-                disabled={loading || !agreeTerms}
+                disabled={loading || !loginRole || !agreeTerms}
                 className="w-full"
               >
                 {loading ? "Processing..." : "Login"}
