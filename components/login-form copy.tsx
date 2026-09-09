@@ -139,7 +139,7 @@ export function LoginCopy({
                   <SelectContent>
                     <SelectGroup>
                       <SelectLabel>Role</SelectLabel>
-                      <SelectItem value="author">Author</SelectItem>
+                      <SelectItem value="editor">Editor</SelectItem>
                       <SelectItem value="reviewer">Reviewer</SelectItem>
                     </SelectGroup>
                   </SelectContent>
