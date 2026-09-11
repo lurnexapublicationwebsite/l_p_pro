@@ -537,7 +537,7 @@ export default function BookstorePage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             {currentUser ? (
               <Link 
                 href="/textbooks/portal/login?view=mybooks"
