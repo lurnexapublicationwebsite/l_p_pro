@@ -87,17 +87,20 @@ export async function POST(req: Request) {
         const cleanMobile = mobileNumber ? mobileNumber.trim() : existingMobile;
 
         await pool.query(
-          `UPDATE textbooks_users SET password_hash = $1, name = $2, mobile_number = $3, email = $4 WHERE id = $5`,
-          [passwordHash, name.trim(), cleanMobile, cleanEmail, existingUser.id]
+          `UPDATE textbooks_users SET password_hash = $1, name = $2, mobile_number = $3, email = $4 WHERE LOWER(email) = $5 OR LOWER(college_email) = $5 OR mobile_number = $6`,
+          [passwordHash, name.trim(), cleanMobile, cleanEmail, cleanEmail, cleanMobile]
         );
 
-        // Active rentals are reported separately — time-limited access must never be
-        // merged into purchasedBooks (that field means permanently owned).
-        const rentalsRes = await pool.query(
-          `SELECT DISTINCT book_id FROM book_rentals WHERE LOWER(user_email) = $1 AND status = 'active'`,
-          [cleanEmail]
-        );
-        const rentedBookIds = (rentalsRes.rows || []).map((r: any) => r.book_id);
+        let rentedBookIds: string[] = [];
+        try {
+          const rentalsRes = await pool.query(
+            `SELECT DISTINCT book_id FROM book_rentals WHERE LOWER(user_email) = $1 AND status = 'active'`,
+            [cleanEmail]
+          );
+          rentedBookIds = (rentalsRes.rows || []).map((r: any) => r.book_id);
+        } catch (e) {
+          // Ignore if book_rentals table doesn't exist
+        }
         let dbPurchased: string[] = [];
         try {
           if (typeof existingUser.purchased_books === "string") {

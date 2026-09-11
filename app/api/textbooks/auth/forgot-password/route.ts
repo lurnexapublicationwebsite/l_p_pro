@@ -21,6 +21,8 @@ export async function POST(req: Request) {
     // Same migration pattern used elsewhere (e.g. signup/route.ts) — safe to run on every
     // request since IF NOT EXISTS makes it a no-op once the columns are already there.
     try {
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
       await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)`);
       await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP`);
     } catch (e) {
@@ -28,28 +30,27 @@ export async function POST(req: Request) {
     }
 
     const res = await pool.query(
-      `SELECT * FROM textbooks_users WHERE LOWER(email) = $1 OR LOWER(college_email) = $1`,
+      `SELECT * FROM textbooks_users WHERE LOWER(email) = $1 OR LOWER(college_email) = $1 OR LOWER(access_id) = $1 OR mobile_number = $1`,
       [cleanEmail]
     );
     const user = res.rows && res.rows.length > 0 ? res.rows[0] : null;
 
     if (!user) {
-      return NextResponse.json({ error: "No account found for this email address." }, { status: 404 });
+      return NextResponse.json({ error: "No account found for this email address or access ID." }, { status: 404 });
     }
 
+    const recipientEmail = (user.email || user.college_email || cleanEmail).trim().toLowerCase();
     const code = String(crypto.randomInt(100000, 1000000)); // 6-digit, zero-safe (randomInt lower bound is inclusive)
     const codeHash = crypto.createHash("sha256").update(code).digest("hex");
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    // Matched by email, not id — the local mock database's user records don't carry a
-    // reliable "id" field (see change-password/route.ts for the same fix and why).
     await pool.query(
-      `UPDATE textbooks_users SET reset_token = $1, reset_token_expires_at = $2 WHERE LOWER(email) = $3 OR LOWER(college_email) = $3`,
+      `UPDATE textbooks_users SET reset_token = $1, reset_token_expires_at = $2 WHERE LOWER(email) = $3 OR LOWER(college_email) = $3 OR LOWER(access_id) = $3 OR mobile_number = $3`,
       [codeHash, expiresAt, cleanEmail]
     );
 
     await sendMail({
-      to: cleanEmail,
+      to: recipientEmail,
       subject: "Your Lurnexa Password Reset Code",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
