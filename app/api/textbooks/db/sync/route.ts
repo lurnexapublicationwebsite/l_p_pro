@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/dbPool";
+import { pool, initDbTables } from "@/lib/dbPool";
 
 async function ensureTables() {
+  try {
+    await initDbTables();
+  } catch (e) {
+    console.warn("⚠️ Warning initializing DB tables in sync route:", e);
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS textbooks_users (
       mobile_number VARCHAR(50) PRIMARY KEY,
