@@ -16,6 +16,28 @@ import RentalBadge from "@/components/Textbooks/RentalBadge";
 import RenewModal from "@/components/Textbooks/RenewModal";
 import { downloadAndroidApk, useIsAndroidDevice } from "@/lib/androidApp";
 import {
+  bookDocKey,
+  caseletDocKey,
+  readCachedState,
+  writeCachedState,
+  mergeHighlights,
+  mergeSummaries,
+  fetchReadingState,
+  fetchReadingSummary,
+  saveReadingState,
+  DocReadingState,
+  HighlightColor,
+  HighlightRect,
+  PageHighlights,
+  ReadingSummary,
+} from "@/lib/readingProgress";
+import {
+  ReaderPageCanvas,
+  ReaderHighlightToolbar,
+  ReaderHighlightHint,
+  ReaderResumeNotice,
+} from "@/components/Textbooks/ReaderHighlights";
+import {
   getUser,
   createUser,
   getAllUsers,
@@ -821,6 +843,12 @@ export default function TextbookPortal({
       // (book_only / caselet / book_caselet) was paid for per book — used to gate
       // the Caselets tab and to show the Permanent/Rental access badge on My Books.
       fetchUserOrders();
+      const readingEmail = (user.email || user.collegeEmail || "").toLowerCase();
+      if (readingEmail) {
+        fetchReadingSummary(readingEmail)
+          .then((summary) => setReadingSummary((prev) => mergeSummaries(summary, prev)))
+          .catch(() => {});
+      }
     }
   }, [user]);
 
@@ -1386,6 +1414,7 @@ export default function TextbookPortal({
   };
 
   const closeSecureReader = () => {
+    flushReadingSave();
     setReadingBookId(null);
     setReadingRentalId(null);
     setActiveRentalReadData(null);
@@ -1437,8 +1466,94 @@ export default function TextbookPortal({
   const [pageFlipAnim, setPageFlipAnim] = useState<"flip-next" | "flip-prev" | "">("");
   const activeRenderTaskRef = useRef<any>(null);
 
+  // Reading progress ("continue from where you stopped") + highlighter.
+  const [highlightMode, setHighlightMode] = useState(false);
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>("yellow");
+  const [docHighlights, setDocHighlights] = useState<PageHighlights>({});
+  const [resumeNoticePage, setResumeNoticePage] = useState<number | null>(null);
+  const [readingSummary, setReadingSummary] = useState<ReadingSummary>({});
+  const [readingSyncTick, setReadingSyncTick] = useState(0);
+  // Which document the reader is currently asked to show.
+  const currentDocKeyRef = useRef<string | null>(null);
+  // Which document the loaded pdfDocument/page/highlights actually belong to.
+  const loadedDocKeyRef = useRef<string | null>(null);
+  // Set once the account copy has been checked — saving to the account waits for that, so
+  // opening a book on a second device can't overwrite progress made on the first.
+  const restoredDocKeyRef = useRef<string | null>(null);
+  const userNavigatedRef = useRef(false);
+  const saveTimerRef = useRef<any>(null);
+  const pendingSaveRef = useRef<{ email: string; docKey: string; state: DocReadingState } | null>(null);
+
+  const readerUserEmail = (user?.email || user?.collegeEmail || "").toLowerCase();
+
+  // Rentals share the book's progress, so renewing a rental (which creates a new rental id)
+  // doesn't lose the reader's place.
+  const getReaderDocKey = (): string | null => {
+    if (readingBookId) return bookDocKey(readingBookId);
+    if (readingRentalId) {
+      const rental = portalRentals.find((r: any) => r.rentalId === readingRentalId);
+      return rental?.bookId ? bookDocKey(rental.bookId) : `rental:${readingRentalId}`;
+    }
+    if (readingCaseletInfo) return caseletDocKey(readingCaseletInfo.bookId, readingCaseletInfo.index);
+    return null;
+  };
+  const readerDocKey = getReaderDocKey();
+
+  const getContinuePage = (docKey: string): number | null => {
+    const page = readingSummary[docKey]?.lastPage;
+    return page && page > 1 ? page : null;
+  };
+
+  const flushReadingSave = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const pending = pendingSaveRef.current;
+    if (!pending) return;
+    pendingSaveRef.current = null;
+    saveReadingState(pending.email, pending.docKey, pending.state).catch(() => {});
+  };
+
+  const addHighlight = (rect: Omit<HighlightRect, "id">) => {
+    const pageKey = String(pdfCurrentPage);
+    setDocHighlights((prev) => {
+      const list = prev[pageKey] || [];
+      if (list.length >= 200) return prev;
+      const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+      return { ...prev, [pageKey]: [...list, { ...rect, id }] };
+    });
+  };
+
+  const removeHighlight = (id: string) => {
+    const pageKey = String(pdfCurrentPage);
+    setDocHighlights((prev) => {
+      const list = (prev[pageKey] || []).filter((h) => h.id !== id);
+      const next = { ...prev };
+      if (list.length) next[pageKey] = list;
+      else delete next[pageKey];
+      return next;
+    });
+  };
+
+  const clearPageHighlights = () => {
+    const pageKey = String(pdfCurrentPage);
+    setDocHighlights((prev) => {
+      const next = { ...prev };
+      delete next[pageKey];
+      return next;
+    });
+  };
+
+  const handleStartOver = () => {
+    userNavigatedRef.current = true;
+    setResumeNoticePage(null);
+    setPdfCurrentPage(1);
+  };
+
   const triggerNextPage = () => {
     if (pdfCurrentPage < pdfTotalPages && !pdfLoading) {
+      userNavigatedRef.current = true;
       setPageFlipAnim("flip-next");
       setPdfCurrentPage(prev => Math.min(pdfTotalPages, prev + 1));
       setTimeout(() => setPageFlipAnim(""), 450);
@@ -1447,6 +1562,7 @@ export default function TextbookPortal({
 
   const triggerPrevPage = () => {
     if (pdfCurrentPage > 1 && !pdfLoading) {
+      userNavigatedRef.current = true;
       setPageFlipAnim("flip-prev");
       setPdfCurrentPage(prev => Math.max(1, prev - 1));
       setTimeout(() => setPageFlipAnim(""), 450);
@@ -1473,13 +1589,14 @@ export default function TextbookPortal({
     setIsEditingPage(false);
     const parsedPage = parseInt(pageInputVal, 10);
     if (!isNaN(parsedPage) && parsedPage >= 1 && parsedPage <= pdfTotalPages) {
+      userNavigatedRef.current = true;
       setPdfCurrentPage(parsedPage);
     } else {
       setPageInputVal(String(pdfCurrentPage));
     }
   };
 
-  const loadPdfFile = async (url: string) => {
+  const loadPdfFile = async (url: string, docKey: string | null = null) => {
     setPdfLoading(true);
     setPdfError(null);
     setPdfZoom(1.0);
@@ -1498,10 +1615,42 @@ export default function TextbookPortal({
       // used to make "Read Caselet PDF" open the book instead). Surface a clear error
       // via the catch block below instead.
       const loadedPdf = await pdfjsLib.getDocument(url).promise;
+      // The reader was closed or switched to another document while this one was loading.
+      if (docKey !== currentDocKeyRef.current) return;
 
+      const totalPages = loadedPdf.numPages;
+      const clampPage = (p: unknown) => Math.min(totalPages, Math.max(1, Math.floor(Number(p)) || 1));
+      const email = (user?.email || user?.collegeEmail || "").toLowerCase();
+      const cached = docKey && email ? readCachedState(email, docKey) : null;
+      const startPage = clampPage(cached?.lastPage || 1);
+
+      loadedDocKeyRef.current = docKey;
       setPdfDocument(loadedPdf);
-      setPdfTotalPages(loadedPdf.numPages);
-      setPdfCurrentPage(1);
+      setPdfTotalPages(totalPages);
+      setPdfCurrentPage(startPage);
+      setDocHighlights(cached?.highlights || {});
+      setResumeNoticePage(startPage > 1 ? startPage : null);
+
+      if (docKey && email) {
+        fetchReadingState(email, docKey)
+          .then((server) => {
+            if (docKey !== currentDocKeyRef.current || !server) return;
+            if (!cached || server.updatedAt > cached.updatedAt) {
+              if (!userNavigatedRef.current) {
+                const serverPage = clampPage(server.lastPage);
+                setPdfCurrentPage(serverPage);
+                setResumeNoticePage(serverPage > 1 ? serverPage : null);
+              }
+              setDocHighlights((prev) => mergeHighlights(server.highlights || {}, prev));
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            if (docKey !== currentDocKeyRef.current) return;
+            restoredDocKeyRef.current = docKey;
+            setReadingSyncTick((t) => t + 1);
+          });
+      }
     } catch (err: any) {
       console.error("Error loading PDF:", err);
       setPdfError("Unable to load the PDF document. Please ensure the file exists or try again.");
@@ -1579,20 +1728,29 @@ export default function TextbookPortal({
     const isReadingRental = !!readingRentalId;
     const isReadingCaselet = readingCaseletInfo !== null;
 
+    const docKey = getReaderDocKey();
+    currentDocKeyRef.current = docKey;
+    loadedDocKeyRef.current = null;
+    restoredDocKeyRef.current = null;
+    userNavigatedRef.current = false;
+    setDocHighlights({});
+    setHighlightMode(false);
+    setResumeNoticePage(null);
+
     if (isReadingBook) {
       const book = PORTAL_PUBLISHED_BOOKS.find(b => String(b.id) === String(readingBookId));
       if (book) {
-        loadPdfFile(`/portal_textbooks/${book.pdfFileName}`);
+        loadPdfFile(`/portal_textbooks/${book.pdfFileName}`, docKey);
       }
     } else if (isReadingRental) {
       if (activeRentalReadData?.pdfUrl) {
-        loadPdfFile(activeRentalReadData.pdfUrl);
+        loadPdfFile(activeRentalReadData.pdfUrl, docKey);
       }
     } else if (isReadingCaselet) {
       const caselets = BOOK_CASELETS[readingCaseletInfo.bookId] || [];
       const currentCaselet = caselets[readingCaseletInfo.index];
       if (currentCaselet) {
-        loadPdfFile(`/portal_caselets/${currentCaselet.pdfFileName}`);
+        loadPdfFile(`/portal_caselets/${currentCaselet.pdfFileName}`, docKey);
       }
     } else {
       setPdfDocument(null);
@@ -1626,6 +1784,49 @@ export default function TextbookPortal({
       }
     };
   }, [pdfCurrentPage, pdfDocument, pdfZoom]);
+
+  // Persist the reading position + highlights: instantly on this device, and debounced to the
+  // account so "continue reading" works on other devices too.
+  useEffect(() => {
+    if (!pdfDocument || !readerDocKey || !readerUserEmail) return;
+    if (loadedDocKeyRef.current !== readerDocKey) return;
+
+    const state: DocReadingState = {
+      lastPage: pdfCurrentPage,
+      totalPages: pdfTotalPages,
+      highlights: docHighlights,
+      updatedAt: Date.now(),
+    };
+    writeCachedState(readerUserEmail, readerDocKey, state);
+    setReadingSummary((prev) => ({
+      ...prev,
+      [readerDocKey]: { lastPage: state.lastPage, totalPages: state.totalPages, updatedAt: state.updatedAt },
+    }));
+
+    if (restoredDocKeyRef.current !== readerDocKey) return;
+    pendingSaveRef.current = { email: readerUserEmail, docKey: readerDocKey, state };
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(flushReadingSave, 1500);
+  }, [pdfDocument, readerDocKey, readerUserEmail, pdfCurrentPage, pdfTotalPages, docHighlights, readingSyncTick]);
+
+  // Don't lose a debounced save when the tab is hidden or the page is closed.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") flushReadingSave();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("pagehide", flushReadingSave);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("pagehide", flushReadingSave);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (resumeNoticePage === null) return;
+    const timer = setTimeout(() => setResumeNoticePage(null), 7000);
+    return () => clearTimeout(timer);
+  }, [resumeNoticePage]);
 
   // Practice State
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
@@ -9748,7 +9949,7 @@ export default function TextbookPortal({
                                         className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-md transition-all text-center flex items-center justify-center gap-1.5"
                                       >
                                         <BookOpen size={14} />
-                                        <span>Read</span>
+                                        <span>{getContinuePage(bookDocKey(rental.bookId)) ? `Continue · p. ${getContinuePage(bookDocKey(rental.bookId))}` : "Read"}</span>
                                       </button>
                                       <button
                                         onClick={() => setRenewalRental({ rentalId: rental.rentalId, bookTitle: rental.bookTitle, expiresAt: rental.expiresAt, planCode: rental.planCode })}
@@ -9848,7 +10049,7 @@ export default function TextbookPortal({
                                         onClick={() => openSecureBook(book.id)}
                                         className="w-full mt-5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-sm transition-all"
                                       >
-                                        Read Book
+                                        {getContinuePage(bookDocKey(book.id)) ? `Continue Reading · Page ${getContinuePage(bookDocKey(book.id))}` : "Read Book"}
                                       </button>
                                     </div>
                                   );
@@ -10955,7 +11156,7 @@ export default function TextbookPortal({
                           className="w-full bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-700 hover:to-indigo-700 text-white font-bold text-sm py-3 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 mt-2"
                         >
                           <FileSpreadsheet size={16} />
-                          <span>Read Caselet PDF</span>
+                          <span>{getContinuePage(caseletDocKey(item.bookId, item.caseletIndex)) ? `Continue Caselet · Page ${getContinuePage(caseletDocKey(item.bookId, item.caseletIndex))}` : "Read Caselet PDF"}</span>
                         </button>
                       </div>
                       );
@@ -12020,6 +12221,16 @@ export default function TextbookPortal({
                 </button>
               </div>
 
+              <ReaderHighlightToolbar
+                highlightMode={highlightMode}
+                onToggle={() => setHighlightMode((m) => !m)}
+                highlightColor={highlightColor}
+                onColorChange={setHighlightColor}
+                pageHighlightCount={(docHighlights[String(pdfCurrentPage)] || []).length}
+                onClearPage={clearPageHighlights}
+                disabled={pdfLoading || !!pdfError}
+              />
+
               {/* Zoom Controls */}
               <div className="flex items-center gap-1 bg-slate-950/60 px-2 py-1 md:px-3 md:py-1.5 rounded-xl md:rounded-2xl border border-slate-800">
                 <button
@@ -12114,7 +12325,7 @@ export default function TextbookPortal({
                 triggerPrevPage();
               }}
               className={`absolute left-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-start pl-6 group transition-all select-none ${
-                pdfCurrentPage <= 1 ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
+                (pdfCurrentPage <= 1 || highlightMode) ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
               }`}
               title="Click / Tap left side for Previous Page"
             >
@@ -12130,7 +12341,7 @@ export default function TextbookPortal({
                 triggerNextPage();
               }}
               className={`absolute right-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-end pr-6 group transition-all select-none ${
-                pdfCurrentPage >= pdfTotalPages ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
+                (pdfCurrentPage >= pdfTotalPages || highlightMode) ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
               }`}
               title="Click / Tap right side for Next Page"
             >
@@ -12175,6 +12386,15 @@ export default function TextbookPortal({
               </div>
             )}
 
+            {resumeNoticePage !== null && !pdfLoading && !pdfError && (
+              <ReaderResumeNotice
+                page={resumeNoticePage}
+                onStartOver={handleStartOver}
+                onDismiss={() => setResumeNoticePage(null)}
+              />
+            )}
+            {highlightMode && !pdfLoading && !pdfError && <ReaderHighlightHint />}
+
             {/* Loading spinner or Error display */}
             {pdfError ? (
               <div className="flex flex-col items-center justify-center space-y-4 py-32 text-center px-6">
@@ -12186,9 +12406,9 @@ export default function TextbookPortal({
                     onClick={() => {
                       if (readingBookId) {
                         const book = PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId);
-                        if (book) loadPdfFile(`/portal_textbooks/${book.pdfFileName}`);
+                        if (book) loadPdfFile(`/portal_textbooks/${book.pdfFileName}`, readerDocKey);
                       } else if (readingRentalId && activeRentalReadData?.pdfUrl) {
-                        loadPdfFile(activeRentalReadData.pdfUrl);
+                        loadPdfFile(activeRentalReadData.pdfUrl, readerDocKey);
                       }
                     }}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
@@ -12203,16 +12423,13 @@ export default function TextbookPortal({
                 <p className="text-sm font-medium">Securing and loading textbook page...</p>
               </div>
             ) : (
-              <canvas
-                id="secure-reader-canvas"
-                className={`bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none transition-all duration-300 shrink-0 ${
-                  pageFlipAnim === "flip-next"
-                    ? "animate-page-flip-next"
-                    : pageFlipAnim === "flip-prev"
-                    ? "animate-page-flip-prev"
-                    : ""
-                }`}
-                style={{ userSelect: 'none' }}
+              <ReaderPageCanvas
+                highlights={docHighlights[String(pdfCurrentPage)] || []}
+                highlightMode={highlightMode}
+                highlightColor={highlightColor}
+                onAddHighlight={addHighlight}
+                onRemoveHighlight={removeHighlight}
+                flipAnimClass={pageFlipAnim === "flip-next" ? "animate-page-flip-next" : pageFlipAnim === "flip-prev" ? "animate-page-flip-prev" : ""}
               />
             )}
           </div>
@@ -12291,6 +12508,16 @@ export default function TextbookPortal({
                     Next Page
                   </button>
                 </div>
+
+                <ReaderHighlightToolbar
+                  highlightMode={highlightMode}
+                  onToggle={() => setHighlightMode((m) => !m)}
+                  highlightColor={highlightColor}
+                  onColorChange={setHighlightColor}
+                  pageHighlightCount={(docHighlights[String(pdfCurrentPage)] || []).length}
+                  onClearPage={clearPageHighlights}
+                  disabled={pdfLoading}
+                />
 
                 {/* Zoom Controls */}
                 <div className="flex items-center gap-1.5 bg-slate-950/60 px-3 py-1.5 rounded-2xl border border-slate-800 shadow-inner">
@@ -12388,7 +12615,7 @@ export default function TextbookPortal({
                   triggerPrevPage();
                 }}
                 className={`absolute left-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-start pl-6 group transition-all select-none ${
-                  pdfCurrentPage <= 1 ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
+                  (pdfCurrentPage <= 1 || highlightMode) ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
                 }`}
                 title="Click / Tap left side for Previous Page"
               >
@@ -12404,7 +12631,7 @@ export default function TextbookPortal({
                   triggerNextPage();
                 }}
                 className={`absolute right-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-end pr-6 group transition-all select-none ${
-                  pdfCurrentPage >= pdfTotalPages ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
+                  (pdfCurrentPage >= pdfTotalPages || highlightMode) ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
                 }`}
                 title="Click / Tap right side for Next Page"
               >
@@ -12449,6 +12676,15 @@ export default function TextbookPortal({
                 </div>
               )}
 
+              {resumeNoticePage !== null && !pdfLoading && (
+                <ReaderResumeNotice
+                  page={resumeNoticePage}
+                  onStartOver={handleStartOver}
+                  onDismiss={() => setResumeNoticePage(null)}
+                />
+              )}
+              {highlightMode && !pdfLoading && <ReaderHighlightHint />}
+
               {/* Loading spinner */}
               {pdfLoading ? (
                 <div className="flex flex-col items-center justify-center space-y-4 py-32 text-slate-350">
@@ -12456,16 +12692,13 @@ export default function TextbookPortal({
                   <p className="text-sm font-medium">Securing and loading caselet page...</p>
                 </div>
               ) : (
-                <canvas
-                  id="secure-reader-canvas"
-                  className={`bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none transition-all duration-300 shrink-0 ${
-                    pageFlipAnim === "flip-next"
-                      ? "animate-page-flip-next"
-                      : pageFlipAnim === "flip-prev"
-                      ? "animate-page-flip-prev"
-                      : ""
-                  }`}
-                  style={{ userSelect: 'none' }}
+                <ReaderPageCanvas
+                  highlights={docHighlights[String(pdfCurrentPage)] || []}
+                  highlightMode={highlightMode}
+                  highlightColor={highlightColor}
+                  onAddHighlight={addHighlight}
+                  onRemoveHighlight={removeHighlight}
+                  flipAnimClass={pageFlipAnim === "flip-next" ? "animate-page-flip-next" : pageFlipAnim === "flip-prev" ? "animate-page-flip-prev" : ""}
                 />
               )}
             </div>
