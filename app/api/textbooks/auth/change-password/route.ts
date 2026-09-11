@@ -44,8 +44,14 @@ export async function POST(req: Request) {
 
     const cleanEmail = email.trim().toLowerCase();
 
+    // Auto migration check
+    try {
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
+    } catch (e) {}
+
     const res = await pool.query(
-      `SELECT * FROM textbooks_users WHERE LOWER(email) = $1 OR LOWER(college_email) = $1`,
+      `SELECT * FROM textbooks_users WHERE LOWER(email) = $1 OR LOWER(college_email) = $1 OR LOWER(access_id) = $1 OR mobile_number = $1`,
       [cleanEmail]
     );
     const user = res.rows && res.rows.length > 0 ? res.rows[0] : null;
@@ -63,11 +69,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Current password is incorrect." }, { status: 401 });
     }
 
-    // Matched by email rather than id: the local JSON mock DB's user records don't carry
-    // a reliable "id" field (only real Postgres guarantees one), so WHERE id = $2 would
-    // silently match nothing there.
     await pool.query(
-      `UPDATE textbooks_users SET password_hash = $1 WHERE LOWER(email) = $2 OR LOWER(college_email) = $2`,
+      `UPDATE textbooks_users SET password_hash = $1 WHERE LOWER(email) = $2 OR LOWER(college_email) = $2 OR LOWER(access_id) = $2 OR mobile_number = $2`,
       [hashPassword(newPassword), cleanEmail]
     );
 

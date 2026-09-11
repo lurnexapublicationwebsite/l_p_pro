@@ -35,14 +35,22 @@ export async function POST(req: Request) {
 
     const cleanEmail = String(email).trim().toLowerCase();
 
+    // Auto migration check
+    try {
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)`);
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP`);
+    } catch (e) {}
+
     const res = await pool.query(
-      `SELECT * FROM textbooks_users WHERE LOWER(email) = $1 OR LOWER(college_email) = $1`,
+      `SELECT * FROM textbooks_users WHERE LOWER(email) = $1 OR LOWER(college_email) = $1 OR LOWER(access_id) = $1 OR mobile_number = $1`,
       [cleanEmail]
     );
     const user = res.rows && res.rows.length > 0 ? res.rows[0] : null;
 
     if (!user) {
-      return NextResponse.json({ error: "No account found for this email address." }, { status: 404 });
+      return NextResponse.json({ error: "No account found for this email address or access ID." }, { status: 404 });
     }
     if (!user.reset_token || !user.reset_token_expires_at) {
       return NextResponse.json(
@@ -59,10 +67,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Incorrect reset code." }, { status: 401 });
     }
 
-    // Matched by email, not id — see change-password/route.ts for why. Clears the token so
-    // it can't be reused once the password has actually been changed.
     await pool.query(
-      `UPDATE textbooks_users SET password_hash = $1, reset_token = $2, reset_token_expires_at = $3 WHERE LOWER(email) = $4 OR LOWER(college_email) = $4`,
+      `UPDATE textbooks_users SET password_hash = $1, reset_token = $2, reset_token_expires_at = $3 WHERE LOWER(email) = $4 OR LOWER(college_email) = $4 OR LOWER(access_id) = $4 OR mobile_number = $4`,
       [hashPassword(newPassword), null, null, cleanEmail]
     );
 

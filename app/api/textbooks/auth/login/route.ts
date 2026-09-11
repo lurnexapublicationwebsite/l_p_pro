@@ -26,33 +26,44 @@ export async function POST(req: Request) {
       await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
       await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
       await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS purchased_books JSONB`);
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)`);
+      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMP`);
     } catch (e) {
       // Ignore migration errors if handled
     }
 
-    // Query user record by email
-    const res = await pool.query(
-      `SELECT * FROM textbooks_users WHERE LOWER(email) = $1 OR LOWER(college_email) = $1`,
-      [cleanEmail]
-    );
+    // Query user record by email, college_email, access_id, or mobile_number
+    let res: any = { rows: [] };
+    try {
+      res = await pool.query(
+        `SELECT * FROM textbooks_users WHERE LOWER(email) = $1 OR LOWER(college_email) = $1 OR LOWER(access_id) = $1 OR mobile_number = $1`,
+        [cleanEmail]
+      );
+    } catch (dbErr) {
+      console.error("❌ Error querying textbooks_users in login route:", dbErr);
+    }
 
     let user = res.rows && res.rows.length > 0 ? res.rows[0] : null;
 
     if (!user) {
       // Check if user has active rentals in book_rentals
-      const rentalCheck = await pool.query(
-        `SELECT * FROM book_rentals WHERE LOWER(user_email) = $1 LIMIT 1`,
-        [cleanEmail]
-      );
-      if (rentalCheck.rows && rentalCheck.rows.length > 0) {
-        return NextResponse.json(
-          { error: "No password found for this account. Please sign up to create your password." },
-          { status: 400 }
+      try {
+        const rentalCheck = await pool.query(
+          `SELECT * FROM book_rentals WHERE LOWER(user_email) = $1 LIMIT 1`,
+          [cleanEmail]
         );
+        if (rentalCheck.rows && rentalCheck.rows.length > 0) {
+          return NextResponse.json(
+            { error: "No password found for this account. Please sign up to create your password." },
+            { status: 400 }
+          );
+        }
+      } catch (e) {
+        // Ignore if book_rentals table doesn't exist
       }
 
       return NextResponse.json(
-        { error: "No account found with this email. Please sign up first." },
+        { error: "No account found with this credential. Please check your email/access ID or sign up first." },
         { status: 404 }
       );
     }
@@ -72,16 +83,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // Active rentals are reported separately from purchasedBooks — they are time-limited
-    // and must never be treated as permanently owned (that's what drove the "rental shows
-    // as Permanent Access" bug). The portal fetches full rental details itself via
-    // /api/rentals/my-rentals; rentedBooks here is just a lightweight id list for callers
-    // that only need to know "does this account have access to book X right now".
-    const rentalsRes = await pool.query(
-      `SELECT DISTINCT book_id FROM book_rentals WHERE LOWER(user_email) = $1 AND status = 'active'`,
-      [cleanEmail]
-    );
-    const rentedBookIds = (rentalsRes.rows || []).map((r: any) => r.book_id);
+    // Active rentals check
+    let rentedBookIds: string[] = [];
+    try {
+      const rentalsRes = await pool.query(
+        `SELECT DISTINCT book_id FROM book_rentals WHERE LOWER(user_email) = $1 AND status = 'active'`,
+        [cleanEmail]
+      );
+      rentedBookIds = (rentalsRes.rows || []).map((r: any) => r.book_id);
+    } catch (e) {
+      // Ignore if book_rentals table doesn't exist
+    }
 
     let dbPurchased: string[] = [];
     try {
@@ -96,9 +108,11 @@ export async function POST(req: Request) {
 
     const purchasedBookIds = dbPurchased.length > 0 ? dbPurchased : (user.book_id ? [user.book_id] : []);
 
+    const userEmailVal = user.email || user.college_email || cleanEmail;
     const userData = {
-      name: user.name || cleanEmail.split("@")[0],
-      email: cleanEmail,
+      name: user.name || userEmailVal.split("@")[0],
+      email: userEmailVal,
+      collegeEmail: user.college_email || userEmailVal,
       mobileNumber: user.mobile_number || "",
       accessId: user.access_id || `USR_${Date.now()}`,
       role: user.role || "student",
@@ -110,7 +124,7 @@ export async function POST(req: Request) {
       success: true,
       message: "Logged in successfully!",
       user: userData,
-      token: Buffer.from(`${cleanEmail}:${Date.now()}`).toString("base64")
+      token: Buffer.from(`${userEmailVal}:${Date.now()}`).toString("base64")
     });
 
   } catch (err: any) {
