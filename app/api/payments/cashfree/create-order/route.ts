@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/dbPool";
+import { pool, initDbTables } from "@/lib/dbPool";
 import { getBookCode } from "@/lib/dbClient";
 
 export async function POST(req: Request) {
   try {
+    try {
+      await initDbTables();
+    } catch (tblErr) {
+      console.warn("⚠️ Warning initializing DB tables in cashfree create-order route:", tblErr);
+    }
+
     const body = await req.json();
     const { 
       bookId, 
