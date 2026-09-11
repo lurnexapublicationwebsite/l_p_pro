@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "in.lurnexa.textbooks",
+      "sha256_cert_fingerprints": [
+        "BC:48:B3:50:F6:6E:8B:9D:6D:BE:A0:1E:74:CD:FE:34:F6:98:75:2B:CF:0E:15:38:A0:D6:84:05:FE:0E:05:A1"
+      ]
+    }
+  }
+]

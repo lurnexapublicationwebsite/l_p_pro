@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import RentalPlanSelector from "@/components/Textbooks/RentalPlanSelector";
 import { RentalPlan } from "@/lib/data/rentals";
+import { isAndroidDevice, downloadAndroidApk } from "@/lib/androidApp";
 
 interface TextbookDetails {
   id: string;
@@ -288,6 +289,10 @@ export default function BookstorePage() {
   }, []);
 
   const handleDownloadApp = async () => {
+    if (isAndroidDevice()) {
+      downloadAndroidApk();
+      return;
+    }
     if (deferredInstallPrompt) {
       deferredInstallPrompt.prompt();
       await deferredInstallPrompt.userChoice;

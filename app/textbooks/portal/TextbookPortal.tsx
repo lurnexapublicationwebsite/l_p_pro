@@ -14,6 +14,7 @@ const inter = Inter({
 import FooterSection from "@/components/Home/FooterSection";
 import RentalBadge from "@/components/Textbooks/RentalBadge";
 import RenewModal from "@/components/Textbooks/RenewModal";
+import { isAndroidDevice, downloadAndroidApk } from "@/lib/androidApp";
 import {
   getUser,
   createUser,
@@ -1706,6 +1707,10 @@ export default function TextbookPortal({
   // /textbooks/app first. Falls back to opening the app (which shows install/iOS
   // instructions once there) only when no native prompt is available yet.
   const handleInstallApp = async () => {
+    if (isAndroidDevice()) {
+      downloadAndroidApk();
+      return;
+    }
     if (deferredInstallPrompt) {
       deferredInstallPrompt.prompt();
       await deferredInstallPrompt.userChoice;
@@ -4786,7 +4791,7 @@ export default function TextbookPortal({
         <div className="max-w-7xl mx-auto">
 
           {/* Install-to-home-screen banner — app mode only, hidden once already installed */}
-          {appMode && !isStandalone && (deferredInstallPrompt || isIOS) && (
+          {appMode && !isStandalone && (deferredInstallPrompt || isIOS || isAndroidDevice()) && (
             <div className="mb-6 bg-slate-950 text-white rounded-2xl px-4 py-3 flex items-center justify-between gap-3 shadow-lg animate-fadeIn">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
@@ -4795,11 +4800,11 @@ export default function TextbookPortal({
                 <div className="min-w-0">
                   <p className="text-xs font-bold truncate">Install Lurnexa Textbooks</p>
                   <p className="text-[11px] text-slate-400 truncate">
-                    {isIOS ? "Tap Share, then \"Add to Home Screen\"" : "Add it to your home screen for one-tap access"}
+                    {isIOS ? "Tap Share, then \"Add to Home Screen\"" : isAndroidDevice() ? "Download the Android app (APK)" : "Add it to your home screen for one-tap access"}
                   </p>
                 </div>
               </div>
-              {deferredInstallPrompt ? (
+              {(deferredInstallPrompt || isAndroidDevice()) ? (
                 <button
                   onClick={handleInstallApp}
                   className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0"
@@ -5285,7 +5290,7 @@ export default function TextbookPortal({
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-xs font-bold">Get the Lurnexa Textbooks App</p>
                       <p className="text-[11px] text-slate-400">
-                        {isIOS ? "Tap Share, then \"Add to Home Screen\"" : "Install for one-tap access to your library"}
+                        {isIOS ? "Tap Share, then \"Add to Home Screen\"" : isAndroidDevice() ? "Download the Android app (APK)" : "Install for one-tap access to your library"}
                       </p>
                     </div>
                     <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-1 transition-transform shrink-0" />
