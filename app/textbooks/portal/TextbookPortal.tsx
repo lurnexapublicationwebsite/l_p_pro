@@ -514,6 +514,121 @@ export default function TextbookPortal({
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
+  // Forgot Password — self-service recovery for any textbooks_users account (email-code
+  // based, two steps: request a code, then submit it alongside a new password).
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState<"email" | "code">("email");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSuccess, setForgotSuccess] = useState("");
+  const [isForgotLoading, setIsForgotLoading] = useState(false);
+
+  const resetForgotPasswordFlow = () => {
+    setShowForgotPassword(false);
+    setForgotStep("email");
+    setForgotEmail("");
+    setForgotCode("");
+    setForgotNewPassword("");
+    setForgotConfirmPassword("");
+    setShowForgotNewPassword(false);
+    setForgotError("");
+    setForgotSuccess("");
+  };
+
+  const handleForgotPasswordRequestCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    setForgotSuccess("");
+    if (!forgotEmail.trim()) {
+      setForgotError("Please enter your email address.");
+      return;
+    }
+    setIsForgotLoading(true);
+    try {
+      const res = await fetch("/api/textbooks/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setForgotError(data.error || "Failed to send reset code. Please try again.");
+        return;
+      }
+      setForgotSuccess("A 6-digit reset code has been sent to your email.");
+      setForgotStep("code");
+    } catch (err) {
+      setForgotError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
+
+  const handleForgotPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    setForgotSuccess("");
+
+    if (!forgotCode.trim() || !forgotNewPassword || !forgotConfirmPassword) {
+      setForgotError("Please fill in all fields.");
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError("New password and confirmation do not match.");
+      return;
+    }
+    if (forgotNewPassword.length < 8) {
+      setForgotError("New password must be at least 8 characters long.");
+      return;
+    }
+    if (!/[A-Z]/.test(forgotNewPassword)) {
+      setForgotError("New password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[a-z]/.test(forgotNewPassword)) {
+      setForgotError("New password must contain at least one lowercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(forgotNewPassword)) {
+      setForgotError("New password must contain at least one number.");
+      return;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(forgotNewPassword)) {
+      setForgotError("New password must contain at least one special character (!@#$%^&* etc.).");
+      return;
+    }
+
+    setIsForgotLoading(true);
+    try {
+      const res = await fetch("/api/textbooks/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim(), code: forgotCode.trim(), newPassword: forgotNewPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setForgotError(data.error || "Failed to reset password. Please try again.");
+        return;
+      }
+      setForgotSuccess("Password reset successfully! You can now log in with your new password.");
+      setForgotCode("");
+      setForgotNewPassword("");
+      setForgotConfirmPassword("");
+      setTimeout(() => {
+        resetForgotPasswordFlow();
+        setAuthEmail(forgotEmail.trim());
+      }, 2000);
+    } catch (err) {
+      setForgotError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
+
   // Login inputs (legacy / access ID)
   const [loginAccessId, setLoginAccessId] = useState("");
   const [loginMobile, setLoginMobile] = useState("");
@@ -4810,6 +4925,151 @@ export default function TextbookPortal({
                   </div>
                 )}
 
+                {showForgotPassword ? (
+                  <div className="space-y-4">
+                    <div className="text-center space-y-1 mb-2">
+                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Reset Your Password</h3>
+                      <p className="text-xs text-slate-500">
+                        {forgotStep === "email"
+                          ? "Enter your account email — we'll send a 6-digit reset code."
+                          : `Enter the code sent to ${forgotEmail} and choose a new password.`}
+                      </p>
+                    </div>
+
+                    {forgotStep === "email" ? (
+                      <form onSubmit={handleForgotPasswordRequestCode} className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Gmail / Email Address
+                          </label>
+                          <div className="relative">
+                            <User className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                            <input
+                              type="email"
+                              placeholder="your.email@gmail.com"
+                              value={forgotEmail}
+                              onChange={(e) => setForgotEmail(e.target.value)}
+                              required
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        {forgotError && (
+                          <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{forgotError}</p>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={isForgotLoading}
+                          className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-fuchsia-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isForgotLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span>Send Reset Code</span>
+                          )}
+                        </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleForgotPasswordReset} className="space-y-4">
+                        {forgotSuccess && (
+                          <p className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">{forgotSuccess}</p>
+                        )}
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            6-Digit Reset Code
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={forgotCode}
+                            onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:outline-none focus:border-fuchsia-500 font-bold text-center text-lg tracking-[0.4em] transition-all"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            New Password
+                          </label>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                            <input
+                              type={showForgotNewPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              value={forgotNewPassword}
+                              onChange={(e) => setForgotNewPassword(e.target.value)}
+                              required
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-11 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                              className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                            >
+                              <Eye size={16} />
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1.5">
+                            At least 8 characters, with uppercase, lowercase, a number, and a special character.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Confirm New Password
+                          </label>
+                          <input
+                            type={showForgotNewPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={forgotConfirmPassword}
+                            onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                          />
+                        </div>
+
+                        {forgotError && (
+                          <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{forgotError}</p>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={isForgotLoading}
+                          className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-fuchsia-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isForgotLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span>Reset Password</span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => { setForgotStep("email"); setForgotError(""); setForgotSuccess(""); }}
+                          className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                        >
+                          Didn't get a code? Send again
+                        </button>
+                      </form>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={resetForgotPasswordFlow}
+                      className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors pt-2"
+                    >
+                      ← Back to Login
+                    </button>
+                  </div>
+                ) : (
+                <>
                 {/* Switch Login/Signup Tabs */}
                 <div className="flex bg-slate-100 p-1 rounded-2xl mb-6 shadow-inner border border-slate-200">
                   <button
@@ -4882,6 +5142,15 @@ export default function TextbookPortal({
                           className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
                         >
                           <Eye size={16} />
+                        </button>
+                      </div>
+                      <div className="text-right mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setForgotEmail(authEmail); setShowForgotPassword(true); setForgotStep("email"); setForgotError(""); setForgotSuccess(""); }}
+                          className="text-[11px] font-bold text-fuchsia-600 hover:text-fuchsia-800 transition-colors"
+                        >
+                          Forgot Password?
                         </button>
                       </div>
                     </div>
@@ -4996,6 +5265,8 @@ export default function TextbookPortal({
                       )}
                     </button>
                   </form>
+                )}
+                </>
                 )}
 
                 {/* Download App promo — installs directly when the browser has already
