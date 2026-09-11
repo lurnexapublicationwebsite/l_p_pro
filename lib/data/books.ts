@@ -78,6 +78,9 @@ export function getSoftCopyPrice(plan: string, bookId?: string, defaultDigitalPr
   if (bookId === "9") {
     return 299;
   }
+  if (bookId === "4") {
+    return 269;
+  }
   const basePrice = defaultDigitalPrice || 299;
   if (plan === "caselet") return 49;
   if (plan === "book_caselet") return basePrice + 40;
@@ -444,6 +447,50 @@ The textbook thoroughly covers regression models, decision trees, neural network
       "Chapter 4: Aggregation Pipeline & Complex Analytics",
       "Chapter 5: Indexing, Sharding & High Availability Replica Sets",
       "Chapter 6: Enterprise Security, Backup & Database Administration"
+    ]
+  },
+  {
+    id: "4",
+    slug: "entrepreneurship-development-concepts-to-creation",
+    shortSlug: "entrepreneurship",
+    title: "ENTREPRENEURSHIP DEVELOPMENT: CONCEPTS TO CREATION",
+    authors: "Dr. V Padmaja, Dr. C Udaya Kumar, Dr. Archan Mitra",
+    domain: "Management / Entrepreneurship",
+    isbn: "978-81-903315-0-0",
+    isbnDigital: "978-81-903315-2-4",
+    pages: 172,
+    price: 549,
+    digitalPrice: 269,
+    code: "ED",
+    pdfFileName: "entrepreneurship.pdf",
+    coverImg: "/portal_coverpages/entrepreneurship.jpeg",
+    publishedDate: "September 2026",
+    tag: "New Release",
+    stockStatus: "in-stock",
+    rentalEnabled: true,
+    description: "This book provides a comprehensive and practical roadmap for aspiring entrepreneurs, students, and professionals who aim to transform ideas into successful ventures. It begins by building a strong conceptual foundation of entrepreneurship—covering key theories, traits of successful entrepreneurs, and the evolving role of innovation in today's dynamic business environment.",
+    longDescription: `Entrepreneurship Development: Concepts to Creation is a definitive academic textbook that systematically guides readers through the entrepreneurial journey—from opportunity identification and idea validation to business model development and resource mobilization. It emphasizes real-world applicability by integrating case studies, contemporary examples, and structured frameworks that help bridge the gap between academic knowledge and practical execution.`,
+    keywords: [
+      "Entrepreneurship",
+      "Entrepreneurship book",
+      "Entrepreneurship Development textbook",
+      "Entrepreneurship Development: Concepts to Creation",
+      "Dr V Padmaja entrepreneurship",
+      "Dr C Udaya Kumar entrepreneurship",
+      "Dr Archan Mitra entrepreneurship",
+      "978-81-903315-0-0",
+      "MBA Entrepreneurship textbook India",
+      "Lurnexa Entrepreneurship book",
+      "Business Management textbook",
+      "Startup textbook"
+    ],
+    tableOfContents: [
+      "Chapter 1: Foundations of Entrepreneurship & Innovation",
+      "Chapter 2: Opportunity Identification & Idea Validation",
+      "Chapter 3: Business Model Development & Canvas",
+      "Chapter 4: Resource Mobilization & Startup Financing",
+      "Chapter 5: Venture Creation & Growth Strategies",
+      "Chapter 6: Corporate Sustainability, ESG & Circular Economy"
     ]
   }
 ];

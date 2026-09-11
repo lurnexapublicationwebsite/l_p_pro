@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1460 930" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .title   { font-size: 26px; font-weight: 700; fill: #0f172a; }
+      .subtitle{ font-size: 13px; fill: #64748b; }
+      .band    { fill: #f1f5f9; stroke: #cbd5e1; stroke-width: 1; }
+      .llabel  { font-size: 13px; font-weight: 700; letter-spacing: .5px; }
+      .blk     { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.2; }
+      .bt      { font-size: 13.5px; font-weight: 700; fill: #0f172a; }
+      .bd      { font-size: 10.5px; fill: #475569; }
+      .flow    { stroke: #475569; stroke-width: 1.6; stroke-dasharray: 5 4; fill: none; }
+      .conn    { stroke: #94a3b8; stroke-width: 1.4; fill: none; }
+      .flowlbl { font-size: 11px; font-weight: 700; fill: #475569; letter-spacing: .5px; }
+    </style>
+  </defs>
+
+  <rect width="1460" height="930" fill="#ffffff"/>
+  <text x="30" y="40" class="title">Lurnexa &#8212; Textbooks Subsystem: Architecture Block Diagram</text>
+  <text x="30" y="62" class="subtitle">Layered view of the storefront, access portal, secure reader, rental engine, quiz engine and institutional quotation pipeline.</text>
+
+  <!-- ===== LEFT REQUEST-FLOW RAIL ===== -->
+  <path class="flow" d="M18 100 L18 772" marker-end="url(#arr)"/>
+  <text class="flowlbl" transform="rotate(-90 18 440)" x="18" y="440" text-anchor="middle">USER REQUEST FLOW</text>
+
+  <!-- ===== RIGHT WEBHOOK RAIL ===== -->
+  <path class="flow" d="M1443 632 L1443 342" marker-end="url(#arr)"/>
+  <text class="flowlbl" transform="rotate(-90 1443 487)" x="1443" y="487" text-anchor="middle">CASHFREE WEBHOOK / CALLBACKS</text>
+
+  <!-- ============ LAYER 1: CLIENT ============ -->
+  <rect class="band" x="30" y="92" width="1370" height="170" rx="10"/>
+  <text class="llabel" x="46" y="112" fill="#4f46e5">1 &#183; CLIENT / PRESENTATION LAYER &#8212; app/textbooks/** &#183; app/quotation/**</text>
+
+  <g>
+    <rect class="blk" x="55" y="124" width="320" height="58" rx="6"/>
+    <text class="bt" x="67" y="145">Public Catalog</text>
+    <text class="bd" x="67" y="163">/textbooks &#183; /textbooks/[slug]</text>
+    <text class="bd" x="67" y="176">SSG pages, SEO meta + JSON&#8209;LD</text>
+
+    <rect class="blk" x="388" y="124" width="320" height="58" rx="6"/>
+    <text class="bt" x="400" y="145">Storefront</text>
+    <text class="bd" x="400" y="163">/textbooks/store</text>
+    <text class="bd" x="400" y="176">cart, format &amp; plan, rental selector</text>
+
+    <rect class="blk" x="721" y="124" width="320" height="58" rx="6"/>
+    <text class="bt" x="733" y="145">Checkout</text>
+    <text class="bd" x="733" y="163">/textbooks/store/checkout</text>
+    <text class="bd" x="733" y="176">3&#8209;step: details &#8594; review &#8594; pay</text>
+
+    <rect class="blk" x="1054" y="124" width="320" height="58" rx="6"/>
+    <text class="bt" x="1066" y="145">Quotation Portal</text>
+    <text class="bd" x="1066" y="163">/quotation &#183; /quotation/success</text>
+    <text class="bd" x="1066" y="176">/quotation/confirm/[id]</text>
+  </g>
+  <g>
+    <rect class="blk" x="55" y="190" width="320" height="58" rx="6"/>
+    <text class="bt" x="67" y="211">Access Portal</text>
+    <text class="bd" x="67" y="229">/textbooks/portal (TextbookPortal)</text>
+    <text class="bd" x="67" y="242">student &#183; faculty &#183; admin tabs</text>
+
+    <rect class="blk" x="388" y="190" width="320" height="58" rx="6"/>
+    <text class="bt" x="400" y="211">Reading App (PWA)</text>
+    <text class="bd" x="400" y="229">/textbooks/app &#8212; appMode</text>
+    <text class="bd" x="400" y="242">service worker, installable</text>
+
+    <rect class="blk" x="721" y="190" width="320" height="58" rx="6"/>
+    <text class="bt" x="733" y="211">Secure eBook Reader</text>
+    <text class="bd" x="733" y="229">/textbooks/reader/[rentalId]</text>
+    <text class="bd" x="733" y="242">pdf.js, watermark, anti&#8209;copy</text>
+
+    <rect class="blk" x="1054" y="190" width="320" height="58" rx="6"/>
+    <text class="bt" x="1066" y="211">Quotation Admin</text>
+    <text class="bd" x="1066" y="229">/quotation/admin/**</text>
+    <text class="bd" x="1066" y="242">own login + OTP + JWT cookie</text>
+  </g>
+
+  <!-- connectors L1 -> L2 -->
+  <path class="conn" d="M215 262 L215 284" marker-end="url(#arr)"/>
+  <path class="conn" d="M548 262 L548 284" marker-end="url(#arr)"/>
+  <path class="conn" d="M881 262 L881 284" marker-end="url(#arr)"/>
+  <path class="conn" d="M1214 262 L1214 284" marker-end="url(#arr)"/>
+
+  <!-- ============ LAYER 2: API ============ -->
+  <rect class="band" x="30" y="284" width="1370" height="170" rx="10"/>
+  <text class="llabel" x="46" y="304" fill="#0891b2">2 &#183; API LAYER &#8212; Next.js Route Handlers (app/api/**)</text>
+
+  <g>
+    <rect class="blk" x="55" y="316" width="320" height="58" rx="6"/>
+    <text class="bt" x="67" y="337">Auth &amp; OTP</text>
+    <text class="bd" x="67" y="355">textbooks/auth: signup &#183; login &#183; me</text>
+    <text class="bd" x="67" y="368">request&#8209;otp &#183; verify&#8209;otp &#183; change&#8209;password</text>
+
+    <rect class="blk" x="388" y="316" width="320" height="58" rx="6"/>
+    <text class="bt" x="400" y="337">Portal DB Sync</text>
+    <text class="bd" x="400" y="355">textbooks/db/sync</text>
+    <text class="bd" x="400" y="368">GET hydrate &#183; POST save/delete &#183; ensureTables()</text>
+
+    <rect class="blk" x="721" y="316" width="320" height="58" rx="6"/>
+    <text class="bt" x="733" y="337">Catalog API</text>
+    <text class="bd" x="733" y="355">textbooks/published</text>
+    <text class="bd" x="733" y="368">lists public/portal_textbooks PDFs</text>
+
+    <rect class="blk" x="1054" y="316" width="320" height="58" rx="6"/>
+    <text class="bt" x="1066" y="337">Payments &#8212; Cashfree</text>
+    <text class="bd" x="1066" y="355">payments/cashfree: create&#8209;order</text>
+    <text class="bd" x="1066" y="368">verify &#183; webhook &#183; my&#8209;purchases</text>
+  </g>
+  <g>
+    <rect class="blk" x="55" y="382" width="320" height="58" rx="6"/>
+    <text class="bt" x="67" y="403">Rentals</text>
+    <text class="bd" x="67" y="421">rentals: create &#183; renew &#183; verify &#183; access</text>
+    <text class="bd" x="67" y="434">my&#8209;rentals &#183; plans &#183; check&#8209;expiry &#183; admin&#8209;list</text>
+
+    <rect class="blk" x="388" y="382" width="320" height="58" rx="6"/>
+    <text class="bt" x="400" y="403">Quiz Engine</text>
+    <text class="bd" x="400" y="421">textbooks/quiz: notify&#8209;students</text>
+    <text class="bd" x="400" y="434">send&#8209;results</text>
+
+    <rect class="blk" x="721" y="382" width="320" height="58" rx="6"/>
+    <text class="bt" x="733" y="403">Reader Account</text>
+    <text class="bd" x="733" y="421">textbooks/user: orders</text>
+    <text class="bd" x="733" y="434">addresses</text>
+
+    <rect class="blk" x="1054" y="382" width="320" height="58" rx="6"/>
+    <text class="bt" x="1066" y="403">Quotation API</text>
+    <text class="bd" x="1066" y="421">quotation: request &#183; confirm</text>
+    <text class="bd" x="1066" y="434">admin/* (login, review, orders, books)</text>
+  </g>
+
+  <!-- connectors L2 -> L3 -->
+  <path class="conn" d="M215 454 L215 476" marker-end="url(#arr)"/>
+  <path class="conn" d="M548 454 L548 476" marker-end="url(#arr)"/>
+  <path class="conn" d="M881 454 L881 476" marker-end="url(#arr)"/>
+  <path class="conn" d="M1214 454 L1214 476" marker-end="url(#arr)"/>
+
+  <!-- ============ LAYER 3: DOMAIN / DATA ACCESS ============ -->
+  <rect class="band" x="30" y="476" width="1370" height="96" rx="10"/>
+  <text class="llabel" x="46" y="496" fill="#7c3aed">3 &#183; DOMAIN &amp; DATA&#8209;ACCESS LAYER &#8212; lib/**</text>
+
+  <g>
+    <rect class="blk" x="55" y="506" width="258" height="54" rx="6"/>
+    <text class="bt" x="67" y="527">lib/data/books.ts</text>
+    <text class="bd" x="67" y="545">static catalog + price fns</text>
+
+    <rect class="blk" x="325" y="506" width="258" height="54" rx="6"/>
+    <text class="bt" x="337" y="527">lib/data/rentals.ts</text>
+    <text class="bd" x="337" y="545">RENTAL_PLANS + lifecycle utils</text>
+
+    <rect class="blk" x="595" y="506" width="258" height="54" rx="6"/>
+    <text class="bt" x="607" y="527">lib/dbClient.ts</text>
+    <text class="bd" x="607" y="545">browser IN_MEMORY_DB mirror</text>
+
+    <rect class="blk" x="865" y="506" width="258" height="54" rx="6"/>
+    <text class="bt" x="877" y="527">lib/dbPool.ts</text>
+    <text class="bd" x="877" y="545">pg Pool + JSON fallback</text>
+
+    <rect class="blk" x="1135" y="506" width="258" height="54" rx="6"/>
+    <text class="bt" x="1147" y="527">mail / otp / s3</text>
+    <text class="bd" x="1147" y="545">Nodemailer &#183; Twilio &#183; S3 SDK</text>
+  </g>
+
+  <!-- connectors L3 -> L4 -->
+  <path class="conn" d="M260 572 L260 588" marker-end="url(#arr)"/>
+  <path class="conn" d="M620 572 L620 588" marker-end="url(#arr)"/>
+  <path class="conn" d="M980 572 L980 588" marker-end="url(#arr)"/>
+  <path class="conn" d="M1260 572 L1260 588" marker-end="url(#arr)"/>
+
+  <!-- ============ LAYER 4: PERSISTENCE / EXTERNAL ============ -->
+  <rect class="band" x="30" y="588" width="1370" height="194" rx="10"/>
+  <text class="llabel" x="46" y="608" fill="#b45309">4 &#183; PERSISTENCE &amp; EXTERNAL SERVICES</text>
+
+  <rect class="blk" x="55" y="618" width="430" height="150" rx="6"/>
+  <text class="bt" x="69" y="639">PostgreSQL &#8212; DATABASE_URL</text>
+  <text class="bd" x="69" y="659">textbooks_users &#183; textbooks_allowed_access_ids</text>
+  <text class="bd" x="69" y="675">textbooks_purchases &#183; textbooks_coupons</text>
+  <text class="bd" x="69" y="691">book_rentals &#183; book_rental_plans &#183; rental_sessions</text>
+  <text class="bd" x="69" y="707">textbooks_quizzes &#183; textbooks_attempts &#183; textbooks_otps</text>
+  <text class="bd" x="69" y="723">textbooks_practice_* &#183; textbooks_textbooks &#183; textbooks_colleges</text>
+  <text class="bd" x="69" y="739">quotation_requests &#183; quotations &#183; quotation_orders &#183; quotation_books</text>
+  <text class="bd" x="69" y="755">(local dev: JSON fallback in scratch/ or /tmp)</text>
+
+  <rect class="blk" x="505" y="618" width="205" height="68" rx="6"/>
+  <text class="bt" x="517" y="639">AWS S3</text>
+  <text class="bd" x="517" y="657">textbook PDFs (signed URLs)</text>
+  <text class="bd" x="517" y="672">client stamps</text>
+
+  <rect class="blk" x="724" y="618" width="205" height="68" rx="6"/>
+  <text class="bt" x="736" y="639">Cashfree PG</text>
+  <text class="bd" x="736" y="657">hosted checkout</text>
+  <text class="bd" x="736" y="672">order + verify API, webhook</text>
+
+  <rect class="blk" x="943" y="618" width="205" height="68" rx="6"/>
+  <text class="bt" x="955" y="639">SMTP (Nodemailer)</text>
+  <text class="bd" x="955" y="657">order &#183; rental &#183; quiz</text>
+  <text class="bd" x="955" y="672">OTP &#183; quotation email</text>
+
+  <rect class="blk" x="1162" y="618" width="205" height="68" rx="6"/>
+  <text class="bt" x="1174" y="639">Twilio</text>
+  <text class="bd" x="1174" y="657">SMS OTP delivery</text>
+  <text class="bd" x="1174" y="672">verified caller IDs</text>
+
+  <rect class="blk" x="505" y="700" width="862" height="68" rx="6"/>
+  <text class="bt" x="517" y="721">Static assets &#8212; public/</text>
+  <text class="bd" x="517" y="739">portal_textbooks/*.pdf (reader fallback) &#183; portal_coverpages/*.jpeg &#183; media/client_stamps/</text>
+  <text class="bd" x="517" y="754">PDFs auto&#8209;generated at build by scripts/generate-missing-pdfs.js</text>
+
+  <!-- ============ LAYER 5: SCHEDULED / ASYNC ============ -->
+  <rect class="band" x="30" y="804" width="1370" height="94" rx="10"/>
+  <text class="llabel" x="46" y="824" fill="#15803d">5 &#183; SCHEDULED / BUILD&#8209;TIME</text>
+
+  <rect class="blk" x="55" y="832" width="655" height="54" rx="6"/>
+  <text class="bt" x="67" y="853">GitHub Actions &#8212; .github/workflows/rental-expiry-check.yml</text>
+  <text class="bd" x="67" y="871">daily cron 0 3 * * * UTC &#8594; GET /api/rentals/check-expiry?secret=&#8230; (expire + warn emails)</text>
+
+  <rect class="blk" x="730" y="832" width="637" height="54" rx="6"/>
+  <text class="bt" x="742" y="853">Build pipeline &#8212; amplify.yml</text>
+  <text class="bd" x="742" y="871">scripts/inject-env.js &#183; scripts/generate-missing-pdfs.js &#8594; next build</text>
+
+  <!-- cron feeds back into rentals API -->
+  <path class="conn" d="M710 859 L980 859 L980 442 L1054 442" marker-end="url(#arr)" opacity="0.5"/>
+  <text class="flowlbl" x="726" y="853" opacity="0.7">cron &#8594; Rentals API</text>
+</svg>

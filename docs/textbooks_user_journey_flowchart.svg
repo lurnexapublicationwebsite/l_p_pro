@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 2274" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .t     { font-size: 25px; font-weight: 700; fill: #0f172a; }
+      .sub   { font-size: 13px; fill: #64748b; }
+      .term  { fill: #e0e7ff; stroke: #6366f1; stroke-width: 1.5; }
+      .proc  { fill: #ffffff; stroke: #475569; stroke-width: 1.5; }
+      .dec   { fill: #fef9c3; stroke: #a16207; stroke-width: 1.5; }
+      .nt    { font-size: 13px; font-weight: 700; fill: #0f172a; text-anchor: middle; }
+      .np    { font-size: 12.5px; fill: #1e293b; text-anchor: middle; }
+      .nd    { font-size: 12.5px; font-weight: 700; fill: #0f172a; text-anchor: middle; }
+      .edge  { stroke: #334155; stroke-width: 1.6; fill: none; }
+      .el    { font-size: 11px; font-weight: 700; fill: #b91c1c; text-anchor: middle; }
+      .elg   { font-size: 11px; font-weight: 700; fill: #475569; text-anchor: middle; }
+      .lg    { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect width="1180" height="2274" fill="#ffffff"/>
+  <text x="40" y="44" class="t">Textbooks &#8212; User Journey Flowchart (browse &#8594; buy &#8594; read)</text>
+  <text x="40" y="66" class="sub">Rectangles = a screen or an action &#183; Diamonds = a decision / branch &#183; Arrows = where the user goes next.</text>
+
+  <!-- ===== LEGEND ===== -->
+  <rect class="lg" x="866" y="88" width="278" height="120" rx="8"/>
+  <rect class="term" x="882" y="100" width="46" height="20" rx="10"/>
+  <text x="940" y="114" font-size="11.5" fill="#0f172a">Start / End</text>
+  <rect class="proc" x="882" y="128" width="46" height="20" rx="3"/>
+  <text x="940" y="142" font-size="11.5" fill="#0f172a">Screen / action</text>
+  <polygon class="dec" points="905,156 928,168 905,180 882,168"/>
+  <text x="940" y="172" font-size="11.5" fill="#0f172a">Decision</text>
+  <path class="edge" d="M884 194 L926 194" marker-end="url(#ah)"/>
+  <text x="940" y="198" font-size="11.5" fill="#0f172a">Navigation</text>
+
+  <g transform="translate(0,54)">
+  <!-- ================= EDGES ================= -->
+  <!-- main spine -->
+  <path class="edge" d="M470 66  L470 104" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 168 L470 210" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 320 L470 360" marker-end="url(#ah)"/>
+  <text x="486" y="344" class="elg">Published Books</text>
+  <path class="edge" d="M470 424 L470 464" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 574 L470 610" marker-end="url(#ah)"/>
+  <text x="470" y="596" class="elg">open a book</text>
+  <path class="edge" d="M470 682 L470 712" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 822 L470 880" marker-end="url(#ah)"/>
+  <text x="486" y="854" class="elg">Digital PDF</text>
+  <path class="edge" d="M470 944 L470 984" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 1094 L470 1130" marker-end="url(#ah)"/>
+  <text x="486" y="1116" class="el">Yes</text>
+  <path class="edge" d="M470 1194 L470 1224" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 1288 L470 1318" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 1390 L470 1420" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 1530 L470 1560" marker-end="url(#ah)"/>
+  <text x="486" y="1548" class="el">Yes</text>
+  <path class="edge" d="M470 1648 L470 1678" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 1742 L470 1772" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 1882 L470 1912" marker-end="url(#ah)"/>
+  <text x="486" y="1900" class="el">Yes</text>
+  <path class="edge" d="M470 1976 L470 2006" marker-end="url(#ah)"/>
+  <path class="edge" d="M470 2078 L470 2110" marker-end="url(#ah)"/>
+
+  <!-- D1 -> Upcoming sub-flow (left) -->
+  <path class="edge" d="M365 265 L275 265" marker-end="url(#ah)"/>
+  <text x="320" y="256" class="elg">Upcoming</text>
+  <path class="edge" d="M150 289 L150 325" marker-end="url(#ah)"/>
+  <path class="edge" d="M150 389 L150 425" marker-end="url(#ah)"/>
+
+  <!-- D2 -> Bookstore (right) -->
+  <path class="edge" d="M575 519 L790 512" marker-end="url(#ah)"/>
+  <text x="672" y="505" class="elg">&#8220;Buy Now&#8221;</text>
+  <path class="edge" d="M930 542 L930 580" marker-end="url(#ah)"/>
+  <!-- D2b exits -->
+  <path class="edge" d="M825 635 L690 640" marker-end="url(#ah)"/>
+  <text x="756" y="628" class="elg">open a book</text>
+  <path class="edge" d="M930 690 L930 730" marker-end="url(#ah)"/>
+  <text x="930" y="714" class="elg">add to cart</text>
+  <path class="edge" d="M1055 756 C1128 756 1128 512 1072 512" marker-end="url(#ah)"/>
+  <text x="1112" y="640" class="elg" transform="rotate(90 1112 640)">keep browsing</text>
+  <path class="edge" d="M1035 635 L1132 635 L1132 862 L472 862 L472 878" marker-end="url(#ah)"/>
+  <text x="900" y="855" class="elg">buy this book</text>
+
+  <!-- D3 format branches -->
+  <path class="edge" d="M365 767 L230 767 L230 912 L280 912" marker-end="url(#ah)"/>
+  <text x="238" y="758" class="elg">Paperback</text>
+  <path class="edge" d="M575 767 L800 790" marker-end="url(#ah)"/>
+  <text x="690" y="762" class="elg">Rent</text>
+  <path class="edge" d="M940 888 L940 912 L660 912" marker-end="url(#ah)"/>
+
+  <!-- D4 No -> sign in (left) -->
+  <path class="edge" d="M365 1039 L150 1039 L150 1120" marker-end="url(#ah)"/>
+  <text x="250" y="1030" class="el">No</text>
+  <path class="edge" d="M270 1160 L290 1161" marker-end="url(#ah)"/>
+
+  <!-- D5 No -> retry (right) -->
+  <path class="edge" d="M575 1475 L820 1470" marker-end="url(#ah)"/>
+  <text x="690" y="1462" class="el">No</text>
+  <path class="edge" d="M940 1440 L940 1354 L678 1354" marker-end="url(#ah)"/>
+  <text x="905" y="1346" class="elg">retry</text>
+
+  <!-- D6 No -> END (right) -->
+  <path class="edge" d="M575 1827 L760 1827 L760 2132 L550 2132" marker-end="url(#ah)"/>
+  <text x="690" y="1819" class="el">No</text>
+
+  <!-- ================= NODES ================= -->
+  <!-- T1 -->
+  <rect class="term" x="320" y="24" width="300" height="42" rx="21"/>
+  <text class="nt" x="470" y="50">START &#8212; user opens  /textbooks</text>
+
+  <!-- P1 -->
+  <rect class="proc" x="280" y="104" width="380" height="64" rx="4"/>
+  <text class="np" x="470" y="132">Textbooks landing page loads</text>
+  <text class="np" x="470" y="150">Tabs:  Upcoming Books  &#183;  Published Books  (default)</text>
+
+  <!-- D1 -->
+  <polygon class="dec" points="470,210 575,265 470,320 365,265"/>
+  <text class="nd" x="470" y="270">Which tab?</text>
+
+  <!-- U1 U2 U3 -->
+  <rect class="proc" x="25" y="225" width="250" height="64" rx="4"/>
+  <text class="np" x="150" y="253">Upcoming Books grid</text>
+  <text class="np" x="150" y="271">(IN PRESS &#183; editorial progress)</text>
+  <rect class="proc" x="25" y="325" width="250" height="64" rx="4"/>
+  <text class="np" x="150" y="353">Click &#8220;View Details&#8221;</text>
+  <text class="np" x="150" y="371">&#8594; info modal (About, ISBN, date)</text>
+  <rect class="term" x="35" y="425" width="230" height="44" rx="22"/>
+  <text class="nt" x="150" y="452">Browse only &#8212; not yet on sale</text>
+
+  <!-- P2 -->
+  <rect class="proc" x="260" y="360" width="420" height="64" rx="4"/>
+  <text class="np" x="470" y="388">Published Books grid &#8212; each card:</text>
+  <text class="np" x="470" y="406">cover &#183; title &#183; &#8377; price &#183; ISBN &#183; In Stock</text>
+
+  <!-- D2 -->
+  <polygon class="dec" points="470,464 575,519 470,574 365,519"/>
+  <text class="nd" x="470" y="524">User clicks&#8230;?</text>
+
+  <!-- S1 -->
+  <rect class="proc" x="790" y="470" width="280" height="72" rx="4"/>
+  <text class="np" x="930" y="496">&#8220;Buy Now&#8221; &#8594;  /textbooks/store</text>
+  <text class="np" x="930" y="514">Bookstore listing</text>
+  <text class="np" x="930" y="532">(search &#183; book cards &#183; cart)</text>
+
+  <!-- D2b -->
+  <polygon class="dec" points="930,580 1035,635 930,690 825,635"/>
+  <text class="nd" x="930" y="632">Action in</text>
+  <text class="nd" x="930" y="648">Bookstore?</text>
+
+  <!-- S2 -->
+  <rect class="proc" x="805" y="730" width="250" height="52" rx="4"/>
+  <text class="np" x="930" y="752">Add to Cart</text>
+  <text class="np" x="930" y="769">(cart saved in browser)</text>
+
+  <!-- P3 -->
+  <rect class="proc" x="260" y="610" width="420" height="72" rx="4"/>
+  <text class="np" x="470" y="636">Book detail page  /textbooks/{slug}</text>
+  <text class="np" x="470" y="654">description &#183; Table of Contents &#183; specs</text>
+  <text class="np" x="470" y="672">&#183; price &#183; format selector</text>
+
+  <!-- D3 -->
+  <polygon class="dec" points="470,712 580,767 470,822 360,767"/>
+  <text class="nd" x="470" y="763">Select edition</text>
+  <text class="nd" x="470" y="779">format?</text>
+
+  <!-- RP -->
+  <rect class="proc" x="800" y="754" width="290" height="66" rx="4"/>
+  <text class="np" x="945" y="781">Choose rental plan</text>
+  <text class="np" x="945" y="799">1 mo &#8377;59 &#183; 3 mo &#8377;99 &#183; 6 mo &#8377;149</text>
+
+  <!-- P4 -->
+  <rect class="proc" x="280" y="878" width="380" height="66" rx="4"/>
+  <text class="np" x="470" y="905">Redirect to  /textbooks/store/checkout</text>
+  <text class="np" x="470" y="923">?bookId &amp; format &amp; plan</text>
+
+  <!-- D4 -->
+  <polygon class="dec" points="470,984 575,1039 470,1094 365,1039"/>
+  <text class="nd" x="470" y="1044">Signed in?</text>
+
+  <!-- L1 -->
+  <rect class="proc" x="20" y="1120" width="260" height="82" rx="4"/>
+  <text class="np" x="150" y="1146">Sign in at</text>
+  <text class="np" x="150" y="1164">/textbooks/portal/login</text>
+  <text class="np" x="150" y="1182">email + password, OR</text>
+  <text class="np" x="150" y="1198">Access ID + email/mobile &#8594; OTP</text>
+
+  <!-- P5 -->
+  <rect class="proc" x="290" y="1130" width="360" height="64" rx="4"/>
+  <text class="np" x="470" y="1158">Checkout &#183; Step 1</text>
+  <text class="np" x="470" y="1176">contact + shipping address + coupon</text>
+
+  <!-- P6 -->
+  <rect class="proc" x="255" y="1224" width="430" height="64" rx="4"/>
+  <text class="np" x="470" y="1252">Checkout &#183; Step 2 &#8212; review total</text>
+  <text class="np" x="470" y="1270">base + 18% GST + 2% fee + shipping</text>
+
+  <!-- P7 -->
+  <rect class="proc" x="265" y="1318" width="410" height="72" rx="4"/>
+  <text class="np" x="470" y="1344">Checkout &#183; Step 3</text>
+  <text class="np" x="470" y="1362">Pay via Cashfree (hosted)</text>
+  <text class="np" x="470" y="1380">card &#183; UPI &#183; netbanking</text>
+
+  <!-- D5 -->
+  <polygon class="dec" points="470,1420 575,1475 470,1530 365,1475"/>
+  <text class="nd" x="470" y="1471">Payment</text>
+  <text class="nd" x="470" y="1487">successful?</text>
+
+  <!-- R1 -->
+  <rect class="proc" x="820" y="1438" width="240" height="60" rx="4"/>
+  <text class="np" x="940" y="1464">Payment error</text>
+  <text class="np" x="940" y="1482">&#8212; retry</text>
+
+  <!-- P8 -->
+  <rect class="proc" x="250" y="1560" width="440" height="88" rx="4"/>
+  <text class="np" x="470" y="1584">Order verified (server)</text>
+  <text class="np" x="470" y="1602">account + one Access ID created</text>
+  <text class="np" x="470" y="1620">book added to My Library / rental activated</text>
+  <text class="np" x="470" y="1638">confirmation email sent</text>
+
+  <!-- P9 -->
+  <rect class="proc" x="290" y="1678" width="360" height="64" rx="4"/>
+  <text class="np" x="470" y="1706">Success screen</text>
+  <text class="np" x="470" y="1724">Order ID + &#8220;Go to My Library&#8221;</text>
+
+  <!-- D6 -->
+  <polygon class="dec" points="470,1772 575,1827 470,1882 365,1827"/>
+  <text class="nd" x="470" y="1823">Open My</text>
+  <text class="nd" x="470" y="1839">Library now?</text>
+
+  <!-- P10 -->
+  <rect class="proc" x="270" y="1912" width="400" height="64" rx="4"/>
+  <text class="np" x="470" y="1940">/textbooks/portal &#8594; My Library</text>
+  <text class="np" x="470" y="1958">purchased books + active rentals</text>
+
+  <!-- P11 -->
+  <rect class="proc" x="280" y="2006" width="380" height="72" rx="4"/>
+  <text class="np" x="470" y="2032">Open Secure eBook Reader</text>
+  <text class="np" x="470" y="2050">watermarked</text>
+  <text class="np" x="470" y="2068">no download / no print</text>
+
+  <!-- T2 -->
+  <rect class="term" x="390" y="2110" width="160" height="42" rx="21"/>
+  <text class="nt" x="470" y="2136">END</text>
+  </g>
+</svg>
