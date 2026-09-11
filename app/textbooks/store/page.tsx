@@ -26,7 +26,7 @@ import {
 import Link from "next/link";
 import RentalPlanSelector from "@/components/Textbooks/RentalPlanSelector";
 import { RentalPlan } from "@/lib/data/rentals";
-import { isAndroidDevice, downloadAndroidApk } from "@/lib/androidApp";
+import { downloadAndroidApk } from "@/lib/androidApp";
 
 interface TextbookDetails {
   id: string;
@@ -288,18 +288,9 @@ export default function BookstorePage() {
     return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
   }, []);
 
-  const handleDownloadApp = async () => {
-    if (isAndroidDevice()) {
-      downloadAndroidApk();
-      return;
-    }
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice;
-      setDeferredInstallPrompt(null);
-    } else {
-      router.push("/textbooks/app");
-    }
+  // Always downloads the Android APK directly — never navigates away from the store.
+  const handleDownloadApp = () => {
+    downloadAndroidApk();
   };
 
   const getLoggedInUser = () => {

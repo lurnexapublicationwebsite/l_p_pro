@@ -34,7 +34,7 @@ import Link from "next/link";
 import { createUser, getAllUsers, getBookCode, TextbookUser, getAllAccessIds, setStorageItem, AllowedAccessId, getCoupons, initDb, Coupon } from "@/lib/dbClient";
 import { copyToClipboard as copyToClipboardUtil } from "@/lib/utils";
 import { getRentalPlanByCode, getRentalGST, getRentalOnlineFee, getRentalTotal } from "@/lib/data/rentals";
-import { isAndroidDevice, downloadAndroidApk } from "@/lib/androidApp";
+import { ANDROID_APK_URL } from "@/lib/androidApp";
 
 const getShippingCost = (pincode: string): number => {
   const cleanPin = (pincode || "").trim();
@@ -1188,13 +1188,8 @@ function CheckoutContent() {
               installable reading app, not just the browser portal. */}
           {isDigital && (
             <a
-              href="/textbooks/app"
-              onClick={(e) => {
-                if (isAndroidDevice()) {
-                  e.preventDefault();
-                  downloadAndroidApk();
-                }
-              }}
+              href={ANDROID_APK_URL}
+              download="lurnexa-textbooks.apk"
               className="flex items-center gap-3 bg-slate-950 hover:bg-slate-800 text-white rounded-2xl px-5 py-4 text-left transition-all group"
             >
               <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">

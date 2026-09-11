@@ -14,7 +14,7 @@ const inter = Inter({
 import FooterSection from "@/components/Home/FooterSection";
 import RentalBadge from "@/components/Textbooks/RentalBadge";
 import RenewModal from "@/components/Textbooks/RenewModal";
-import { isAndroidDevice, downloadAndroidApk } from "@/lib/androidApp";
+import { downloadAndroidApk } from "@/lib/androidApp";
 import {
   getUser,
   createUser,
@@ -1702,22 +1702,10 @@ export default function TextbookPortal({
     return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
   }, []);
 
-  // Shared by every "Download App" button on the site: install right where the click
-  // happened when the browser has a captured prompt ready, instead of always bouncing to
-  // /textbooks/app first. Falls back to opening the app (which shows install/iOS
-  // instructions once there) only when no native prompt is available yet.
-  const handleInstallApp = async () => {
-    if (isAndroidDevice()) {
-      downloadAndroidApk();
-      return;
-    }
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice;
-      setDeferredInstallPrompt(null);
-    } else {
-      router.push("/textbooks/app");
-    }
+  // Shared by every "Get the App" / "Install" button on the site: always downloads the
+  // Android APK directly, right where the click happened — never navigates to another page.
+  const handleInstallApp = () => {
+    downloadAndroidApk();
   };
 
   // Safe window mount check
@@ -4791,7 +4779,7 @@ export default function TextbookPortal({
         <div className="max-w-7xl mx-auto">
 
           {/* Install-to-home-screen banner — app mode only, hidden once already installed */}
-          {appMode && !isStandalone && (deferredInstallPrompt || isIOS || isAndroidDevice()) && (
+          {appMode && !isStandalone && (
             <div className="mb-6 bg-slate-950 text-white rounded-2xl px-4 py-3 flex items-center justify-between gap-3 shadow-lg animate-fadeIn">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
@@ -4799,27 +4787,15 @@ export default function TextbookPortal({
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold truncate">Install Lurnexa Textbooks</p>
-                  <p className="text-[11px] text-slate-400 truncate">
-                    {isIOS ? "Tap Share, then \"Add to Home Screen\"" : isAndroidDevice() ? "Download the Android app (APK)" : "Add it to your home screen for one-tap access"}
-                  </p>
+                  <p className="text-[11px] text-slate-400 truncate">Download the Android app (APK)</p>
                 </div>
               </div>
-              {(deferredInstallPrompt || isAndroidDevice()) ? (
-                <button
-                  onClick={handleInstallApp}
-                  className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0"
-                >
-                  Install
-                </button>
-              ) : (
-                <button
-                  onClick={() => setIsIOS(false)}
-                  className="text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition shrink-0"
-                  aria-label="Dismiss"
-                >
-                  <X size={16} />
-                </button>
-              )}
+              <button
+                onClick={handleInstallApp}
+                className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0"
+              >
+                Install
+              </button>
             </div>
           )}
 
@@ -5290,7 +5266,7 @@ export default function TextbookPortal({
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-xs font-bold">Get the Lurnexa Textbooks App</p>
                       <p className="text-[11px] text-slate-400">
-                        {isIOS ? "Tap Share, then \"Add to Home Screen\"" : isAndroidDevice() ? "Download the Android app (APK)" : "Install for one-tap access to your library"}
+                        Download the Android app (APK)
                       </p>
                     </div>
                     <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-1 transition-transform shrink-0" />
