@@ -116,7 +116,9 @@ export function ReaderPageCanvas({
     : null;
 
   return (
-    <div className={`relative shrink-0 ${flipAnimClass}`}>
+    // data-reader-page: renderPdfPage sizes the page to this wrapper's parent (the reader area),
+    // not to the wrapper itself, which only ever matches the canvas.
+    <div data-reader-page className={`relative shrink-0 ${flipAnimClass}`}>
       <canvas
         id="secure-reader-canvas"
         className="block bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none transition-all duration-300"

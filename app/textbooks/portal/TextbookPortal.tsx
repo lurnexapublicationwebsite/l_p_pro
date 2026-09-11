@@ -1677,7 +1677,8 @@ export default function TextbookPortal({
       if (!context) return;
 
       // Calculate dynamic fit-to-screen scale based on available container dimensions & zoom level
-      const container = canvas.parentElement;
+      // The canvas sits inside the highlight layer's wrapper; measure the reader area around it.
+      const container = canvas.closest("[data-reader-page]")?.parentElement || canvas.parentElement;
       const rectH = container ? container.getBoundingClientRect().height : (window.innerHeight - 80);
       const rectW = container ? container.getBoundingClientRect().width : window.innerWidth;
       
