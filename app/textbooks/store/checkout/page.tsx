@@ -34,7 +34,7 @@ import Link from "next/link";
 import { createUser, getAllUsers, getBookCode, TextbookUser, getAllAccessIds, setStorageItem, AllowedAccessId, getCoupons, initDb, Coupon } from "@/lib/dbClient";
 import { copyToClipboard as copyToClipboardUtil } from "@/lib/utils";
 import { getRentalPlanByCode, getRentalGST, getRentalOnlineFee, getRentalTotal } from "@/lib/data/rentals";
-import { ANDROID_APK_URL } from "@/lib/androidApp";
+import { ANDROID_APK_URL, useIsAndroidDevice } from "@/lib/androidApp";
 
 const getShippingCost = (pincode: string): number => {
   const cleanPin = (pincode || "").trim();
@@ -296,6 +296,7 @@ function CheckoutContent() {
   const [verificationSuccess, setVerificationSuccess] = useState(false);
   const [verificationFailed, setVerificationFailed] = useState(false);
   const [verifiedOrderDetails, setVerifiedOrderDetails] = useState<any>(null);
+  const isAndroid = useIsAndroidDevice();
   const [generatedAccessId, setGeneratedAccessId] = useState<string>("");
 
   // Step state (1: Customer info, 2: Review, 3: Secure Payment)
@@ -1186,7 +1187,7 @@ function CheckoutContent() {
 
           {/* Download App promo — softcopy & rental access is meant to be read in the
               installable reading app, not just the browser portal. */}
-          {isDigital && (
+          {isDigital && isAndroid && (
             <a
               href={ANDROID_APK_URL}
               download="lurnexa-textbooks.apk"

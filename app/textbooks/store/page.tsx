@@ -26,7 +26,7 @@ import {
 import Link from "next/link";
 import RentalPlanSelector from "@/components/Textbooks/RentalPlanSelector";
 import { RentalPlan } from "@/lib/data/rentals";
-import { downloadAndroidApk } from "@/lib/androidApp";
+import { downloadAndroidApk, useIsAndroidDevice } from "@/lib/androidApp";
 
 interface TextbookDetails {
   id: string;
@@ -275,6 +275,7 @@ export default function BookstorePage() {
   // from this route's layout) so the "Get the App" button can install directly.
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [isStandaloneApp, setIsStandaloneApp] = useState(false);
+  const isAndroid = useIsAndroidDevice();
   useEffect(() => {
     if (typeof window === "undefined") return;
     setIsStandaloneApp(
@@ -560,7 +561,7 @@ export default function BookstorePage() {
               <span>Back to Textbooks</span>
             </Link>
 
-            {!isStandaloneApp && (
+            {isAndroid && !isStandaloneApp && (
               <button
                 onClick={handleDownloadApp}
                 className="inline-flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md shrink-0"

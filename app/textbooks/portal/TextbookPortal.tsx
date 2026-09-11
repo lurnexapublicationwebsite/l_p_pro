@@ -14,7 +14,7 @@ const inter = Inter({
 import FooterSection from "@/components/Home/FooterSection";
 import RentalBadge from "@/components/Textbooks/RentalBadge";
 import RenewModal from "@/components/Textbooks/RenewModal";
-import { downloadAndroidApk } from "@/lib/androidApp";
+import { downloadAndroidApk, useIsAndroidDevice } from "@/lib/androidApp";
 import {
   getUser,
   createUser,
@@ -490,6 +490,7 @@ export default function TextbookPortal({
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const isAndroid = useIsAndroidDevice();
 
   const shuffleArray = <T,>(arr: T[]): T[] => {
     const copy = [...arr];
@@ -4779,7 +4780,7 @@ export default function TextbookPortal({
         <div className="max-w-7xl mx-auto">
 
           {/* Install-to-home-screen banner — app mode only, hidden once already installed */}
-          {appMode && !isStandalone && (
+          {appMode && isAndroid && !isStandalone && (
             <div className="mb-6 bg-slate-950 text-white rounded-2xl px-4 py-3 flex items-center justify-between gap-3 shadow-lg animate-fadeIn">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
@@ -5254,7 +5255,7 @@ export default function TextbookPortal({
                     offered the native prompt; only falls back to opening /textbooks/app
                     (for iOS instructions, or if Chrome hasn't fired the prompt yet) otherwise.
                     appMode already shows its own install banner, so this is main-site only. */}
-                {!appMode && !isStandalone && (
+                {!appMode && isAndroid && !isStandalone && (
                   <button
                     type="button"
                     onClick={handleInstallApp}
