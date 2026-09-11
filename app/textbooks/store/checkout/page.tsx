@@ -34,6 +34,7 @@ import Link from "next/link";
 import { createUser, getAllUsers, getBookCode, TextbookUser, getAllAccessIds, setStorageItem, AllowedAccessId, getCoupons, initDb, Coupon } from "@/lib/dbClient";
 import { copyToClipboard as copyToClipboardUtil } from "@/lib/utils";
 import { getRentalPlanByCode, getRentalGST, getRentalOnlineFee, getRentalTotal } from "@/lib/data/rentals";
+import { ANDROID_APK_URL, useIsAndroidDevice } from "@/lib/androidApp";
 
 const getShippingCost = (pincode: string): number => {
   const cleanPin = (pincode || "").trim();
@@ -295,6 +296,7 @@ function CheckoutContent() {
   const [verificationSuccess, setVerificationSuccess] = useState(false);
   const [verificationFailed, setVerificationFailed] = useState(false);
   const [verifiedOrderDetails, setVerifiedOrderDetails] = useState<any>(null);
+  const isAndroid = useIsAndroidDevice();
   const [generatedAccessId, setGeneratedAccessId] = useState<string>("");
 
   // Step state (1: Customer info, 2: Review, 3: Secure Payment)
@@ -1185,9 +1187,10 @@ function CheckoutContent() {
 
           {/* Download App promo — softcopy & rental access is meant to be read in the
               installable reading app, not just the browser portal. */}
-          {isDigital && (
+          {isDigital && isAndroid && (
             <a
-              href="/textbooks/app"
+              href={ANDROID_APK_URL}
+              download="lurnexa-textbooks.apk"
               className="flex items-center gap-3 bg-slate-950 hover:bg-slate-800 text-white rounded-2xl px-5 py-4 text-left transition-all group"
             >
               <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">

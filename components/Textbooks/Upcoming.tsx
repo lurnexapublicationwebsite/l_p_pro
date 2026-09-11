@@ -15,21 +15,9 @@ const textbooks = [
     pdfFileName: "minerals.pdf",
     aboutBook: "This study presents a comprehensive and data-driven examination of India's mineral import landscape, offering a distinctive economy-wide perspective rarely found in existing literature. By integrating long-term trade trends with advanced simulation and modelling techniques, it moves beyond conventional descriptive analysis to evaluate the real economic implications of mineral import decisions on output, employment, prices, and trade dynamics. Covering a wide spectrum of critical minerals and situating India within the global resource ecosystem, the study provides a balanced and policy-relevant framework for understanding the interplay between domestic production and strategic imports.",
     aboutAuthor: "Dr. Badri Narayanan Gopalakrishnan: Globally recognized economist associated with University of Washington and Purdue University; former advisor to World Bank and IMF.\n\nVishnu Dasgupta: Independent economist specializing in macroeconomics and international trade, with a focus on bridging governance and industry needs.\n\nKannan Kumar: Independent economist and advocate with expertise in trade and industrial policy, contributing to national policy initiatives and international trade negotiations."
-  },
-  {
-    id: 4,
-    title: "ENTREPRENEURSHIP DEVELOPMENT: CONCEPTS TO CREATION",
-    author: "Dr. V Padmaja, Dr. C Udaya Kumar, Dr. Archan Mitra",
-    domain: "Management / Entrepreneurship",
-    status: "In Press",
-    date: "2026-08-30",
-    isbn: "978-81-903315-0-0",
-    isbnDigital: "978-81-903315-2-4",
-    pdfFileName: "Gig_Economy_Social_Security_Research_Paper.pdf",
-    aboutBook: "This book provides a comprehensive and practical roadmap for aspiring entrepreneurs, students, and professionals who aim to transform ideas into successful ventures. It begins by building a strong conceptual foundation of entrepreneurship—covering key theories, traits of successful entrepreneurs, and the evolving role of innovation in today’s dynamic business environment.\n\nMoving beyond theory, the book systematically guides readers through the entrepreneurial journey—from opportunity identification and idea validation to business model development and resource mobilization. It emphasizes real-world applicability by integrating case studies, contemporary examples, and structured frameworks that help bridge the gap between academic knowledge and practical execution.",
-    aboutAuthor: "Dr. Sourav Mondal is a faculty member at the Indian Institute of Management Jammu, with expertise in entrepreneurship, strategic management, and operations. He earned his Ph.D. in Entrepreneurship from the Indian Institute of Technology (ISM) Dhanbad, where his doctoral research received the Best Thesis Award. He also holds postdoctoral experience from IIT Delhi.\n\nPrior to joining IIM Jammu, he served as an Assistant Professor at the Symbiosis Centre for Management Studies, Pune. His teaching and research interests include Entrepreneurship, Supply Chain Management, and Corporate Sustainability, with a focus on ESG and the Circular Economy."
   }
 ];
+
 
 export default function Upcoming() {
   const [selectedBook, setSelectedBook] = useState<any>(null);

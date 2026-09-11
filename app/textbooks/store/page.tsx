@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import RentalPlanSelector from "@/components/Textbooks/RentalPlanSelector";
 import { RentalPlan } from "@/lib/data/rentals";
+import { downloadAndroidApk, useIsAndroidDevice } from "@/lib/androidApp";
 
 interface TextbookDetails {
   id: string;
@@ -155,6 +156,20 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     pdfFileName: "nosql.pdf",
     tag: "Digital Exclusive",
     stockStatus: "in-stock"
+  },
+  {
+    id: "4",
+    title: "ENTREPRENEURSHIP DEVELOPMENT: CONCEPTS TO CREATION",
+    code: "ED",
+    description: "This book provides a comprehensive and practical roadmap for aspiring entrepreneurs, students, and professionals who aim to transform ideas into successful ventures. It covers key theories, traits of successful entrepreneurs, and the evolving role of innovation in today's dynamic business environment, guiding readers from opportunity identification to business model development and resource mobilization.",
+    price: 549,
+    authors: "Dr. V Padmaja, Dr. C Udaya Kumar, Dr. Archan Mitra",
+    pages: 172,
+    isbn: "978-81-903315-0-0",
+    isbnDigital: "978-81-903315-2-4",
+    pdfFileName: "entrepreneurship.pdf",
+    tag: "New Release",
+    stockStatus: "in-stock"
   }
 ];
 
@@ -212,6 +227,10 @@ const getSoftCopyPrice = (plan: string, bookId?: string): number => {
   if (bookId === "9") {
     if (plan === "book_only") return 299;
     return 299;
+  }
+  if (bookId === "4") {
+    if (plan === "book_only") return 269;
+    return 269;
   }
   if (bookId === "6") {
     if (plan === "book_only") return 199;
@@ -274,6 +293,7 @@ export default function BookstorePage() {
   // from this route's layout) so the "Get the App" button can install directly.
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [isStandaloneApp, setIsStandaloneApp] = useState(false);
+  const isAndroid = useIsAndroidDevice();
   useEffect(() => {
     if (typeof window === "undefined") return;
     setIsStandaloneApp(
@@ -287,14 +307,9 @@ export default function BookstorePage() {
     return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
   }, []);
 
-  const handleDownloadApp = async () => {
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice;
-      setDeferredInstallPrompt(null);
-    } else {
-      router.push("/textbooks/app");
-    }
+  // Always downloads the Android APK directly — never navigates away from the store.
+  const handleDownloadApp = () => {
+    downloadAndroidApk();
   };
 
   const getLoggedInUser = () => {
@@ -396,6 +411,7 @@ export default function BookstorePage() {
     if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
     if (book.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
     if (book.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
+    if (book.id === "4") coverImg = "/portal_coverpages/entrepreneurship.jpeg";
 
     const finalPrice = price !== undefined ? price : book.price;
     const planLabel = format === "physical" ? "Paperback" : `Digital Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
@@ -537,7 +553,7 @@ export default function BookstorePage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             {currentUser ? (
               <Link 
                 href="/textbooks/portal/login?view=mybooks"
@@ -564,7 +580,7 @@ export default function BookstorePage() {
               <span>Back to Textbooks</span>
             </Link>
 
-            {!isStandaloneApp && (
+            {isAndroid && !isStandaloneApp && (
               <button
                 onClick={handleDownloadApp}
                 className="inline-flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md shrink-0"
@@ -664,6 +680,7 @@ export default function BookstorePage() {
               if (bookItem.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
               if (bookItem.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
               if (bookItem.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
+              if (bookItem.id === "4") coverImg = "/portal_coverpages/entrepreneurship.jpeg";
 
               return (
                 <div 

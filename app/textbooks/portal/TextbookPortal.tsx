@@ -14,6 +14,29 @@ const inter = Inter({
 import FooterSection from "@/components/Home/FooterSection";
 import RentalBadge from "@/components/Textbooks/RentalBadge";
 import RenewModal from "@/components/Textbooks/RenewModal";
+import { downloadAndroidApk, useIsAndroidDevice } from "@/lib/androidApp";
+import {
+  bookDocKey,
+  caseletDocKey,
+  readCachedState,
+  writeCachedState,
+  mergeHighlights,
+  mergeSummaries,
+  fetchReadingState,
+  fetchReadingSummary,
+  saveReadingState,
+  DocReadingState,
+  HighlightColor,
+  HighlightRect,
+  PageHighlights,
+  ReadingSummary,
+} from "@/lib/readingProgress";
+import {
+  ReaderPageCanvas,
+  ReaderHighlightToolbar,
+  ReaderHighlightHint,
+  ReaderResumeNotice,
+} from "@/components/Textbooks/ReaderHighlights";
 import {
   getUser,
   createUser,
@@ -489,6 +512,7 @@ export default function TextbookPortal({
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const isAndroid = useIsAndroidDevice();
 
   const shuffleArray = <T,>(arr: T[]): T[] => {
     const copy = [...arr];
@@ -513,6 +537,121 @@ export default function TextbookPortal({
   const [authMobile, setAuthMobile] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  // Forgot Password — self-service recovery for any textbooks_users account (email-code
+  // based, two steps: request a code, then submit it alongside a new password).
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState<"email" | "code">("email");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotCode, setForgotCode] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSuccess, setForgotSuccess] = useState("");
+  const [isForgotLoading, setIsForgotLoading] = useState(false);
+
+  const resetForgotPasswordFlow = () => {
+    setShowForgotPassword(false);
+    setForgotStep("email");
+    setForgotEmail("");
+    setForgotCode("");
+    setForgotNewPassword("");
+    setForgotConfirmPassword("");
+    setShowForgotNewPassword(false);
+    setForgotError("");
+    setForgotSuccess("");
+  };
+
+  const handleForgotPasswordRequestCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    setForgotSuccess("");
+    if (!forgotEmail.trim()) {
+      setForgotError("Please enter your email address.");
+      return;
+    }
+    setIsForgotLoading(true);
+    try {
+      const res = await fetch("/api/textbooks/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setForgotError(data.error || "Failed to send reset code. Please try again.");
+        return;
+      }
+      setForgotSuccess("A 6-digit reset code has been sent to your email.");
+      setForgotStep("code");
+    } catch (err) {
+      setForgotError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
+
+  const handleForgotPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    setForgotSuccess("");
+
+    if (!forgotCode.trim() || !forgotNewPassword || !forgotConfirmPassword) {
+      setForgotError("Please fill in all fields.");
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotError("New password and confirmation do not match.");
+      return;
+    }
+    if (forgotNewPassword.length < 8) {
+      setForgotError("New password must be at least 8 characters long.");
+      return;
+    }
+    if (!/[A-Z]/.test(forgotNewPassword)) {
+      setForgotError("New password must contain at least one uppercase letter.");
+      return;
+    }
+    if (!/[a-z]/.test(forgotNewPassword)) {
+      setForgotError("New password must contain at least one lowercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(forgotNewPassword)) {
+      setForgotError("New password must contain at least one number.");
+      return;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(forgotNewPassword)) {
+      setForgotError("New password must contain at least one special character (!@#$%^&* etc.).");
+      return;
+    }
+
+    setIsForgotLoading(true);
+    try {
+      const res = await fetch("/api/textbooks/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail.trim(), code: forgotCode.trim(), newPassword: forgotNewPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setForgotError(data.error || "Failed to reset password. Please try again.");
+        return;
+      }
+      setForgotSuccess("Password reset successfully! You can now log in with your new password.");
+      setForgotCode("");
+      setForgotNewPassword("");
+      setForgotConfirmPassword("");
+      setTimeout(() => {
+        resetForgotPasswordFlow();
+        setAuthEmail(forgotEmail.trim());
+      }, 2000);
+    } catch (err) {
+      setForgotError("Network error. Please check your connection and try again.");
+    } finally {
+      setIsForgotLoading(false);
+    }
+  };
 
   // Login inputs (legacy / access ID)
   const [loginAccessId, setLoginAccessId] = useState("");
@@ -704,6 +843,12 @@ export default function TextbookPortal({
       // (book_only / caselet / book_caselet) was paid for per book — used to gate
       // the Caselets tab and to show the Permanent/Rental access badge on My Books.
       fetchUserOrders();
+      const readingEmail = (user.email || user.collegeEmail || "").toLowerCase();
+      if (readingEmail) {
+        fetchReadingSummary(readingEmail)
+          .then((summary) => setReadingSummary((prev) => mergeSummaries(summary, prev)))
+          .catch(() => {});
+      }
     }
   }, [user]);
 
@@ -1269,6 +1414,7 @@ export default function TextbookPortal({
   };
 
   const closeSecureReader = () => {
+    flushReadingSave();
     setReadingBookId(null);
     setReadingRentalId(null);
     setActiveRentalReadData(null);
@@ -1320,8 +1466,94 @@ export default function TextbookPortal({
   const [pageFlipAnim, setPageFlipAnim] = useState<"flip-next" | "flip-prev" | "">("");
   const activeRenderTaskRef = useRef<any>(null);
 
+  // Reading progress ("continue from where you stopped") + highlighter.
+  const [highlightMode, setHighlightMode] = useState(false);
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>("yellow");
+  const [docHighlights, setDocHighlights] = useState<PageHighlights>({});
+  const [resumeNoticePage, setResumeNoticePage] = useState<number | null>(null);
+  const [readingSummary, setReadingSummary] = useState<ReadingSummary>({});
+  const [readingSyncTick, setReadingSyncTick] = useState(0);
+  // Which document the reader is currently asked to show.
+  const currentDocKeyRef = useRef<string | null>(null);
+  // Which document the loaded pdfDocument/page/highlights actually belong to.
+  const loadedDocKeyRef = useRef<string | null>(null);
+  // Set once the account copy has been checked — saving to the account waits for that, so
+  // opening a book on a second device can't overwrite progress made on the first.
+  const restoredDocKeyRef = useRef<string | null>(null);
+  const userNavigatedRef = useRef(false);
+  const saveTimerRef = useRef<any>(null);
+  const pendingSaveRef = useRef<{ email: string; docKey: string; state: DocReadingState } | null>(null);
+
+  const readerUserEmail = (user?.email || user?.collegeEmail || "").toLowerCase();
+
+  // Rentals share the book's progress, so renewing a rental (which creates a new rental id)
+  // doesn't lose the reader's place.
+  const getReaderDocKey = (): string | null => {
+    if (readingBookId) return bookDocKey(readingBookId);
+    if (readingRentalId) {
+      const rental = portalRentals.find((r: any) => r.rentalId === readingRentalId);
+      return rental?.bookId ? bookDocKey(rental.bookId) : `rental:${readingRentalId}`;
+    }
+    if (readingCaseletInfo) return caseletDocKey(readingCaseletInfo.bookId, readingCaseletInfo.index);
+    return null;
+  };
+  const readerDocKey = getReaderDocKey();
+
+  const getContinuePage = (docKey: string): number | null => {
+    const page = readingSummary[docKey]?.lastPage;
+    return page && page > 1 ? page : null;
+  };
+
+  const flushReadingSave = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const pending = pendingSaveRef.current;
+    if (!pending) return;
+    pendingSaveRef.current = null;
+    saveReadingState(pending.email, pending.docKey, pending.state).catch(() => {});
+  };
+
+  const addHighlight = (rect: Omit<HighlightRect, "id">) => {
+    const pageKey = String(pdfCurrentPage);
+    setDocHighlights((prev) => {
+      const list = prev[pageKey] || [];
+      if (list.length >= 200) return prev;
+      const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+      return { ...prev, [pageKey]: [...list, { ...rect, id }] };
+    });
+  };
+
+  const removeHighlight = (id: string) => {
+    const pageKey = String(pdfCurrentPage);
+    setDocHighlights((prev) => {
+      const list = (prev[pageKey] || []).filter((h) => h.id !== id);
+      const next = { ...prev };
+      if (list.length) next[pageKey] = list;
+      else delete next[pageKey];
+      return next;
+    });
+  };
+
+  const clearPageHighlights = () => {
+    const pageKey = String(pdfCurrentPage);
+    setDocHighlights((prev) => {
+      const next = { ...prev };
+      delete next[pageKey];
+      return next;
+    });
+  };
+
+  const handleStartOver = () => {
+    userNavigatedRef.current = true;
+    setResumeNoticePage(null);
+    setPdfCurrentPage(1);
+  };
+
   const triggerNextPage = () => {
     if (pdfCurrentPage < pdfTotalPages && !pdfLoading) {
+      userNavigatedRef.current = true;
       setPageFlipAnim("flip-next");
       setPdfCurrentPage(prev => Math.min(pdfTotalPages, prev + 1));
       setTimeout(() => setPageFlipAnim(""), 450);
@@ -1330,6 +1562,7 @@ export default function TextbookPortal({
 
   const triggerPrevPage = () => {
     if (pdfCurrentPage > 1 && !pdfLoading) {
+      userNavigatedRef.current = true;
       setPageFlipAnim("flip-prev");
       setPdfCurrentPage(prev => Math.max(1, prev - 1));
       setTimeout(() => setPageFlipAnim(""), 450);
@@ -1356,13 +1589,14 @@ export default function TextbookPortal({
     setIsEditingPage(false);
     const parsedPage = parseInt(pageInputVal, 10);
     if (!isNaN(parsedPage) && parsedPage >= 1 && parsedPage <= pdfTotalPages) {
+      userNavigatedRef.current = true;
       setPdfCurrentPage(parsedPage);
     } else {
       setPageInputVal(String(pdfCurrentPage));
     }
   };
 
-  const loadPdfFile = async (url: string) => {
+  const loadPdfFile = async (url: string, docKey: string | null = null) => {
     setPdfLoading(true);
     setPdfError(null);
     setPdfZoom(1.0);
@@ -1381,10 +1615,42 @@ export default function TextbookPortal({
       // used to make "Read Caselet PDF" open the book instead). Surface a clear error
       // via the catch block below instead.
       const loadedPdf = await pdfjsLib.getDocument(url).promise;
+      // The reader was closed or switched to another document while this one was loading.
+      if (docKey !== currentDocKeyRef.current) return;
 
+      const totalPages = loadedPdf.numPages;
+      const clampPage = (p: unknown) => Math.min(totalPages, Math.max(1, Math.floor(Number(p)) || 1));
+      const email = (user?.email || user?.collegeEmail || "").toLowerCase();
+      const cached = docKey && email ? readCachedState(email, docKey) : null;
+      const startPage = clampPage(cached?.lastPage || 1);
+
+      loadedDocKeyRef.current = docKey;
       setPdfDocument(loadedPdf);
-      setPdfTotalPages(loadedPdf.numPages);
-      setPdfCurrentPage(1);
+      setPdfTotalPages(totalPages);
+      setPdfCurrentPage(startPage);
+      setDocHighlights(cached?.highlights || {});
+      setResumeNoticePage(startPage > 1 ? startPage : null);
+
+      if (docKey && email) {
+        fetchReadingState(email, docKey)
+          .then((server) => {
+            if (docKey !== currentDocKeyRef.current || !server) return;
+            if (!cached || server.updatedAt > cached.updatedAt) {
+              if (!userNavigatedRef.current) {
+                const serverPage = clampPage(server.lastPage);
+                setPdfCurrentPage(serverPage);
+                setResumeNoticePage(serverPage > 1 ? serverPage : null);
+              }
+              setDocHighlights((prev) => mergeHighlights(server.highlights || {}, prev));
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            if (docKey !== currentDocKeyRef.current) return;
+            restoredDocKeyRef.current = docKey;
+            setReadingSyncTick((t) => t + 1);
+          });
+      }
     } catch (err: any) {
       console.error("Error loading PDF:", err);
       setPdfError("Unable to load the PDF document. Please ensure the file exists or try again.");
@@ -1411,7 +1677,8 @@ export default function TextbookPortal({
       if (!context) return;
 
       // Calculate dynamic fit-to-screen scale based on available container dimensions & zoom level
-      const container = canvas.parentElement;
+      // The canvas sits inside the highlight layer's wrapper; measure the reader area around it.
+      const container = canvas.closest("[data-reader-page]")?.parentElement || canvas.parentElement;
       const rectH = container ? container.getBoundingClientRect().height : (window.innerHeight - 80);
       const rectW = container ? container.getBoundingClientRect().width : window.innerWidth;
       
@@ -1462,20 +1729,29 @@ export default function TextbookPortal({
     const isReadingRental = !!readingRentalId;
     const isReadingCaselet = readingCaseletInfo !== null;
 
+    const docKey = getReaderDocKey();
+    currentDocKeyRef.current = docKey;
+    loadedDocKeyRef.current = null;
+    restoredDocKeyRef.current = null;
+    userNavigatedRef.current = false;
+    setDocHighlights({});
+    setHighlightMode(false);
+    setResumeNoticePage(null);
+
     if (isReadingBook) {
       const book = PORTAL_PUBLISHED_BOOKS.find(b => String(b.id) === String(readingBookId));
       if (book) {
-        loadPdfFile(`/portal_textbooks/${book.pdfFileName}`);
+        loadPdfFile(`/portal_textbooks/${book.pdfFileName}`, docKey);
       }
     } else if (isReadingRental) {
       if (activeRentalReadData?.pdfUrl) {
-        loadPdfFile(activeRentalReadData.pdfUrl);
+        loadPdfFile(activeRentalReadData.pdfUrl, docKey);
       }
     } else if (isReadingCaselet) {
       const caselets = BOOK_CASELETS[readingCaseletInfo.bookId] || [];
       const currentCaselet = caselets[readingCaseletInfo.index];
       if (currentCaselet) {
-        loadPdfFile(`/portal_caselets/${currentCaselet.pdfFileName}`);
+        loadPdfFile(`/portal_caselets/${currentCaselet.pdfFileName}`, docKey);
       }
     } else {
       setPdfDocument(null);
@@ -1509,6 +1785,49 @@ export default function TextbookPortal({
       }
     };
   }, [pdfCurrentPage, pdfDocument, pdfZoom]);
+
+  // Persist the reading position + highlights: instantly on this device, and debounced to the
+  // account so "continue reading" works on other devices too.
+  useEffect(() => {
+    if (!pdfDocument || !readerDocKey || !readerUserEmail) return;
+    if (loadedDocKeyRef.current !== readerDocKey) return;
+
+    const state: DocReadingState = {
+      lastPage: pdfCurrentPage,
+      totalPages: pdfTotalPages,
+      highlights: docHighlights,
+      updatedAt: Date.now(),
+    };
+    writeCachedState(readerUserEmail, readerDocKey, state);
+    setReadingSummary((prev) => ({
+      ...prev,
+      [readerDocKey]: { lastPage: state.lastPage, totalPages: state.totalPages, updatedAt: state.updatedAt },
+    }));
+
+    if (restoredDocKeyRef.current !== readerDocKey) return;
+    pendingSaveRef.current = { email: readerUserEmail, docKey: readerDocKey, state };
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(flushReadingSave, 1500);
+  }, [pdfDocument, readerDocKey, readerUserEmail, pdfCurrentPage, pdfTotalPages, docHighlights, readingSyncTick]);
+
+  // Don't lose a debounced save when the tab is hidden or the page is closed.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") flushReadingSave();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("pagehide", flushReadingSave);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("pagehide", flushReadingSave);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (resumeNoticePage === null) return;
+    const timer = setTimeout(() => setResumeNoticePage(null), 7000);
+    return () => clearTimeout(timer);
+  }, [resumeNoticePage]);
 
   // Practice State
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
@@ -1586,18 +1905,10 @@ export default function TextbookPortal({
     return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
   }, []);
 
-  // Shared by every "Download App" button on the site: install right where the click
-  // happened when the browser has a captured prompt ready, instead of always bouncing to
-  // /textbooks/app first. Falls back to opening the app (which shows install/iOS
-  // instructions once there) only when no native prompt is available yet.
-  const handleInstallApp = async () => {
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice;
-      setDeferredInstallPrompt(null);
-    } else {
-      router.push("/textbooks/app");
-    }
+  // Shared by every "Get the App" / "Install" button on the site: always downloads the
+  // Android APK directly, right where the click happened — never navigates to another page.
+  const handleInstallApp = () => {
+    downloadAndroidApk();
   };
 
   // Safe window mount check
@@ -4671,7 +4982,7 @@ export default function TextbookPortal({
         <div className="max-w-7xl mx-auto">
 
           {/* Install-to-home-screen banner — app mode only, hidden once already installed */}
-          {appMode && !isStandalone && (deferredInstallPrompt || isIOS) && (
+          {appMode && isAndroid && !isStandalone && (
             <div className="mb-6 bg-slate-950 text-white rounded-2xl px-4 py-3 flex items-center justify-between gap-3 shadow-lg animate-fadeIn">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
@@ -4679,27 +4990,15 @@ export default function TextbookPortal({
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold truncate">Install Lurnexa Textbooks</p>
-                  <p className="text-[11px] text-slate-400 truncate">
-                    {isIOS ? "Tap Share, then \"Add to Home Screen\"" : "Add it to your home screen for one-tap access"}
-                  </p>
+                  <p className="text-[11px] text-slate-400 truncate">Download the Android app (APK)</p>
                 </div>
               </div>
-              {deferredInstallPrompt ? (
-                <button
-                  onClick={handleInstallApp}
-                  className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0"
-                >
-                  Install
-                </button>
-              ) : (
-                <button
-                  onClick={() => setIsIOS(false)}
-                  className="text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/10 transition shrink-0"
-                  aria-label="Dismiss"
-                >
-                  <X size={16} />
-                </button>
-              )}
+              <button
+                onClick={handleInstallApp}
+                className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0"
+              >
+                Install
+              </button>
             </div>
           )}
 
@@ -4810,6 +5109,151 @@ export default function TextbookPortal({
                   </div>
                 )}
 
+                {showForgotPassword ? (
+                  <div className="space-y-4">
+                    <div className="text-center space-y-1 mb-2">
+                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Reset Your Password</h3>
+                      <p className="text-xs text-slate-500">
+                        {forgotStep === "email"
+                          ? "Enter your account email — we'll send a 6-digit reset code."
+                          : `Enter the code sent to ${forgotEmail} and choose a new password.`}
+                      </p>
+                    </div>
+
+                    {forgotStep === "email" ? (
+                      <form onSubmit={handleForgotPasswordRequestCode} className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Gmail / Email Address
+                          </label>
+                          <div className="relative">
+                            <User className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                            <input
+                              type="email"
+                              placeholder="your.email@gmail.com"
+                              value={forgotEmail}
+                              onChange={(e) => setForgotEmail(e.target.value)}
+                              required
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        {forgotError && (
+                          <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{forgotError}</p>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={isForgotLoading}
+                          className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-fuchsia-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isForgotLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span>Send Reset Code</span>
+                          )}
+                        </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleForgotPasswordReset} className="space-y-4">
+                        {forgotSuccess && (
+                          <p className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">{forgotSuccess}</p>
+                        )}
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            6-Digit Reset Code
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={forgotCode}
+                            onChange={(e) => setForgotCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:outline-none focus:border-fuchsia-500 font-bold text-center text-lg tracking-[0.4em] transition-all"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            New Password
+                          </label>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                            <input
+                              type={showForgotNewPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              value={forgotNewPassword}
+                              onChange={(e) => setForgotNewPassword(e.target.value)}
+                              required
+                              className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-11 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                              className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                            >
+                              <Eye size={16} />
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1.5">
+                            At least 8 characters, with uppercase, lowercase, a number, and a special character.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Confirm New Password
+                          </label>
+                          <input
+                            type={showForgotNewPassword ? "text" : "password"}
+                            placeholder="••••••••"
+                            value={forgotConfirmPassword}
+                            onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
+                          />
+                        </div>
+
+                        {forgotError && (
+                          <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{forgotError}</p>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={isForgotLoading}
+                          className="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-fuchsia-600/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {isForgotLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span>Reset Password</span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => { setForgotStep("email"); setForgotError(""); setForgotSuccess(""); }}
+                          className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                        >
+                          Didn't get a code? Send again
+                        </button>
+                      </form>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={resetForgotPasswordFlow}
+                      className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors pt-2"
+                    >
+                      ← Back to Login
+                    </button>
+                  </div>
+                ) : (
+                <>
                 {/* Switch Login/Signup Tabs */}
                 <div className="flex bg-slate-100 p-1 rounded-2xl mb-6 shadow-inner border border-slate-200">
                   <button
@@ -4882,6 +5326,15 @@ export default function TextbookPortal({
                           className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
                         >
                           <Eye size={16} />
+                        </button>
+                      </div>
+                      <div className="text-right mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setForgotEmail(authEmail); setShowForgotPassword(true); setForgotStep("email"); setForgotError(""); setForgotSuccess(""); }}
+                          className="text-[11px] font-bold text-fuchsia-600 hover:text-fuchsia-800 transition-colors"
+                        >
+                          Forgot Password?
                         </button>
                       </div>
                     </div>
@@ -4997,12 +5450,14 @@ export default function TextbookPortal({
                     </button>
                   </form>
                 )}
+                </>
+                )}
 
                 {/* Download App promo — installs directly when the browser has already
                     offered the native prompt; only falls back to opening /textbooks/app
                     (for iOS instructions, or if Chrome hasn't fired the prompt yet) otherwise.
                     appMode already shows its own install banner, so this is main-site only. */}
-                {!appMode && !isStandalone && (
+                {!appMode && isAndroid && !isStandalone && (
                   <button
                     type="button"
                     onClick={handleInstallApp}
@@ -5014,7 +5469,7 @@ export default function TextbookPortal({
                     <div className="flex-1 min-w-0 text-left">
                       <p className="text-xs font-bold">Get the Lurnexa Textbooks App</p>
                       <p className="text-[11px] text-slate-400">
-                        {isIOS ? "Tap Share, then \"Add to Home Screen\"" : "Install for one-tap access to your library"}
+                        Download the Android app (APK)
                       </p>
                     </div>
                     <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-1 transition-transform shrink-0" />
@@ -9495,7 +9950,7 @@ export default function TextbookPortal({
                                         className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-md transition-all text-center flex items-center justify-center gap-1.5"
                                       >
                                         <BookOpen size={14} />
-                                        <span>Read</span>
+                                        <span>{getContinuePage(bookDocKey(rental.bookId)) ? `Continue · p. ${getContinuePage(bookDocKey(rental.bookId))}` : "Read"}</span>
                                       </button>
                                       <button
                                         onClick={() => setRenewalRental({ rentalId: rental.rentalId, bookTitle: rental.bookTitle, expiresAt: rental.expiresAt, planCode: rental.planCode })}
@@ -9595,7 +10050,7 @@ export default function TextbookPortal({
                                         onClick={() => openSecureBook(book.id)}
                                         className="w-full mt-5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-sm py-2.5 rounded-2xl shadow-sm transition-all"
                                       >
-                                        Read Book
+                                        {getContinuePage(bookDocKey(book.id)) ? `Continue Reading · Page ${getContinuePage(bookDocKey(book.id))}` : "Read Book"}
                                       </button>
                                     </div>
                                   );
@@ -10702,7 +11157,7 @@ export default function TextbookPortal({
                           className="w-full bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-700 hover:to-indigo-700 text-white font-bold text-sm py-3 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 mt-2"
                         >
                           <FileSpreadsheet size={16} />
-                          <span>Read Caselet PDF</span>
+                          <span>{getContinuePage(caseletDocKey(item.bookId, item.caseletIndex)) ? `Continue Caselet · Page ${getContinuePage(caseletDocKey(item.bookId, item.caseletIndex))}` : "Read Caselet PDF"}</span>
                         </button>
                       </div>
                       );
@@ -11767,6 +12222,16 @@ export default function TextbookPortal({
                 </button>
               </div>
 
+              <ReaderHighlightToolbar
+                highlightMode={highlightMode}
+                onToggle={() => setHighlightMode((m) => !m)}
+                highlightColor={highlightColor}
+                onColorChange={setHighlightColor}
+                pageHighlightCount={(docHighlights[String(pdfCurrentPage)] || []).length}
+                onClearPage={clearPageHighlights}
+                disabled={pdfLoading || !!pdfError}
+              />
+
               {/* Zoom Controls */}
               <div className="flex items-center gap-1 bg-slate-950/60 px-2 py-1 md:px-3 md:py-1.5 rounded-xl md:rounded-2xl border border-slate-800">
                 <button
@@ -11861,7 +12326,7 @@ export default function TextbookPortal({
                 triggerPrevPage();
               }}
               className={`absolute left-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-start pl-6 group transition-all select-none ${
-                pdfCurrentPage <= 1 ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
+                (pdfCurrentPage <= 1 || highlightMode) ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
               }`}
               title="Click / Tap left side for Previous Page"
             >
@@ -11877,7 +12342,7 @@ export default function TextbookPortal({
                 triggerNextPage();
               }}
               className={`absolute right-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-end pr-6 group transition-all select-none ${
-                pdfCurrentPage >= pdfTotalPages ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
+                (pdfCurrentPage >= pdfTotalPages || highlightMode) ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
               }`}
               title="Click / Tap right side for Next Page"
             >
@@ -11922,6 +12387,15 @@ export default function TextbookPortal({
               </div>
             )}
 
+            {resumeNoticePage !== null && !pdfLoading && !pdfError && (
+              <ReaderResumeNotice
+                page={resumeNoticePage}
+                onStartOver={handleStartOver}
+                onDismiss={() => setResumeNoticePage(null)}
+              />
+            )}
+            {highlightMode && !pdfLoading && !pdfError && <ReaderHighlightHint />}
+
             {/* Loading spinner or Error display */}
             {pdfError ? (
               <div className="flex flex-col items-center justify-center space-y-4 py-32 text-center px-6">
@@ -11933,9 +12407,9 @@ export default function TextbookPortal({
                     onClick={() => {
                       if (readingBookId) {
                         const book = PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId);
-                        if (book) loadPdfFile(`/portal_textbooks/${book.pdfFileName}`);
+                        if (book) loadPdfFile(`/portal_textbooks/${book.pdfFileName}`, readerDocKey);
                       } else if (readingRentalId && activeRentalReadData?.pdfUrl) {
-                        loadPdfFile(activeRentalReadData.pdfUrl);
+                        loadPdfFile(activeRentalReadData.pdfUrl, readerDocKey);
                       }
                     }}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
@@ -11950,16 +12424,13 @@ export default function TextbookPortal({
                 <p className="text-sm font-medium">Securing and loading textbook page...</p>
               </div>
             ) : (
-              <canvas
-                id="secure-reader-canvas"
-                className={`bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none transition-all duration-300 shrink-0 ${
-                  pageFlipAnim === "flip-next"
-                    ? "animate-page-flip-next"
-                    : pageFlipAnim === "flip-prev"
-                    ? "animate-page-flip-prev"
-                    : ""
-                }`}
-                style={{ userSelect: 'none' }}
+              <ReaderPageCanvas
+                highlights={docHighlights[String(pdfCurrentPage)] || []}
+                highlightMode={highlightMode}
+                highlightColor={highlightColor}
+                onAddHighlight={addHighlight}
+                onRemoveHighlight={removeHighlight}
+                flipAnimClass={pageFlipAnim === "flip-next" ? "animate-page-flip-next" : pageFlipAnim === "flip-prev" ? "animate-page-flip-prev" : ""}
               />
             )}
           </div>
@@ -12038,6 +12509,16 @@ export default function TextbookPortal({
                     Next Page
                   </button>
                 </div>
+
+                <ReaderHighlightToolbar
+                  highlightMode={highlightMode}
+                  onToggle={() => setHighlightMode((m) => !m)}
+                  highlightColor={highlightColor}
+                  onColorChange={setHighlightColor}
+                  pageHighlightCount={(docHighlights[String(pdfCurrentPage)] || []).length}
+                  onClearPage={clearPageHighlights}
+                  disabled={pdfLoading}
+                />
 
                 {/* Zoom Controls */}
                 <div className="flex items-center gap-1.5 bg-slate-950/60 px-3 py-1.5 rounded-2xl border border-slate-800 shadow-inner">
@@ -12135,7 +12616,7 @@ export default function TextbookPortal({
                   triggerPrevPage();
                 }}
                 className={`absolute left-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-start pl-6 group transition-all select-none ${
-                  pdfCurrentPage <= 1 ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
+                  (pdfCurrentPage <= 1 || highlightMode) ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-r hover:from-black/20 hover:to-transparent"
                 }`}
                 title="Click / Tap left side for Previous Page"
               >
@@ -12151,7 +12632,7 @@ export default function TextbookPortal({
                   triggerNextPage();
                 }}
                 className={`absolute right-0 top-0 bottom-0 w-1/4 z-[50] cursor-pointer flex items-center justify-end pr-6 group transition-all select-none ${
-                  pdfCurrentPage >= pdfTotalPages ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
+                  (pdfCurrentPage >= pdfTotalPages || highlightMode) ? "pointer-events-none opacity-0" : "hover:bg-gradient-to-l hover:from-black/20 hover:to-transparent"
                 }`}
                 title="Click / Tap right side for Next Page"
               >
@@ -12196,6 +12677,15 @@ export default function TextbookPortal({
                 </div>
               )}
 
+              {resumeNoticePage !== null && !pdfLoading && (
+                <ReaderResumeNotice
+                  page={resumeNoticePage}
+                  onStartOver={handleStartOver}
+                  onDismiss={() => setResumeNoticePage(null)}
+                />
+              )}
+              {highlightMode && !pdfLoading && <ReaderHighlightHint />}
+
               {/* Loading spinner */}
               {pdfLoading ? (
                 <div className="flex flex-col items-center justify-center space-y-4 py-32 text-slate-350">
@@ -12203,16 +12693,13 @@ export default function TextbookPortal({
                   <p className="text-sm font-medium">Securing and loading caselet page...</p>
                 </div>
               ) : (
-                <canvas
-                  id="secure-reader-canvas"
-                  className={`bg-white shadow-2xl rounded-2xl border border-slate-800 select-none pointer-events-none transition-all duration-300 shrink-0 ${
-                    pageFlipAnim === "flip-next"
-                      ? "animate-page-flip-next"
-                      : pageFlipAnim === "flip-prev"
-                      ? "animate-page-flip-prev"
-                      : ""
-                  }`}
-                  style={{ userSelect: 'none' }}
+                <ReaderPageCanvas
+                  highlights={docHighlights[String(pdfCurrentPage)] || []}
+                  highlightMode={highlightMode}
+                  highlightColor={highlightColor}
+                  onAddHighlight={addHighlight}
+                  onRemoveHighlight={removeHighlight}
+                  flipAnimClass={pageFlipAnim === "flip-next" ? "animate-page-flip-next" : pageFlipAnim === "flip-prev" ? "animate-page-flip-prev" : ""}
                 />
               )}
             </div>
