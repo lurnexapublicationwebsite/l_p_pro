@@ -11,7 +11,7 @@ const textbooks = [
     status: "In Press",
     date: "2026-08-30",
     isbn: "978-81-685077-7-7",
-    isbnDigital: "978-81-685077-7-7",
+    isbnDigital: "",
     pdfFileName: "minerals.pdf",
     aboutBook: "This study presents a comprehensive and data-driven examination of India's mineral import landscape, offering a distinctive economy-wide perspective rarely found in existing literature. By integrating long-term trade trends with advanced simulation and modelling techniques, it moves beyond conventional descriptive analysis to evaluate the real economic implications of mineral import decisions on output, employment, prices, and trade dynamics. Covering a wide spectrum of critical minerals and situating India within the global resource ecosystem, the study provides a balanced and policy-relevant framework for understanding the interplay between domestic production and strategic imports.",
     aboutAuthor: "Dr. Badri Narayanan Gopalakrishnan: Globally recognized economist associated with University of Washington and Purdue University; former advisor to World Bank and IMF.\n\nVishnu Dasgupta: Independent economist specializing in macroeconomics and international trade, with a focus on bridging governance and industry needs.\n\nKannan Kumar: Independent economist and advocate with expertise in trade and industrial policy, contributing to national policy initiatives and international trade negotiations."

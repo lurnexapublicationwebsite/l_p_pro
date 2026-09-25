@@ -14,6 +14,7 @@ export interface Book {
   pdfFileName: string;
   coverImg: string;
   publishedDate: string;
+  doiSuffix?: string; // Full DOI = <DOI_PREFIX>/<doiSuffix>, see lib/crossref.ts. Never change once registered.
   description: string;
   longDescription?: string;
   tag?: string;
@@ -101,6 +102,7 @@ export function slugifyBookTitle(title: string): string {
 export const PUBLISHED_BOOKS_DATA: Book[] = [
   {
     id: "2",
+    doiSuffix: "lp.book.002",
     slug: "machine-learning-a-structured-approach-to-algorithms-and-intelligent-systems",
     shortSlug: "machine-learning",
     title: "MACHINE LEARNING: A STRUCTURED APPROACH TO ALGORITHMS AND INTELLIGENT SYSTEMS",
@@ -155,6 +157,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
   },
   {
     id: "3",
+    doiSuffix: "lp.book.003",
     slug: "database-management-systems-concepts-design-and-implementation",
     shortSlug: "dbms",
     title: "DATABASE MANAGEMENT SYSTEMS: CONCEPTS, DESIGN AND IMPLEMENTATION",
@@ -202,6 +205,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
   },
   {
     id: "6",
+    doiSuffix: "lp.book.006",
     slug: "foundations-of-artificial-intelligence-concepts-techniques-and-applications",
     shortSlug: "artificial-intelligence",
     title: "FOUNDATIONS OF ARTIFICIAL INTELLIGENCE: CONCEPTS, TECHNIQUES AND APPLICATIONS",
@@ -244,6 +248,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
   },
   {
     id: "7",
+    doiSuffix: "lp.book.007",
     slug: "data-streaming-and-analysis",
     shortSlug: "data-streaming",
     title: "DATA STREAMING AND ANALYSIS",
@@ -285,13 +290,14 @@ The textbook thoroughly covers regression models, decision trees, neural network
   },
   {
     id: "1",
+    doiSuffix: "lp.book.001",
     slug: "indian-mineral-import-policy-options-an-economywide-analysis",
     shortSlug: "mineral-policy",
     title: "Indian Mineral Import Policy Options: An Economywide Analysis",
     authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
     domain: "Economics / Trade Policy",
     isbn: "978-81-685077-7-7",
-    isbnDigital: "978-81-685077-7-7",
+    isbnDigital: "N/A",
     pages: 88,
     price: 699,
     digitalPrice: 499,
@@ -325,6 +331,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
   },
   {
     id: "5",
+    doiSuffix: "lp.book.005",
     slug: "principles-of-microeconomics-for-business-and-management",
     shortSlug: "microeconomics",
     title: "PRINCIPLES OF MICROECONOMICS FOR BUSINESS AND MANAGEMENT",
@@ -370,6 +377,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
   },
   {
     id: "8",
+    doiSuffix: "lp.book.008",
     slug: "python-programming-principles-and-practice",
     shortSlug: "python-programming",
     title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE",
@@ -412,6 +420,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
   },
   {
     id: "9",
+    doiSuffix: "lp.book.009",
     slug: "nosql-databases-using-mongodb",
     shortSlug: "nosql-mongodb",
     title: "NOSQL DATABASES USING MONGODB",
@@ -451,6 +460,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
   },
   {
     id: "4",
+    doiSuffix: "lp.book.004",
     slug: "entrepreneurship-development-concepts-to-creation",
     shortSlug: "entrepreneurship",
     title: "ENTREPRENEURSHIP DEVELOPMENT: CONCEPTS TO CREATION",

@@ -54,7 +54,7 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     authors: "Badri Narayanan Gopalakrishnan, Vishnu Dasgupta, Kannan Kumar",
     pages: 88,
     isbn: "978-81-685077-7-7",
-    isbnDigital: "978-81-685077-7-7",
+    isbnDigital: "N/A",
     pdfFileName: "minerals.pdf",
     tag: "Trending",
     stockStatus: "in-stock"

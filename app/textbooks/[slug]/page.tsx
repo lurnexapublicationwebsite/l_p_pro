@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getAllBooks, getBookBySlug } from '@/lib/data/books';
 import { ArrowLeft } from 'lucide-react';
 import BookDetailClient from '@/components/Textbooks/BookDetailClient';
+import { CROSSREF, buildDoi, doiUrl, parsePublishedDate, splitAuthors, toIsoDate, toScholarDate } from '@/lib/crossref';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -36,6 +37,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : book.code;
   const pageUrl = `https://lurnexa.in/textbooks/${book.slug}`;
   const ogImageUrl = `https://lurnexa.in${book.coverImg}`;
+  const doi = buildDoi(book.doiSuffix);
+  const isbns = [book.isbn, book.isbnDigital].filter((isbn, i, all) => isbn && isbn !== 'N/A' && all.indexOf(isbn) === i);
 
   return {
     title: `${primaryKeyword} Book - ${book.title} (ISBN: ${book.isbn}) | Lurnexa Publications`,
@@ -76,6 +79,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         'max-snippet': -1,
       },
     },
+    other: {
+      // Google Scholar book citation metadata
+      'citation_title': book.title,
+      'citation_author': splitAuthors(book.authors),
+      'citation_publication_date': toScholarDate(parsePublishedDate(book.publishedDate)) ?? '',
+      'citation_publisher': CROSSREF.publisherName,
+      'citation_isbn': isbns,
+      ...(doi ? { 'citation_doi': doi } : {}),
+    },
   };
 }
 
@@ -90,6 +102,7 @@ export default async function BookDetailPage({ params }: Props) {
   const allBooks = getAllBooks();
   const relatedBooks = allBooks.filter((b) => b.id !== book.id).slice(0, 3);
   const pageUrl = `https://lurnexa.in/textbooks/${book.slug}`;
+  const doi = buildDoi(book.doiSuffix);
 
   // Structured Data Schema.org JSON-LD for Google Rich Results
   const jsonLd = {
@@ -99,7 +112,7 @@ export default async function BookDetailPage({ params }: Props) {
         '@type': 'Book',
         '@id': `${pageUrl}#book`,
         'name': book.title,
-        'isbn': book.isbn,
+        'isbn': book.isbn !== 'N/A' ? book.isbn : book.isbnDigital,
         'workExample': [
           {
             '@type': 'Book',
@@ -111,7 +124,7 @@ export default async function BookDetailPage({ params }: Props) {
             'isbn': book.isbnDigital,
             'bookFormat': 'https://schema.org/EBook',
           },
-        ],
+        ].filter((edition) => edition.isbn && edition.isbn !== 'N/A'),
         'numberOfPages': book.pages,
         'inLanguage': 'en',
         'author': book.authors.split(',').map((name) => ({
@@ -126,7 +139,8 @@ export default async function BookDetailPage({ params }: Props) {
         'image': `https://lurnexa.in${book.coverImg}`,
         'description': book.description,
         'genre': book.domain,
-        'datePublished': book.publishedDate,
+        'datePublished': toIsoDate(parsePublishedDate(book.publishedDate)) ?? book.publishedDate,
+        ...(doi ? { 'identifier': { '@type': 'PropertyValue', 'propertyID': 'DOI', 'value': doi }, 'sameAs': doiUrl(doi) } : {}),
         'offers': [
           {
             '@type': 'Offer',
