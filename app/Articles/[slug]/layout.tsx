@@ -93,7 +93,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'citation_issue': article.issue,
       'citation_publisher': CROSSREF.publisherName,
       'citation_journal_title': journalTitle,
-      'citation_pdf_url': `https://lurnexa.in${article.downloadUrl}`,
+      'citation_pdf_url': encodeURI(`https://lurnexa.in${article.downloadUrl}`),
       'citation_abstract': article.abstract || article.description || article.title,
       'citation_keywords': keywords.join(', '),
       'citation_firstpage': pageStart,

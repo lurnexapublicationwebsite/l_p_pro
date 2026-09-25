@@ -13,7 +13,8 @@ export default function ArticlePage() {
   const router = useRouter();
   const slug = params?.slug as string;
 
-  const [article, setArticle] = useState<any>(null);
+  // Resolve the article during render so the server HTML already contains it (Google Scholar reads that HTML).
+  const [article, setArticle] = useState<any>(() => (slug ? getArticleBySlug(slug) : null));
   const [paragraphs, setParagraphs] = useState<string[]>([]);
   const [isLoadingText, setIsLoadingText] = useState<boolean>(true);
 
@@ -208,7 +209,12 @@ export default function ArticlePage() {
                 <h2 className="text-lg font-bold text-slate-800 uppercase tracking-widest">First Page Abstract Preview</h2>
               </div>
 
-              {isLoadingText ? (
+              {isLoadingText && article.abstract ? (
+                <div className="text-slate-700 leading-relaxed text-justify flex flex-col gap-4 pb-6">
+                  <p className="font-bold text-slate-900 text-[1.1rem] tracking-wide">ABSTRACT</p>
+                  <p className="text-slate-600">{article.abstract}</p>
+                </div>
+              ) : isLoadingText ? (
                 <div className="animate-pulse flex flex-col gap-5">
                   <div className="h-4 bg-slate-200 rounded w-full"></div>
                   <div className="h-4 bg-slate-200 rounded w-5/6"></div>
