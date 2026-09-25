@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
 import { generateRentalId, getRentalPlanByCode, getRentalGST, getRentalTotal } from "@/lib/data/rentals";
+import { getClientIp } from "@/lib/clientIp";
 
 export async function POST(req: Request) {
   try {
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     const cashfreeOrderId = `RENEW_CF_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     const headers = req.headers;
-    const ipAddress = headers.get("x-forwarded-for") || "127.0.0.1";
+    const ipAddress = getClientIp(headers);
     const userAgent = headers.get("user-agent") || "";
 
     const newRenewalCount = (parentRental.renewal_count || 0) + 1;

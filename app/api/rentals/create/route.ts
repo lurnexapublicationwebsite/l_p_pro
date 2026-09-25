@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { pool, initDbTables } from "@/lib/dbPool";
 import { generateRentalId, getRentalPlanByCode, getRentalGST, getRentalTotal } from "@/lib/data/rentals";
 import { getBookBySlug, PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
+import { getClientIp } from "@/lib/clientIp";
 
 export async function POST(req: Request) {
   try {
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     const cashfreeOrderId = `RENT_CF_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 
     const headers = req.headers;
-    const ipAddress = headers.get("x-forwarded-for") || "127.0.0.1";
+    const ipAddress = getClientIp(headers);
     const userAgent = headers.get("user-agent") || "";
 
     // Save initial pending rental record

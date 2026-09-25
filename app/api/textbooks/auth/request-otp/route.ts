@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { pool, initDbTables } from "@/lib/dbPool";
 import { sendOtpEmail, sendOtpSms } from "@/lib/otpService";
+import { getClientIp } from "@/lib/clientIp";
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,8 +46,8 @@ export async function POST(req: NextRequest) {
     const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
 
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
-    const ipAddress = req.headers.get("x-forwarded-for") || (req as any).ip || "127.0.0.1";
-    const deviceInfo = req.headers.get("user-agent") || "unknown";
+    const ipAddress = getClientIp(req.headers, (req as any).ip || "127.0.0.1");
+    const deviceInfo = (req.headers.get("user-agent") || "unknown").slice(0, 255);
 
     // Store hashed OTP in database
     await pool.query(
