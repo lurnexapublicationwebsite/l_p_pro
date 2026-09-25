@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "node scripts/generate-missing-pdfs.js && next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "crossref:xml": "node scripts/generate-crossref-xml.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.955.0",

@@ -117,7 +117,7 @@ export async function POST(req: Request) {
         bookAuthors: book.authors,
         bookCoverImg: book.coverImg,
         pages: book.pages,
-        isbn: book.isbnDigital || book.isbn,
+        isbn: book.isbnDigital && book.isbnDigital !== 'N/A' ? book.isbnDigital : book.isbn,
         startedAt: rental.started_at,
         expiresAt: rental.expires_at,
         planCode: rental.plan_code

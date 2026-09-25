@@ -20,6 +20,7 @@ import {
   Clock
 } from 'lucide-react';
 import RentalPlanSelector from '@/components/Textbooks/RentalPlanSelector';
+import { buildDoi, doiUrl } from '@/lib/crossref';
 
 interface BookDetailClientProps {
   book: Book;
@@ -28,6 +29,7 @@ interface BookDetailClientProps {
 
 export default function BookDetailClient({ book, relatedBooks }: BookDetailClientProps) {
   const isDigitalExclusive = book.id === "9" || book.isbn === "N/A";
+  const doi = buildDoi(book.doiSuffix);
   const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft' | 'rental'>(isDigitalExclusive ? 'soft' : 'physical');
   const [includeBook, setIncludeBook] = useState<boolean>(true);
   const [includeCaselet, setIncludeCaselet] = useState<boolean>(false);
@@ -401,6 +403,15 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
               <span className="text-xs font-black text-indigo-700">From ₹59</span>
             </div>
           </div>
+
+          {doi && (
+            <p className="text-xs text-slate-600 -mt-2">
+              <span className="font-semibold uppercase text-slate-500 mr-1.5">DOI:</span>
+              <a href={doiUrl(doi)} target="_blank" rel="noopener noreferrer" className="font-mono font-bold text-fuchsia-600 hover:underline break-all">
+                {doiUrl(doi)}
+              </a>
+            </p>
+          )}
 
           {/* Book Description */}
           <div className="space-y-3">

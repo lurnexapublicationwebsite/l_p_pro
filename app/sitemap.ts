@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { allArticles, slugify } from '@/lib/data/articles';
+import { allArticles } from '@/lib/data/articles';
 import { getAllBooks } from '@/lib/data/books';
 import fs from 'fs';
 import path from 'path';
@@ -209,7 +209,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // ── 5. Dynamic article routes with journal-specific images ──
   allArticles.forEach((article) => {
-    const route = `/Articles/${slugify(article.title)}`;
+    const route = `/Articles/${article.slug}`;
     const journalImage = journalCoverMap[article.subJournal] || '/Logo.png';
 
     sitemapMap.set(route, {

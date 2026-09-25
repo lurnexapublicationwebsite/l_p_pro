@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, FileText, ArrowUpRight, Sparkles, ChevronRight, X, Filter, Check, Download, ArrowLeft } from 'lucide-react';
 import NavigationPage from '@/components/Home/nav/page';
-import { allArticles, slugify } from '@/lib/data/articles';
+import { allArticles } from '@/lib/data/articles';
 import Link from 'next/link';
 
 export default function ProfessionalExplore() {
@@ -164,7 +164,7 @@ function ArticleCard({ article }: { article: any }) {
         </div>
 
         <Link 
-          href={`/Articles/${slugify(article.title)}`}
+          href={`/Articles/${article.slug}`}
           className="w-full mt-6 py-3 rounded-xl bg-slate-950 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all hover:bg-orange-600 shadow-md"
         >
           View Full Publication <ChevronRight size={14} />

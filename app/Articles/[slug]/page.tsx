@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getArticleBySlug } from '@/lib/data/articles';
+import { buildDoi, doiUrl } from '@/lib/crossref';
 import NavigationPage from '@/components/Home/nav/page';
 import { ArrowLeft, Download, FileText, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -166,6 +167,7 @@ export default function ArticlePage() {
   }
 
   const totalLength = paragraphs.join(' ').length;
+  const doi = buildDoi(article.doiSuffix);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
@@ -287,6 +289,19 @@ export default function ArticlePage() {
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Author</span>
               <span className="text-sm font-semibold text-slate-700">{article.author}</span>
             </div>
+            {doi && (
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">DOI</span>
+                <a
+                  href={doiUrl(doi)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold text-orange-600 hover:underline break-all"
+                >
+                  {doiUrl(doi)}
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Call to Action Bar */}

@@ -71,7 +71,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         '@type': 'Book',
         '@id': `https://lurnexa.in/textbooks/${book.slug}#book`,
         'name': book.title,
-        'isbn': book.isbn,
+        'isbn': book.isbn !== 'N/A' ? book.isbn : book.isbnDigital,
         'workExample': [
           {
             '@type': 'Book',
@@ -83,7 +83,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
             'isbn': book.isbnDigital,
             'bookFormat': 'https://schema.org/EBook',
           },
-        ],
+        ].filter((edition) => edition.isbn && edition.isbn !== 'N/A'),
         'author': book.authors.split(',').map((name) => ({
           '@type': 'Person',
           'name': name.trim(),

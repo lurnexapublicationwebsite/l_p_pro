@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { getArticleBySlug } from '@/lib/data/articles';
+import { CROSSREF, buildDoi, doiUrl, parsePublishedDate, toIsoDate, toScholarDate } from '@/lib/crossref';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -50,6 +51,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const pageStart = pagesMatch ? pagesMatch[1] : '1';
   const pageEnd = pagesMatch ? pagesMatch[2] : '1';
 
+  const publishedDate = parsePublishedDate(article.publishedDate);
+  const doi = buildDoi(article.doiSuffix);
+  const journalIssn = CROSSREF.journals[article.journal]?.issn;
+
   return {
     title,
     description,
@@ -83,13 +88,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       // Google Scholar / Academic Citation Metadata
       'citation_title': article.title,
       'citation_author': authors, // Generates a separate meta tag for each author element in the array
-      'citation_publication_date': '2026/01/01', // Conforms to standard Google Scholar date formatting YYYY/MM/DD
+      'citation_publication_date': toScholarDate(publishedDate) ?? '2026',
+      'citation_volume': article.volume,
+      'citation_issue': article.issue,
+      'citation_publisher': CROSSREF.publisherName,
       'citation_journal_title': journalTitle,
       'citation_pdf_url': `https://lurnexa.in${article.downloadUrl}`,
-      'citation_abstract': article.description || article.title,
+      'citation_abstract': article.abstract || article.description || article.title,
       'citation_keywords': keywords.join(', '),
       'citation_firstpage': pageStart,
       'citation_lastpage': pageEnd,
+      ...(journalIssn ? { 'citation_issn': journalIssn } : {}),
+      ...(doi ? { 'citation_doi': doi } : {}),
     },
   };
 }
@@ -121,6 +131,7 @@ export default async function ArticleLayout({
   const pagesMatch = article.pages.match(/(\d+)\s*-\s*(\d+)/);
   const pageStart = pagesMatch ? pagesMatch[1] : '1';
   const pageEnd = pagesMatch ? pagesMatch[2] : '1';
+  const doi = buildDoi(article.doiSuffix);
 
   // Schema.org ScholarlyArticle JSON-LD structured data for Google Rich Snippets
   const scholarlyArticleSchema = {
@@ -128,9 +139,10 @@ export default async function ArticleLayout({
     '@type': 'ScholarlyArticle',
     '@id': `https://lurnexa.in/Articles/${slug}#scholarlyarticle`,
     'headline': article.title,
-    'description': article.description || article.title,
+    'description': article.abstract || article.description || article.title,
     'author': authors,
-    'datePublished': '2026-01-01',
+    'datePublished': toIsoDate(parsePublishedDate(article.publishedDate)),
+    ...(doi ? { 'identifier': { '@type': 'PropertyValue', 'propertyID': 'DOI', 'value': doi }, 'sameAs': doiUrl(doi) } : {}),
     'isPartOf': {
       '@type': 'Periodical',
       'name': article.journal === 'GJPIR' 
