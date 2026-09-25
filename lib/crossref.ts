@@ -2,8 +2,8 @@
 // Keep this file free of imports: scripts/generate-crossref-xml.mjs imports it directly with Node.
 
 // Your Crossref DOI prefix, e.g. '10.12345'.
-// Leave empty until your first deposit succeeds - while empty, no DOI is shown on the website.
-export const DOI_PREFIX = '';
+// Registered with Crossref on 2026-09-25. Set to '' to hide DOIs on the website.
+export const DOI_PREFIX = '10.68325';
 
 export const CROSSREF = {
   depositorName: 'Lurnexa Publications',
