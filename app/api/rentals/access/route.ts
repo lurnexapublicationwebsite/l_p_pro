@@ -4,6 +4,7 @@ import { generateSessionToken, isRentalExpired } from "@/lib/data/rentals";
 import { PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { getClientIp } from "@/lib/clientIp";
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || "ap-south-1",
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
     const sessionExpiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
 
     const headers = req.headers;
-    const ipAddress = headers.get("x-forwarded-for") || "127.0.0.1";
+    const ipAddress = getClientIp(headers);
     const userAgent = headers.get("user-agent") || "";
 
     await pool.query(

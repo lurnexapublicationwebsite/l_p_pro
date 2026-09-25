@@ -211,6 +211,17 @@ export const pool = {
         pgFailedAt = null; // reset on success
         return result;
       } catch (err: any) {
+        // A SQLSTATE code means Postgres itself answered and rejected this particular query
+        // (bad data, constraint violation, missing column...). The connection is fine, so
+        // surface the real error instead of retrying and tripping the "database down"
+        // cooldown — that used to make every other query fail for 30s too.
+        // Classes 08 (connection), 53 (resources) and 57 (operator intervention) are
+        // genuine availability problems and still go through retry/cooldown.
+        const sqlState: string | undefined = typeof err?.code === "string" && err.code.length === 5 ? err.code : undefined;
+        if (sqlState && !/^(08|53|57)/.test(sqlState)) {
+          console.error(`❌ PostgreSQL query error [${sqlState}]:`, err.message || err);
+          throw err;
+        }
         // Most production failures are a transient blip rather than the database actually
         // being down, so retry once before giving up.
         if (!_isRetry) {
@@ -1768,6 +1779,20 @@ export async function initDbTables() {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // ip_address used to be stored as the raw x-forwarded-for chain; widen the columns on
+    // databases created before that was fixed. Only ALTER when still narrow, since this
+    // runs on every request and ALTER TYPE takes an exclusive lock on the table.
+    if (!useLocalFallback) {
+      const narrow = await pool.query(
+        `SELECT table_name FROM information_schema.columns
+         WHERE table_name IN ('textbooks_otps', 'book_rentals', 'rental_sessions')
+           AND column_name = 'ip_address' AND character_maximum_length < 255`
+      );
+      for (const { table_name } of narrow.rows) {
+        await pool.query(`ALTER TABLE ${table_name} ALTER COLUMN ip_address TYPE VARCHAR(255);`);
+      }
+    }
 
     // Book Quotation Tables
     await pool.query(`
