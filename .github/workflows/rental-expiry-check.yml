@@ -18,9 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call rental expiry check endpoint
+        # Use the canonical URL: lurnexa.in 302s to www, and trailingSlash: true 308s
+        # to the slashed path. curl doesn't follow redirects, so anything else fails.
         run: |
           status=$(curl -s -o response.json -w "%{http_code}" \
-            "https://lurnexa.in/api/rentals/check-expiry?secret=${{ secrets.RENTAL_EXPIRY_CHECK_SECRET }}")
+            "https://www.lurnexa.in/api/rentals/check-expiry/?secret=${{ secrets.RENTAL_EXPIRY_CHECK_SECRET }}")
           echo "HTTP status: $status"
           echo "Response body:"
           cat response.json
