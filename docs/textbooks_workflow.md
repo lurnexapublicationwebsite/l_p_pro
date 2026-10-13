@@ -343,7 +343,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    Cron["GitHub Actions .github/workflows/rental-expiry-check.yml\ncron '0 3 * * *' (~08:30 IST) →\nGET https://lurnexa.in/api/rentals/check-expiry?secret=RENTAL_EXPIRY_CHECK_SECRET"] --> Q["SELECT * FROM book_rentals WHERE status='active'"]
+    Cron["GitHub Actions .github/workflows/rental-expiry-check.yml\ncron '0 3 * * *' (~08:30 IST) →\nGET https://www.lurnexa.in/api/rentals/check-expiry/?secret=RENTAL_EXPIRY_CHECK_SECRET"] --> Q["SELECT * FROM book_rentals WHERE status='active'"]
     Q --> Loop{"for each rental"}
     Loop -->|"now > expires_at"| Exp["status='expired'\n+ expired email (if !expiry_sent)"]
     Loop -->|"< 24h left & !expiry_1d_sent"| W1["1-day warning email"]
