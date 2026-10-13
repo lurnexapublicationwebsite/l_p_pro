@@ -80,9 +80,10 @@ export default function SecureReaderPage({ params }: ReaderPageProps) {
     setLoading(true);
     setError(null);
     try {
+      const token = sessionStorage.getItem("lurnexa_session_token") || localStorage.getItem("lurnexa_session_token");
       const res = await fetch("/api/rentals/access", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ rentalId, userEmail })
       });
 

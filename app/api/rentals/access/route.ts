@@ -2,34 +2,35 @@ import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
 import { generateSessionToken, isRentalExpired } from "@/lib/data/rentals";
 import { PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getClientIp } from "@/lib/clientIp";
-
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || "ap-south-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  },
-});
+import { getSessionUser } from "@/lib/textbookSession";
+import { signedPdfUrl } from "@/lib/protectedPdf";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { rentalId, userEmail } = body;
+    const { rentalId } = body;
 
-    if (!rentalId || !userEmail) {
+    if (!rentalId) {
       return NextResponse.json(
-        { error: "Missing required parameters: rentalId, userEmail." },
+        { error: "Missing required parameter: rentalId." },
         { status: 400 }
+      );
+    }
+
+    // Identify the reader from the signed session token, not from the request body.
+    const user = await getSessionUser(req);
+    if (!user || user.emails.length === 0) {
+      return NextResponse.json(
+        { error: "Your session has expired. Please log out and log in again to read this book.", sessionExpired: true },
+        { status: 401 }
       );
     }
 
     // Query rental record
     const res = await pool.query(
-      `SELECT * FROM book_rentals WHERE rental_id = $1 AND LOWER(user_email) = LOWER($2)`,
-      [rentalId, userEmail.trim()]
+      `SELECT * FROM book_rentals WHERE rental_id = $1 AND LOWER(user_email) = ANY($2)`,
+      [rentalId, user.emails]
     );
 
     if (res.rows.length === 0) {
@@ -82,29 +83,18 @@ export async function POST(req: Request) {
       [
         rentalId,
         sessionToken,
-        userEmail.trim().toLowerCase(),
+        rental.user_email.trim().toLowerCase(),
         ipAddress,
         userAgent,
         sessionExpiresAt.toISOString()
       ]
     );
 
-    // Generate pre-signed S3 URL for PDF viewer
-    const bucketName = process.env.S3_BUCKET_NAME || "lurnexa-textbooks";
-    // Fallback when S3 isn't configured — textbook files live under portal_textbooks,
-    // the same public path purchased-book reading uses (public/pdfs is unrelated research papers).
-    let pdfUrl = `/portal_textbooks/${book.pdfFileName}`;
-
-    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-      try {
-        const command = new GetObjectCommand({
-          Bucket: bucketName,
-          Key: `textbooks/${book.pdfFileName}`
-        });
-        pdfUrl = await getSignedUrl(s3Client, command, { expiresIn: 7200 }); // 2 hours
-      } catch (s3Err) {
-        console.warn("S3 signed URL generation failed, falling back to local route:", s3Err);
-      }
+    // Short-lived signed link to the private S3 copy (textbooks/<pdfFileName>).
+    const pdfUrl = await signedPdfUrl("textbooks", book.pdfFileName);
+    if (!pdfUrl) {
+      console.error("rentals/access: S3 credentials are not configured");
+      return NextResponse.json({ error: "Reading is temporarily unavailable. Please try again later." }, { status: 503 });
     }
 
     return NextResponse.json({
@@ -124,7 +114,7 @@ export async function POST(req: Request) {
         planCode: rental.plan_code
       },
       pdfUrl,
-      watermarkText: `${userEmail} • Rental #${rental.rental_id.slice(-6)} • Lurnexa Protected`
+      watermarkText: `${rental.user_email} • Rental #${rental.rental_id.slice(-6)} • Lurnexa Protected`
     });
 
   } catch (err: any) {

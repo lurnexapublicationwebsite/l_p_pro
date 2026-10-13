@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
+import { signSessionToken } from "@/lib/textbookSession";
 import crypto from "crypto";
 
 function hashPassword(password: string): string {
@@ -127,7 +128,7 @@ export async function POST(req: Request) {
           success: true,
           message: "Password created and account activated successfully!",
           user: userData,
-          token: Buffer.from(`${cleanEmail}:${Date.now()}`).toString("base64")
+          token: signSessionToken(cleanEmail)
         });
       }
 
@@ -175,7 +176,7 @@ export async function POST(req: Request) {
       success: true,
       message: "Account created successfully!",
       user: userData,
-      token: Buffer.from(`${cleanEmail}:${Date.now()}`).toString("base64")
+      token: signSessionToken(cleanEmail)
     });
 
   } catch (err: any) {

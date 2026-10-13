@@ -31,6 +31,12 @@ export function bookHasCaselet(bookId?: string): boolean {
   return ["3", "5"].includes(bookId);
 }
 
+// Caselet PDFs per book id, in the same order as the portal's caselet list. Stored privately in S3 under caselets/.
+export const CASELET_PDF_FILES: Record<string, string[]> = {
+  "3": ["dbms_caselet.pdf"],
+  "5": ["microeconomics_caselet.pdf"],
+};
+
 export function getPhysicalPrice(plan: string, bookId?: string, defaultPrice?: number): number {
   if (bookId === "3") {
     if (plan === "caselet") return 99;
@@ -260,7 +266,7 @@ The textbook thoroughly covers regression models, decision trees, neural network
     price: 449,
     digitalPrice: 219,
     code: "DS",
-    pdfFileName: "data_streaming_and_analysis.pdf",
+    pdfFileName: "data_streaming.pdf",
     coverImg: "/portal_coverpages/data_streaming.jpeg",
     publishedDate: "August 18, 2026",
     tag: "Trending",

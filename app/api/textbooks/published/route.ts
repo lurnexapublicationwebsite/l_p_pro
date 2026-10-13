@@ -1,21 +1,8 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
 
+// Lists the PDF file names of published textbooks. The PDFs themselves are private in S3,
+// so this comes from the book data rather than a public folder.
 export async function GET() {
-  try {
-    const pdfsDir = path.join(process.cwd(), "public", "portal_textbooks");
-    
-    if (!fs.existsSync(pdfsDir)) {
-      return NextResponse.json({ files: [] });
-    }
-
-    const files = fs.readdirSync(pdfsDir)
-      .filter(file => file.endsWith(".pdf"));
-
-    return NextResponse.json({ files });
-  } catch (error) {
-    console.error("❌ Error reading published books directory:", error);
-    return NextResponse.json({ files: [] }, { status: 500 });
-  }
+  return NextResponse.json({ files: PUBLISHED_BOOKS_DATA.map((b) => b.pdfFileName) });
 }
