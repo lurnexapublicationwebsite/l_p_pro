@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
-import { signSessionToken } from "@/lib/textbookSession";
+import { getSessionTarget, signSessionToken } from "@/lib/textbookSession";
 import crypto from "crypto";
 
 function hashPassword(password: string): string {
@@ -27,6 +27,15 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Please enter a valid Gmail / Email address." },
         { status: 400 }
+      );
+    }
+
+    // The caller must prove they control this email (token from /api/textbooks/auth/verify-otp)
+    // before an account is created or an existing password-less account is claimed.
+    if (getSessionTarget(req) !== cleanEmail) {
+      return NextResponse.json(
+        { error: "Please verify your email address with the code we sent you before creating an account.", emailVerificationRequired: true },
+        { status: 403 }
       );
     }
 
