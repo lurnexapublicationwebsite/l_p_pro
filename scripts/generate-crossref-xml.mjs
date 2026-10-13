@@ -63,8 +63,29 @@ const licenseXml = [
   '</ai:program>',
 ].join('\n');
 
-function doiDataXml(doi, url) {
-  return ['<doi_data>', `  <doi>${esc(doi)}</doi>`, `  <resource>${esc(url)}</resource>`, '</doi_data>'].join('\n');
+// fullTextPdfUrl adds the links Crossref Similarity Check (Turnitin, crawler "iParadigms") and text mining read.
+// Only pass it for PDFs that are publicly downloadable.
+function doiDataXml(doi, url, fullTextPdfUrl) {
+  return [
+    '<doi_data>',
+    `  <doi>${esc(doi)}</doi>`,
+    `  <resource>${esc(url)}</resource>`,
+    ...(fullTextPdfUrl
+      ? [
+          '  <collection property="crawler-based">',
+          '    <item crawler="iParadigms">',
+          `      <resource>${esc(fullTextPdfUrl)}</resource>`,
+          '    </item>',
+          '  </collection>',
+          '  <collection property="text-mining">',
+          '    <item>',
+          `      <resource mime_type="application/pdf">${esc(fullTextPdfUrl)}</resource>`,
+          '    </item>',
+          '  </collection>',
+        ]
+      : []),
+    '</doi_data>',
+  ].join('\n');
 }
 
 function batchXml(batchId, bodyXml) {
@@ -104,7 +125,7 @@ function articleXml(article) {
     indent(dateXml(date), 2),
     pages ? `  <pages><first_page>${pages[1]}</first_page><last_page>${pages[2]}</last_page></pages>` : null,
     indent(licenseXml, 2),
-    indent(doiDataXml(doi, `${CROSSREF.siteUrl}/Articles/${article.slug}`), 2),
+    indent(doiDataXml(doi, `${CROSSREF.siteUrl}/Articles/${article.slug}`, encodeURI(`${CROSSREF.siteUrl}${article.downloadUrl}`)), 2),
     '</journal_article>',
   ].filter(Boolean).join('\n');
 }
