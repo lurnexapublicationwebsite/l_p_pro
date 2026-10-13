@@ -11,7 +11,11 @@ import type { SessionUser } from "@/lib/textbookSession";
 
 const LINK_TTL_SECONDS = 30 * 60;
 
-export async function signedPdfUrl(folder: "textbooks" | "caselets", fileName: string): Promise<string | null> {
+export async function signedPdfUrl(
+  folder: "textbooks" | "caselets",
+  fileName: string,
+  expiresIn = LINK_TTL_SECONDS
+): Promise<string | null> {
   if (!s3HasCredentials) return null;
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
@@ -19,7 +23,7 @@ export async function signedPdfUrl(folder: "textbooks" | "caselets", fileName: s
     ResponseContentType: "application/pdf",
     ResponseContentDisposition: "inline",
   });
-  return getSignedUrl(s3, command, { expiresIn: LINK_TTL_SECONDS });
+  return getSignedUrl(s3, command, { expiresIn });
 }
 
 export function ownsBook(user: SessionUser, bookId: string): boolean {
