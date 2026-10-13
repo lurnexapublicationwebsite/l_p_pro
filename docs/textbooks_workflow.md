@@ -328,7 +328,7 @@ sequenceDiagram
     RA->>DB: verify status='active' & not expired (lazy-expire if past)
     RA->>DB: DELETE prior rental_sessions (single active session)
     RA->>DB: INSERT rental_sessions (2-hour token)
-    RA->>S3: getSignedUrl(textbooks/{pdfFileName}, 7200s)  [fallback: /portal_textbooks/{file}]
+    RA->>S3: getSignedUrl(lurnexa: textbooks/{pdfFileName}, 30 min)  [no public fallback]
     RA-->>RDR: { pdfUrl, sessionToken, watermarkText }
     RDR->>RDR: pdf.js render, right-click/Ctrl+P/Ctrl+S blocked, watermark overlay
 ```
@@ -426,16 +426,15 @@ Applies to **rentals** (`/textbooks/reader/[rentalId]`) and to portal in‑app r
 
 ```mermaid
 flowchart TD
-    Open["Reader page mounts"] --> Ask["POST /api/rentals/access\n{ rentalId, userEmail }"]
+    Open["Reader page mounts"] --> Ask["POST /api/rentals/access\n{ rentalId } + Bearer session token"]
     Ask -->|"rental not found / wrong user"| D403["403 — access denied"]
     Ask -->|"status != active"| DNR["403 — renew required"]
     Ask -->|"expires_at passed"| DExp["auto status='expired' → 403 isExpired"]
     Ask -->|"OK"| Sess["DELETE prior rental_sessions\nINSERT new (token, 2-hour expiry)"]
     Sess --> URL{"S3 configured?"}
-    URL -->|"yes"| S3U["getSignedUrl(textbooks/{pdfFileName}, 7200s)"]
-    URL -->|"no"| Local["/portal_textbooks/{pdfFileName}"]
+    URL -->|"yes"| S3U["getSignedUrl(textbooks/{pdfFileName}, 30 min)"]
+    URL -->|"no"| D503["503 — reading unavailable"]
     S3U --> Render
-    Local --> Render
     Render["pdf.js canvas render\nzoom / page nav / light-dark"] --> Guard["contextmenu blocked\nCtrl+P / Ctrl+S blocked\nprint CSS blur, visibility/blur handlers\nper-user watermark overlay"]
 ```
 
@@ -550,7 +549,8 @@ flowchart LR
 | Method + path | Purpose |
 |---|---|
 | `GET / POST /api/textbooks/db/sync` | Hydrate / write‑through the portal mirror. Runs `ensureTables()`. |
-| `GET /api/textbooks/published` | List PDF filenames in `public/portal_textbooks`. |
+| `GET /api/textbooks/published` | List published textbook PDF filenames (from `lib/data/books.ts`). |
+| `POST /api/textbooks/pdf-access` | Bearer session token + `{ kind: "book" or "caselet", bookId, caseletIndex? }` → checks purchase / caselet plan / active rental → 30‑min signed S3 link. |
 | `GET/POST /api/textbooks/user/orders` | Reader's order history. |
 | `GET/POST/DELETE /api/textbooks/user/addresses` | Shipping address book. |
 | `POST /api/textbooks/quiz/notify-students` | Email a scheduled quiz to students. |
@@ -611,8 +611,8 @@ Components: `components/Textbooks/` — `TextbooksClient`, `Upcoming`, `Publishe
 |---|---|
 | `DATABASE_URL` | `lib/dbPool.ts` (all server routes). Placeholder/missing → local JSON fallback. |
 | `CASHFREE_APP_ID` · `CASHFREE_SECRET_KEY` · `CASHFREE_ENV` (`TEST`/`PRODUCTION`) | All payment + rental order creation/verification. Missing creds → mock session (dev only). |
-| `JWT_SECRET` | OTP session tokens (`auth/verify-otp`). Default fallback string if unset. |
-| `AWS_REGION` · `AWS_ACCESS_KEY_ID` · `AWS_SECRET_ACCESS_KEY` · `S3_BUCKET_NAME` | Signed PDF URLs (`rentals/access`), quotation stamp upload (`lib/s3.ts`). `MY_AWS_*` variants also read. |
+| `JWT_SECRET` | Portal session tokens (`auth/login`, `auth/signup`, `auth/verify-otp`), verified by `lib/textbookSession.ts` before any paid PDF is served. |
+| `S3_ACCESS_KEY_ID` · `S3_SECRET_ACCESS_KEY` (or `AWS_*` / `MY_AWS_*`) | `lib/s3.ts`, bucket `lurnexa` (ap-south-1): signed links for paid PDFs (`lib/protectedPdf.ts`), quotation stamp upload. |
 | `SMTP_HOST/PORT/USER/PASS/FROM` · `TEXTBOOK_SMTP_*` · `TEXTBOOK_ADMIN_EMAIL` | Textbook + order + quiz emails (`lib/mailService.ts`). |
 | `QUOTATION_SMTP_HOST/PORT/USER/PASS` · `QUOTATION_SMTP_FROM` | Quotation emails (dedicated transporter). |
 | `TWILIO_ACCOUNT_SID` · `TWILIO_AUTH_TOKEN` · `TWILIO_PHONE_NUMBER` | SMS OTP (`lib/otpService.ts`). |
@@ -632,7 +632,7 @@ Build: `scripts/inject-env.js` runs in Amplify `preBuild`/`build` (see `amplify.
 - **Admin master bypass `783490`** works even with the database unreachable — intentional recovery hatch; keep it out of public docs.
 - **Demo accounts:** Access IDs on `*@lurnexa.in` accept `783490`. `initDb()` strips stale demo users (`99999…` phones, `@lurnexa.in` emails) and enforces exactly one admin.
 - **Rental ≠ ownership:** never write a `book_id` into `purchased_books` from a rental path.
-- **S3 optional:** without AWS creds, rental PDFs serve from `public/portal_textbooks/{pdfFileName}` — the same path portal owned‑book reading uses (not `public/pdfs`, which is research papers).
+- **Paid PDFs are private:** textbooks live only in S3 at `lurnexa/textbooks/{pdfFileName}` and caselets at `lurnexa/caselets/{file}` (`CASELET_PDF_FILES` in `lib/data/books.ts`). Never put them in `public/` — everything there is downloadable. `public/pdfs` holds the open‑access journal articles and `public/published_books/previews` the free samples.
 - **Cover image case sensitivity** bit production before (commit `7028055`) — keep `coverImg` / `pdfFileName` casing exact.
 
 ---
@@ -641,7 +641,7 @@ Build: `scripts/inject-env.js` runs in Amplify `preBuild`/`build` (see `amplify.
 
 **Add a new textbook**
 1. Add the record to `PUBLISHED_BOOKS_DATA` in `lib/data/books.ts` (unique `id`, `slug`, `code`, ISBNs, prices, `pdfFileName`, `coverImg`, ToC, keywords).
-2. Drop the cover in `public/portal_coverpages/` and the PDF in `public/portal_textbooks/` (exact case).
+2. Drop the cover in `public/portal_coverpages/` and upload the PDF to the private S3 bucket `lurnexa` under `textbooks/` (exact case, same name as `pdfFileName`).
 3. If it has a caselet, add its `id` to `bookHasCaselet` and set `hasCaselet: true`.
 4. Set `rentalEnabled: true` (+ optional `rentalPriceOverride`) to allow rentals.
 5. Add the lightweight registry entry via the admin *Textbooks* tab (or let `initDb` defaults seed it), plus a `book_chapters` / `practice_configs` entry if using the quiz/practice engine.

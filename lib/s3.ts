@@ -9,7 +9,7 @@ import mime from "mime-types";
 import { pipeline } from "stream/promises";
 
 const REGION = "ap-south-1";
-const BUCKET_NAME = "lurnexa";
+export const BUCKET_NAME = "lurnexa";
 
 const s3Config: any = {
   region: REGION,
@@ -28,6 +28,7 @@ if (accessKeyId && secretAccessKey) {
 }
 
 export const s3 = new S3Client(s3Config);
+export const s3HasCredentials = Boolean(accessKeyId && secretAccessKey);
 
 /* =========================
    UPLOAD FILE

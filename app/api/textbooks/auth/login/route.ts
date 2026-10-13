@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
+import { signSessionToken } from "@/lib/textbookSession";
 import crypto from "crypto";
 
 function hashPassword(password: string): string {
@@ -124,7 +125,7 @@ export async function POST(req: Request) {
       success: true,
       message: "Logged in successfully!",
       user: userData,
-      token: Buffer.from(`${userEmailVal}:${Date.now()}`).toString("base64")
+      token: signSessionToken(userEmailVal, user.access_id || "USER")
     });
 
   } catch (err: any) {

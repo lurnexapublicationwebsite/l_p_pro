@@ -304,6 +304,17 @@ Based on microeconomics principles:
   ]
 };
 
+// Signed session token from login (see lib/textbookSession.ts). Paid PDFs are only handed out to it.
+const SESSION_TOKEN_KEY = "lurnexa_session_token";
+const storeSessionToken = (token: string) => {
+  sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+  localStorage.setItem(SESSION_TOKEN_KEY, token);
+};
+const authHeaders = (): Record<string, string> => {
+  const token = sessionStorage.getItem(SESSION_TOKEN_KEY) || localStorage.getItem(SESSION_TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const getEffectiveQuestionLimit = (bookId: string): number => {
   const tests = getPracticeTests(bookId);
   if (tests.length > 0) {
@@ -1322,7 +1333,7 @@ export default function TextbookPortal({
     try {
       const res = await fetch("/api/rentals/access", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ rentalId, userEmail })
       });
       const data = await res.json();
@@ -1596,6 +1607,34 @@ export default function TextbookPortal({
     }
   };
 
+  // Owned books and caselets: ask the server for a short-lived signed link, then load it.
+  const loadProtectedPdf = async (
+    request: { kind: "book"; bookId: string } | { kind: "caselet"; bookId: string; caseletIndex: number },
+    docKey: string | null = null
+  ) => {
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const res = await fetch("/api/textbooks/pdf-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(request),
+      });
+      const data = await res.json();
+      if (docKey !== currentDocKeyRef.current) return;
+      if (!res.ok || !data.pdfUrl) {
+        setPdfError(data.error || "Unable to open this document right now.");
+        setPdfLoading(false);
+        return;
+      }
+      await loadPdfFile(data.pdfUrl, docKey);
+    } catch (e) {
+      if (docKey !== currentDocKeyRef.current) return;
+      setPdfError("Unable to open this document. Please check your connection and try again.");
+      setPdfLoading(false);
+    }
+  };
+
   const loadPdfFile = async (url: string, docKey: string | null = null) => {
     setPdfLoading(true);
     setPdfError(null);
@@ -1741,7 +1780,7 @@ export default function TextbookPortal({
     if (isReadingBook) {
       const book = PORTAL_PUBLISHED_BOOKS.find(b => String(b.id) === String(readingBookId));
       if (book) {
-        loadPdfFile(`/portal_textbooks/${book.pdfFileName}`, docKey);
+        loadProtectedPdf({ kind: "book", bookId: String(book.id) }, docKey);
       }
     } else if (isReadingRental) {
       if (activeRentalReadData?.pdfUrl) {
@@ -1751,7 +1790,7 @@ export default function TextbookPortal({
       const caselets = BOOK_CASELETS[readingCaseletInfo.bookId] || [];
       const currentCaselet = caselets[readingCaseletInfo.index];
       if (currentCaselet) {
-        loadPdfFile(`/portal_caselets/${currentCaselet.pdfFileName}`, docKey);
+        loadProtectedPdf({ kind: "caselet", bookId: String(readingCaseletInfo.bookId), caseletIndex: readingCaseletInfo.index }, docKey);
       }
     } else {
       setPdfDocument(null);
@@ -2697,7 +2736,7 @@ export default function TextbookPortal({
 
       const loggedUser = data.user;
       setUser(loggedUser);
-      sessionStorage.setItem("lurnexa_session_token", data.token);
+      storeSessionToken(data.token);
       sessionStorage.setItem("lurnexa_current_user", JSON.stringify(loggedUser));
       localStorage.setItem("lurnexa_user_email", loggedUser.email);
       localStorage.setItem("user_email", loggedUser.email);
@@ -2773,7 +2812,7 @@ export default function TextbookPortal({
 
       const loggedUser = data.user;
       setUser(loggedUser);
-      sessionStorage.setItem("lurnexa_session_token", data.token);
+      storeSessionToken(data.token);
       sessionStorage.setItem("lurnexa_current_user", JSON.stringify(loggedUser));
       localStorage.setItem("lurnexa_user_email", loggedUser.email);
       localStorage.setItem("user_email", loggedUser.email);
@@ -2982,7 +3021,7 @@ export default function TextbookPortal({
         return;
       }
 
-      sessionStorage.setItem("lurnexa_session_token", data.token);
+      storeSessionToken(data.token);
       sessionStorage.setItem("lurnexa_current_user", JSON.stringify(loggedInUser));
       localStorage.setItem("lurnexa_user", JSON.stringify(loggedInUser));
       localStorage.setItem("lurnexa_user_email", loggedInUser.collegeEmail || loggedInUser.email || "");
@@ -3305,6 +3344,7 @@ export default function TextbookPortal({
   const handleLogout = () => {
     sessionStorage.removeItem("lurnexa_current_user");
     sessionStorage.removeItem("lurnexa_session_token");
+    localStorage.removeItem("lurnexa_session_token");
     sessionStorage.removeItem("lurnexa_portal_active_tab");
     localStorage.removeItem("lurnexa_user");
     localStorage.removeItem("lurnexa_user_email");
@@ -12407,7 +12447,7 @@ export default function TextbookPortal({
                     onClick={() => {
                       if (readingBookId) {
                         const book = PORTAL_PUBLISHED_BOOKS.find(b => b.id === readingBookId);
-                        if (book) loadPdfFile(`/portal_textbooks/${book.pdfFileName}`, readerDocKey);
+                        if (book) loadProtectedPdf({ kind: "book", bookId: String(book.id) }, readerDocKey);
                       } else if (readingRentalId && activeRentalReadData?.pdfUrl) {
                         loadPdfFile(activeRentalReadData.pdfUrl, readerDocKey);
                       }
