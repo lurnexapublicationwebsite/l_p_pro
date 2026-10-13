@@ -10,10 +10,12 @@ async function handle(req: Request, { params }: { params: Promise<{ file: string
   const book = PUBLISHED_BOOKS_DATA.find((b) => b.pdfFileName === file);
   if (!book) return new NextResponse("Not found", { status: 404 });
 
+  // Everyone else gets the paywall's authentication step, as Crossref asks for paywalled
+  // full-text links: the book page, where they can buy, rent or log in to read.
   if (!isTurnitinRequest(req.headers)) {
-    return new NextResponse("This full text is available to Crossref Similarity Check only.", {
-      status: 403,
-      headers: { "X-Robots-Tag": "noindex" },
+    return NextResponse.redirect(`https://www.lurnexa.in/textbooks/${book.slug}/`, {
+      status: 302,
+      headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
     });
   }
 
