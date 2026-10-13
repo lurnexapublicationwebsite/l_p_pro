@@ -63,23 +63,27 @@ const licenseXml = [
   '</ai:program>',
 ].join('\n');
 
-// fullTextPdfUrl adds the links Crossref Similarity Check (Turnitin, crawler "iParadigms") and text mining read.
-// Only pass it for PDFs that are publicly downloadable.
-function doiDataXml(doi, url, fullTextPdfUrl) {
+// similarityCheckUrl: full text for Crossref Similarity Check (Turnitin, crawler "iParadigms").
+// textMiningUrl: full text anyone may download - only for open-access PDFs.
+function doiDataXml(doi, url, { similarityCheckUrl, textMiningUrl } = {}) {
   return [
     '<doi_data>',
     `  <doi>${esc(doi)}</doi>`,
     `  <resource>${esc(url)}</resource>`,
-    ...(fullTextPdfUrl
+    ...(similarityCheckUrl
       ? [
           '  <collection property="crawler-based">',
           '    <item crawler="iParadigms">',
-          `      <resource>${esc(fullTextPdfUrl)}</resource>`,
+          `      <resource>${esc(similarityCheckUrl)}</resource>`,
           '    </item>',
           '  </collection>',
+        ]
+      : []),
+    ...(textMiningUrl
+      ? [
           '  <collection property="text-mining">',
           '    <item>',
-          `      <resource mime_type="application/pdf">${esc(fullTextPdfUrl)}</resource>`,
+          `      <resource mime_type="application/pdf">${esc(textMiningUrl)}</resource>`,
           '    </item>',
           '  </collection>',
         ]
@@ -116,6 +120,7 @@ function articleXml(article) {
   const date = parsePublishedDate(article.publishedDate);
   const pages = article.pages.match(/(\d+)\s*-\s*(\d+)/);
   const abstract = article.abstract?.trim();
+  const pdfUrl = encodeURI(`${CROSSREF.siteUrl}${article.downloadUrl}`); // open-access article PDF
   if (!abstract) warnings.push(`Article ${article.id}: no abstract in articles.ts, so none was sent. Add one to improve indexing.`);
   return [
     '<journal_article publication_type="full_text">',
@@ -125,7 +130,7 @@ function articleXml(article) {
     indent(dateXml(date), 2),
     pages ? `  <pages><first_page>${pages[1]}</first_page><last_page>${pages[2]}</last_page></pages>` : null,
     indent(licenseXml, 2),
-    indent(doiDataXml(doi, `${CROSSREF.siteUrl}/Articles/${article.slug}`, encodeURI(`${CROSSREF.siteUrl}${article.downloadUrl}`)), 2),
+    indent(doiDataXml(doi, `${CROSSREF.siteUrl}/Articles/${article.slug}`, { similarityCheckUrl: pdfUrl, textMiningUrl: pdfUrl }), 2),
     '</journal_article>',
   ].filter(Boolean).join('\n');
 }
@@ -204,7 +209,8 @@ function bookXml(book) {
     `      <publisher_place>${esc(CROSSREF.publisherPlace)}</publisher_place>`,
     '    </publisher>',
     indent(licenseXml, 4),
-    indent(doiDataXml(doi, `${CROSSREF.siteUrl}/textbooks/${book.slug}`), 4),
+    // Paid book: the full-text route serves the PDF to Turnitin's crawler only (app/fulltext/books/[file]/route.ts).
+    indent(doiDataXml(doi, `${CROSSREF.siteUrl}/textbooks/${book.slug}`, { similarityCheckUrl: `${CROSSREF.siteUrl}/fulltext/books/${encodeURIComponent(book.pdfFileName)}` }), 4),
     '  </book_metadata>',
     '</book>',
   ].join('\n');
