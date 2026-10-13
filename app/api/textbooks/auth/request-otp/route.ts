@@ -65,12 +65,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (!sentSuccessfully) {
-      if (cleanAccessId === "LURNEXA") {
-        return NextResponse.json({
-          success: true,
-          message: "Admin verification code initialized. You may also use master bypass code 783490."
-        });
-      }
       return NextResponse.json(
         { error: "Failed to dispatch verification code. Please try again." },
         { status: 500 }

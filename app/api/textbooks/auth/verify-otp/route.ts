@@ -21,34 +21,17 @@ export async function POST(req: NextRequest) {
     const cleanTarget = target.includes("@") ? target.trim().toLowerCase() : target.trim();
     const cleanCode = code.trim();
 
-    const isAdminAccount = cleanAccessId === "LURNEXA" ||
-      cleanTarget === "lurnexapublication@gmail.com" ||
-      cleanTarget.replace(/\D/g, "").slice(-10) === "9347834904";
-
-    // Backend master bypass check for admin to login offline/without database
-    if (isAdminAccount && cleanCode === "783490") {
-      const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
-      const sessionToken = jwt.sign(
-        {
-          accessId: "LURNEXA",
-          target: "lurnexapublication@gmail.com",
-          verifiedAt: new Date().toISOString()
-        },
-        jwtSecret,
-        { expiresIn: "8h" }
-      );
-
-      return NextResponse.json({
-        success: true,
-        token: sessionToken,
-        message: "Verification successful (Bypass)."
-      });
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error("verify-otp: JWT_SECRET is not configured");
+      return NextResponse.json({ error: "Login is temporarily unavailable." }, { status: 500 });
     }
 
-    // Demo student / faculty account bypass checks for testing
+    // Demo student / faculty accounts for local testing only: DEMO_LOGIN_CODE must be set,
+    // and it is ignored in production. Admin has no bypass - it always needs a real OTP.
+    const demoCode = process.env.NODE_ENV !== "production" ? process.env.DEMO_LOGIN_CODE : undefined;
     const IS_DEMO_ACCOUNT = cleanAccessId.startsWith("LS") || cleanAccessId.startsWith("LF") || cleanAccessId.startsWith("LURN") || cleanAccessId.startsWith("LR");
-    if (IS_DEMO_ACCOUNT && cleanTarget.includes("lurnexa.in") && cleanCode === "783490") {
-      const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
+    if (demoCode && IS_DEMO_ACCOUNT && cleanAccessId !== "LURNEXA" && cleanTarget.endsWith("@lurnexa.in") && cleanCode === demoCode) {
       const sessionToken = jwt.sign(
         {
           accessId: cleanAccessId,
@@ -122,7 +105,6 @@ export async function POST(req: NextRequest) {
     );
 
     // Generate JWT token
-    const jwtSecret = process.env.JWT_SECRET || "lurnexa_textbooks_default_jwt_secret_2026";
     const sessionToken = jwt.sign(
       {
         accessId: cleanAccessId,
