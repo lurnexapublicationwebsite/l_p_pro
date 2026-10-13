@@ -546,6 +546,9 @@ export default function TextbookPortal({
   const [authPassword, setAuthPassword] = useState("");
   const [authName, setAuthName] = useState("");
   const [authMobile, setAuthMobile] = useState("");
+  // Email signup is two steps: send a code to the email, then verify it and create the account.
+  const [signupCodeSent, setSignupCodeSent] = useState(false);
+  const [signupCode, setSignupCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
@@ -2790,11 +2793,53 @@ export default function TextbookPortal({
       return;
     }
 
+    const signupEmail = authEmail.trim().toLowerCase();
+
+    if (!signupCodeSent) {
+      setIsAuthLoading(true);
+      try {
+        const otpRes = await fetch("/api/textbooks/auth/request-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessId: "SIGNUP", target: signupEmail }),
+        });
+        const otpData = await otpRes.json();
+        if (!otpRes.ok) {
+          setErrorMessage(otpData.error || "Could not send a verification code. Please try again.");
+          return;
+        }
+        setSignupCodeSent(true);
+        setSuccessMessage(`We sent a 6-digit verification code to ${signupEmail}. Enter it below to finish creating your account.`);
+      } catch (err) {
+        setErrorMessage("Network error connecting to registration server.");
+      } finally {
+        setIsAuthLoading(false);
+      }
+      return;
+    }
+
+    if (!/^\d{6}$/.test(signupCode.trim())) {
+      setErrorMessage("Enter the 6-digit code we emailed you.");
+      return;
+    }
+
     setIsAuthLoading(true);
     try {
-      const res = await fetch("/api/textbooks/auth/signup", {
+      const verifyRes = await fetch("/api/textbooks/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessId: "SIGNUP", target: signupEmail, code: signupCode.trim() }),
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok || !verifyData.token) {
+        setErrorMessage(verifyData.error || "That code is not valid. Please try again.");
+        setIsAuthLoading(false);
+        return;
+      }
+
+      const res = await fetch("/api/textbooks/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${verifyData.token}` },
         body: JSON.stringify({
           name: authName.trim(),
           email: authEmail.trim(),
@@ -2824,6 +2869,8 @@ export default function TextbookPortal({
       setAuthPassword("");
       setAuthName("");
       setAuthMobile("");
+      setSignupCodeSent(false);
+      setSignupCode("");
       if (!checkAndPerformRedirect()) {
         setActiveTab("mybooks");
       }
@@ -5426,7 +5473,7 @@ export default function TextbookPortal({
                           type="email"
                           placeholder="your.email@gmail.com"
                           value={authEmail}
-                          onChange={(e) => setAuthEmail(e.target.value)}
+                          onChange={(e) => { setAuthEmail(e.target.value); setSignupCodeSent(false); setSignupCode(""); }}
                           required
                           className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm transition-all"
                         />
@@ -5474,6 +5521,34 @@ export default function TextbookPortal({
                       </div>
                     </div>
 
+                    {signupCodeSent && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                          Email Verification Code
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-3.5 text-slate-400 h-4 w-4" />
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            placeholder="6-digit code from your email"
+                            value={signupCode}
+                            onChange={(e) => setSignupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            required
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:border-fuchsia-500 font-medium text-sm tracking-widest transition-all"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setSignupCodeSent(false); setSignupCode(""); setSuccessMessage(""); }}
+                          className="mt-1.5 text-[11px] font-semibold text-fuchsia-600 hover:underline"
+                        >
+                          Change email or resend code
+                        </button>
+                      </div>
+                    )}
+
                     <button
                       type="submit"
                       disabled={isAuthLoading}
@@ -5483,7 +5558,7 @@ export default function TextbookPortal({
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                          <span>Create Account & Start Reading</span>
+                          <span>{signupCodeSent ? "Verify & Create Account" : "Continue: Verify Email"}</span>
                           <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                         </>
                       )}
