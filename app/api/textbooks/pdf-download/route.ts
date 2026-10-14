@@ -1,67 +1,62 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
 import { PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
-import { getSessionUser } from "@/lib/textbookSession";
-import { ownsBook, signedPdfUrl } from "@/lib/protectedPdf";
+import { signedPdfUrl } from "@/lib/protectedPdf";
 
-// One-time PDF download for buyers, offered on the book page that the Crossref
-// full-text link (/fulltext/books/<file>) sends visitors to.
-// POST { bookId, action: "status" | "download" } with "Authorization: Bearer <session token>".
-// The first "download" opens a 30-minute window (so a failed download can be retried);
-// after that the purchase's download is used up.
-const RETRY_WINDOW_MS = 30 * 60 * 1000;
-
-async function ensureTable() {
-  await pool.query(`CREATE TABLE IF NOT EXISTS textbook_downloads (
-    id SERIAL PRIMARY KEY,
-    user_email VARCHAR(255) NOT NULL,
-    book_id VARCHAR(20) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (user_email, book_id)
-  )`);
-}
+// One-time PDF download shown on the checkout success screen right after payment.
+// POST { orderId }: for a PAID digital order, the download links are issued exactly once.
+// Any later request for the same order (page refresh, reopening the page) gets status "used",
+// so the download button never appears again.
+const LINK_TTL_SECONDS = 30 * 60;
+const DIGITAL_FORMATS = ["soft", "upgrade"];
 
 export async function POST(req: Request) {
   try {
-    const { bookId, action } = await req.json();
-    const book = PUBLISHED_BOOKS_DATA.find((b) => b.id === String(bookId || ""));
-    if (!book) return NextResponse.json({ error: "Book not found." }, { status: 404 });
-
-    const user = await getSessionUser(req);
-    if (!user || user.emails.length === 0) {
-      return NextResponse.json({ status: "login_required", error: "Please log in to download your book." }, { status: 401 });
-    }
-    if (!ownsBook(user, book.id)) {
-      return NextResponse.json({ status: "not_purchased", error: "Buy this book to download it." }, { status: 403 });
+    const { orderId } = await req.json();
+    if (!orderId || typeof orderId !== "string") {
+      return NextResponse.json({ error: "Missing order." }, { status: 400 });
     }
 
-    await ensureTable();
-    const existing = await pool.query(
-      `SELECT created_at FROM textbook_downloads WHERE book_id = $1 AND LOWER(user_email) = ANY($2) ORDER BY created_at LIMIT 1`,
-      [book.id, user.emails]
+    const orderRes = await pool.query(
+      `SELECT book_id, purchase_format FROM textbooks_purchases WHERE order_id = $1 AND status = 'PAID' LIMIT 1`,
+      [orderId]
     );
-    const startedAt = existing.rows[0] ? new Date(existing.rows[0].created_at).getTime() : null;
-    const windowOpen = startedAt !== null && Date.now() - startedAt < RETRY_WINDOW_MS;
-
-    if (startedAt !== null && !windowOpen) {
-      return NextResponse.json({ status: "used", downloadedAt: new Date(startedAt).toISOString() });
-    }
-    if (action !== "download") {
-      return NextResponse.json({ status: "available" });
+    const order = orderRes.rows[0];
+    if (!order) return NextResponse.json({ status: "unavailable" }, { status: 404 });
+    if (!DIGITAL_FORMATS.includes(String(order.purchase_format || "").toLowerCase())) {
+      return NextResponse.json({ status: "not_digital" });
     }
 
-    if (startedAt === null) {
-      await pool.query(
-        `INSERT INTO textbook_downloads (user_email, book_id) VALUES ($1, $2) ON CONFLICT (user_email, book_id) DO NOTHING`,
-        [user.emails[0], book.id]
-      );
+    const books = String(order.book_id || "")
+      .split(",")
+      .map((id) => PUBLISHED_BOOKS_DATA.find((b) => b.id === id.trim()))
+      .filter((b): b is (typeof PUBLISHED_BOOKS_DATA)[number] => Boolean(b));
+    if (books.length === 0) return NextResponse.json({ status: "unavailable" }, { status: 404 });
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS textbook_download_links (
+      order_id VARCHAR(255) PRIMARY KEY,
+      issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+    // Atomic claim: only the first request for this order inserts the row and gets the links.
+    const claim = await pool.query(
+      `INSERT INTO textbook_download_links (order_id) VALUES ($1) ON CONFLICT (order_id) DO NOTHING RETURNING order_id`,
+      [orderId]
+    );
+    if (claim.rows.length === 0) {
+      return NextResponse.json({ status: "used" });
     }
-    const remainingSeconds = startedAt === null ? RETRY_WINDOW_MS / 1000 : Math.ceil((startedAt + RETRY_WINDOW_MS - Date.now()) / 1000);
-    const pdfUrl = await signedPdfUrl("textbooks", book.pdfFileName, Math.max(60, remainingSeconds), book.title);
-    if (!pdfUrl) {
-      return NextResponse.json({ error: "Downloads are temporarily unavailable. Please try again later." }, { status: 503 });
+
+    const downloads = [];
+    for (const book of books) {
+      const pdfUrl = await signedPdfUrl("textbooks", book.pdfFileName, LINK_TTL_SECONDS, book.title);
+      if (!pdfUrl) {
+        // Release the claim so the buyer can try again once storage is reachable.
+        await pool.query(`DELETE FROM textbook_download_links WHERE order_id = $1`, [orderId]);
+        return NextResponse.json({ error: "Downloads are temporarily unavailable. Please refresh in a minute." }, { status: 503 });
+      }
+      downloads.push({ bookId: book.id, title: book.title, pdfUrl });
     }
-    return NextResponse.json({ status: "available", pdfUrl });
+    return NextResponse.json({ status: "available", downloads });
   } catch (err) {
     console.error("❌ Error in /api/textbooks/pdf-download:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
