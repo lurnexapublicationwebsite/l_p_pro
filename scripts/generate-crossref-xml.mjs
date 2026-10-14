@@ -13,8 +13,19 @@ import { fileURLToPath } from 'url';
 import { allArticles } from '../lib/data/articles.ts';
 import { PUBLISHED_BOOKS_DATA } from '../lib/data/books.ts';
 import { CROSSREF, DOI_PREFIX, buildDoi, parsePublishedDate, splitAuthors, splitPersonName } from '../lib/crossref.ts';
+import { bookDownloadToken } from '../lib/bookLinks.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+try {
+  process.loadEnvFile(path.resolve(__dirname, '../.env'));
+} catch {
+  // no local .env
+}
+const bookLinkSecret = process.env.BOOK_DOWNLOAD_LINK_SECRET;
+if (!bookLinkSecret) {
+  console.error('Missing BOOK_DOWNLOAD_LINK_SECRET in .env (it must match the value set in Amplify).');
+  process.exit(1);
+}
 const outDir = path.resolve(__dirname, '../crossref-deposits');
 
 const prefixArg = process.argv.indexOf('--prefix');
@@ -209,8 +220,8 @@ function bookXml(book) {
     `      <publisher_place>${esc(CROSSREF.publisherPlace)}</publisher_place>`,
     '    </publisher>',
     indent(licenseXml, 4),
-    // Paid book: the full-text route serves the PDF to Turnitin's crawler only (app/fulltext/books/[file]/route.ts).
-    indent(doiDataXml(doi, `${CROSSREF.siteUrl}/textbooks/${book.slug}`, { similarityCheckUrl: `${CROSSREF.siteUrl}/fulltext/books/${encodeURIComponent(book.pdfFileName)}` }), 4),
+    // Unique download link, listed only here - not in the sitemap or on the site (lib/bookLinks.ts).
+    indent(doiDataXml(doi, `${CROSSREF.siteUrl}/textbooks/${book.slug}`, { similarityCheckUrl: `${CROSSREF.siteUrl}/fulltext/${bookDownloadToken(book.id, bookLinkSecret)}.pdf` }), 4),
     '  </book_metadata>',
     '</book>',
   ].join('\n');
