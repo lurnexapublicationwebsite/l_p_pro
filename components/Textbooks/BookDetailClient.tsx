@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Book, bookHasCaselet, getPhysicalPrice, getSoftCopyPrice } from '@/lib/data/books';
 import { 
@@ -30,6 +30,52 @@ interface BookDetailClientProps {
 export default function BookDetailClient({ book, relatedBooks }: BookDetailClientProps) {
   const isDigitalExclusive = book.id === "9" || book.isbn === "N/A";
   const doi = buildDoi(book.doiSuffix);
+
+  // One-time PDF download for logged-in buyers (see /api/textbooks/pdf-download).
+  const [downloadStatus, setDownloadStatus] = useState<"hidden" | "available" | "used">("hidden");
+  const [downloadError, setDownloadError] = useState("");
+  const [isDownloading, setIsDownloading] = useState(false);
+  const sessionToken = () =>
+    typeof window === "undefined" ? null : sessionStorage.getItem("lurnexa_session_token") || localStorage.getItem("lurnexa_session_token");
+
+  const callDownloadApi = async (action: "status" | "download") => {
+    const token = sessionToken();
+    if (!token) return null;
+    const res = await fetch("/api/textbooks/pdf-download", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ bookId: book.id, action }),
+    });
+    return { ok: res.ok, data: await res.json() };
+  };
+
+  useEffect(() => {
+    callDownloadApi("status")
+      .then((r) => {
+        if (r?.ok && (r.data.status === "available" || r.data.status === "used")) setDownloadStatus(r.data.status);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book.id]);
+
+  const handleDownloadPdf = async () => {
+    setIsDownloading(true);
+    setDownloadError("");
+    try {
+      const r = await callDownloadApi("download");
+      if (r?.ok && r.data.pdfUrl) {
+        window.location.href = r.data.pdfUrl;
+      } else if (r?.data?.status === "used") {
+        setDownloadStatus("used");
+      } else {
+        setDownloadError(r?.data?.error || "Download failed. Please try again.");
+      }
+    } catch {
+      setDownloadError("Download failed. Please check your connection and try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
   const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft' | 'rental'>(isDigitalExclusive ? 'soft' : 'physical');
   const [includeBook, setIncludeBook] = useState<boolean>(true);
   const [includeCaselet, setIncludeCaselet] = useState<boolean>(false);
@@ -410,6 +456,29 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
               <a href={doiUrl(doi)} target="_blank" rel="noopener noreferrer" className="font-mono font-bold text-fuchsia-600 hover:underline break-all">
                 {doiUrl(doi)}
               </a>
+            </p>
+          )}
+
+          {downloadStatus === "available" && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-bold text-emerald-800">You own this book</p>
+                <p className="text-xs text-emerald-700">Download the PDF once. If the download fails, you can retry for 30 minutes.</p>
+                {downloadError && <p className="text-xs text-red-600 mt-1">{downloadError}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={isDownloading}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl disabled:opacity-50"
+              >
+                {isDownloading ? "Preparing..." : "Download PDF"}
+              </button>
+            </div>
+          )}
+          {downloadStatus === "used" && (
+            <p className="text-xs text-slate-500">
+              You have already downloaded this book&apos;s PDF. You can keep reading it in your library.
             </p>
           )}
 
