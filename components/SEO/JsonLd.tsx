@@ -103,17 +103,6 @@ export default function JsonLd() {
           '@id': 'https://lurnexa.in/#organization',
         },
       },
-      'coFounder': {
-        '@type': 'Person',
-        '@id': 'https://lurnexa.in/#co-founder',
-        'name': 'Rushik Burla',
-        'jobTitle': 'Co-Founder',
-        'image': 'https://lurnexa.in/co-founder.jpg',
-        'worksFor': {
-          '@type': 'Organization',
-          '@id': 'https://lurnexa.in/#organization',
-        },
-      },
       'member': [
         {
           '@type': 'OrganizationRole',
@@ -122,14 +111,6 @@ export default function JsonLd() {
             'name': 'Narendra Kumar Kurakula',
           },
           'roleName': 'Founder & Director',
-        },
-        {
-          '@type': 'OrganizationRole',
-          'member': {
-            '@type': 'Person',
-            'name': 'Rushik Burla',
-          },
-          'roleName': 'Co-Founder',
         },
       ],
     },
@@ -150,23 +131,7 @@ export default function JsonLd() {
       'url': 'https://lurnexa.in',
     },
 
-    // ── 3. Co-Founder Person ──
-    {
-      '@context': 'https://schema.org',
-      '@type': 'Person',
-      '@id': 'https://lurnexa.in/#co-founder',
-      'name': 'Rushik Burla',
-      'jobTitle': 'Co-Founder',
-      'image': 'https://lurnexa.in/co-founder.jpg',
-      'worksFor': {
-        '@type': 'Organization',
-        '@id': 'https://lurnexa.in/#organization',
-        'name': 'Lurnexa Publications',
-      },
-      'url': 'https://lurnexa.in',
-    },
-
-    // ── 4. WebSite ──
+    // ── 3. WebSite ──
     {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
