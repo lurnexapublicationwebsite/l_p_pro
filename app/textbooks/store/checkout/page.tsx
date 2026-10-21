@@ -296,6 +296,9 @@ function CheckoutContent() {
   const [verificationSuccess, setVerificationSuccess] = useState(false);
   const [verificationFailed, setVerificationFailed] = useState(false);
   const [verifiedOrderDetails, setVerifiedOrderDetails] = useState<any>(null);
+  // One-time PDF download links, issued once per paid digital order and kept only in memory:
+  // after a refresh or reopening the page the server reports them as used and no button shows.
+  const [oneTimeDownloads, setOneTimeDownloads] = useState<{ bookId: string; title: string; pdfUrl: string }[]>([]);
   const isAndroid = useIsAndroidDevice();
   const [generatedAccessId, setGeneratedAccessId] = useState<string>("");
 
@@ -674,6 +677,16 @@ function CheckoutContent() {
         setVerificationSuccess(true);
         setVerifiedOrderDetails(data.order);
         setStep(3);
+        fetch("/api/textbooks/pdf-download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId }),
+        })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.status === "available" && Array.isArray(d.downloads)) setOneTimeDownloads(d.downloads);
+          })
+          .catch(() => {});
         // Clean cart on success
         localStorage.removeItem("lurnexa_store_cart");
 
@@ -1182,6 +1195,28 @@ function CheckoutContent() {
               <p className="text-xs text-slate-600 font-semibold leading-relaxed">
                 We have sent your complete order receipt to <strong className="text-slate-900">{verifiedOrderDetails?.customer_email}</strong>. You can log in to the Access Portal directly with your email address to access your textbook immediately.
               </p>
+            </div>
+          )}
+
+          {oneTimeDownloads.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-left space-y-3">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+                <Download size={18} className="shrink-0" />
+                <span>Download your PDF now</span>
+              </div>
+              <p className="text-xs text-emerald-800 font-semibold leading-relaxed">
+                This download is shown only once. If you refresh or close this page, the button will not appear again.
+              </p>
+              {oneTimeDownloads.map((d) => (
+                <a
+                  key={d.bookId}
+                  href={d.pdfUrl}
+                  className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl px-4 py-3 transition-all"
+                >
+                  <Download size={16} />
+                  <span className="truncate">Download PDF: {d.title}</span>
+                </a>
+              ))}
             </div>
           )}
 

@@ -22,24 +22,6 @@ Thank you for being part of the Lurnexa journey. Together, let us build a future
       src: "/founder.jpeg",
 
     },
-    {
-      quote:
-        `At Lurnexa Publications, the guiding vision that shaped our beginning continues to lead every step we take. While our foundation is built on promoting inquiry, deep understanding, and research-driven learning, our focus now is on accelerating this mission with energy, innovation, and purposeful action.
-
-Research-oriented learning is not just an academic approach—it is the most powerful tool for shaping independent thinkers. 
-In a world evolving faster than ever, learners must be equipped not just to study ideas, but to explore them, question them, and build upon them. This is the spirit we are committed to strengthening across all our publishing initiatives.
-
-We are expanding collaborations with experts, enhancing the quality of our academic resources, and creating platforms that encourage creativity, evidence-based writing, and meaningful contribution. Our goal is simple yet impactful: to make Lurnexa a trusted space where authors feel valued, researchers feel supported, and learners feel inspired.
-
-As we move forward, we remain dedicated to transforming knowledge into impact—ensuring that every publication we deliver brings clarity, curiosity, and confidence to the academic community.
-
-Together, we are not just upholding a vision.
-We are driving it forward`,
-      name: "Rushik Burla",
-      designation: "Co-Founder — Lurnexa Publications",
-      src: "/co-founder.jpg",
-
-    },
   ];
   return <AnimatedTestimonials testimonials={testimonials} autoplay={true} />;
 }

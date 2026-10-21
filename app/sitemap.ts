@@ -71,7 +71,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const defaultSiteImages = [
     `${baseUrl}/Logo.png`,
     `${baseUrl}/founder.jpeg`,
-    `${baseUrl}/co-founder.jpg`,
   ];
 
   // ── All public images for comprehensive discovery ──
@@ -301,7 +300,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     images: [...articleListImages, ...defaultSiteImages],
   });
 
-  // ── 11. About Us page with founder/Co-Founder images ──
+  // ── 11. About Us page with founder image ──
   sitemapMap.set('/aboutus', {
     url: `${baseUrl}/aboutus`,
     lastModified: new Date(),
@@ -309,7 +308,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
     images: [
       `${baseUrl}/founder.jpeg`,
-      `${baseUrl}/co-founder.jpg`,
       `${baseUrl}/Logo.png`,
     ],
   });

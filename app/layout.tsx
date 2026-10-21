@@ -34,7 +34,6 @@ export const metadata: Metadata = {
     "LURNEXA PUBLICATIONS",
     "Lurnexa Publications",
     "Narendra Kumar Kurakula",
-    "Rushik Burla",
     "Scholarly Publishing",
     "Academic Journals",
     "Research Paper Publication",
