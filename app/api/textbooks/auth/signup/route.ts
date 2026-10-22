@@ -94,11 +94,21 @@ export async function POST(req: Request) {
         const existingMobile = existingUser.mobile_number && !String(existingUser.mobile_number).includes("@")
           ? existingUser.mobile_number
           : "";
-        const cleanMobile = mobileNumber ? mobileNumber.trim() : existingMobile;
+        const requestedMobile = mobileNumber ? mobileNumber.trim() : "";
+
+        // mobile_number is the table's primary key: only move this row to the new phone
+        // if no other row already uses it, otherwise keep the current key.
+        let rowKey = existingUser.mobile_number;
+        if (requestedMobile && requestedMobile !== existingUser.mobile_number) {
+          const taken = await pool.query(`SELECT 1 FROM textbooks_users WHERE mobile_number = $1 LIMIT 1`, [requestedMobile]);
+          if (taken.rows.length === 0) rowKey = requestedMobile;
+        }
+        if (!rowKey) rowKey = cleanEmail;
+        const cleanMobile = rowKey.includes("@") ? existingMobile : rowKey;
 
         await pool.query(
-          `UPDATE textbooks_users SET password_hash = $1, name = $2, mobile_number = $3, email = $4 WHERE LOWER(email) = $5 OR LOWER(college_email) = $5 OR mobile_number = $6`,
-          [passwordHash, name.trim(), cleanMobile, cleanEmail, cleanEmail, cleanMobile]
+          `UPDATE textbooks_users SET password_hash = $1, name = $2, mobile_number = $3, email = $4 WHERE LOWER(email) = $5 OR LOWER(college_email) = $5`,
+          [passwordHash, name.trim(), rowKey, cleanEmail, cleanEmail]
         );
 
         let rentedBookIds: string[] = [];
@@ -152,12 +162,21 @@ export async function POST(req: Request) {
     const accessId = `USR_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const cleanMobile = mobileNumber ? mobileNumber.trim() : "";
 
+    // mobile_number is the table's primary key. An empty phone (or one already used by
+    // another row) would collide with existing rows and fail the insert, so the email is
+    // used as the row key in that case.
+    let rowKey = cleanMobile || cleanEmail;
+    if (cleanMobile) {
+      const taken = await pool.query(`SELECT 1 FROM textbooks_users WHERE mobile_number = $1 LIMIT 1`, [cleanMobile]);
+      if (taken.rows.length > 0) rowKey = cleanEmail;
+    }
+
     await pool.query(
       `INSERT INTO textbooks_users (
         mobile_number, name, email, college_email, password_hash, role, is_active, access_id, plan, purchased_books
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
-        cleanMobile,
+        rowKey,
         name.trim(),
         cleanEmail,
         cleanEmail,

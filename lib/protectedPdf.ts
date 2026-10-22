@@ -14,17 +14,14 @@ const LINK_TTL_SECONDS = 30 * 60;
 export async function signedPdfUrl(
   folder: "textbooks" | "caselets",
   fileName: string,
-  expiresIn = LINK_TTL_SECONDS,
-  downloadAs?: string // set to save the file under this name instead of opening it in the browser
+  expiresIn = LINK_TTL_SECONDS
 ): Promise<string | null> {
   if (!s3HasCredentials) return null;
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
     Key: `${folder}/${fileName}`,
     ResponseContentType: "application/pdf",
-    ResponseContentDisposition: downloadAs
-      ? `attachment; filename="${downloadAs.replace(/[^\w .()-]/g, "").slice(0, 120) || "book"}.pdf"`
-      : "inline",
+    ResponseContentDisposition: "inline",
   });
   return getSignedUrl(s3, command, { expiresIn });
 }
