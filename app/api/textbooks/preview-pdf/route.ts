@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import {
-  DEFAULT_HASINI_LAUNCH_BOOKS
-} from "@/lib/birthdayLaunch";
-import { Book } from "@/lib/data/books";
+import { Book, PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
 import { getMergedCatalogBooks } from "@/lib/bookCatalogStore";
 
 async function getCurrentBook(bookIdOrFile: string): Promise<Book> {
@@ -22,13 +19,13 @@ async function getCurrentBook(bookIdOrFile: string): Promise<Book> {
     // Fallback below
   }
 
-  const foundDefault = DEFAULT_HASINI_LAUNCH_BOOKS.find(
+  const foundDefault = PUBLISHED_BOOKS_DATA.find(
     (b) =>
       String(b.id) === String(bookIdOrFile) ||
       b.pdfFileName === bookIdOrFile ||
       b.slug === bookIdOrFile
   );
-  return foundDefault || DEFAULT_HASINI_LAUNCH_BOOKS[0];
+  return foundDefault || PUBLISHED_BOOKS_DATA[0];
 }
 
 function wrapText(text: string, maxCharsPerLine: number): string[] {
@@ -96,16 +93,13 @@ async function generateBookPreviewPdfBuffer(book: Book): Promise<Buffer> {
   });
 
   y -= 20;
-  page1.drawText(
-    `SPECIAL EDITION  |  OFFICIALLY LAUNCHED ON ${(book.publishedDate || "OCTOBER 30, 2026").toUpperCase()}`,
-    {
-      x: 64,
-      y,
-      size: 9.5,
-      font: fontBold,
-      color: gold
-    }
-  );
+  page1.drawText("ACADEMIC EDITION  |  LURNEXA TEXTBOOK SERIES", {
+    x: 64,
+    y,
+    size: 9.5,
+    font: fontBold,
+    color: gold
+  });
 
   y -= 42;
   const titleLines = wrapText((book.title || "").toUpperCase(), 46);
@@ -260,14 +254,17 @@ async function generateBookPreviewPdfBuffer(book: Book): Promise<Buffer> {
   const chapters =
     Array.isArray(book.tableOfContents) && book.tableOfContents.length > 0
       ? book.tableOfContents
-      : [
-          "Chapter 1: Foundations & Core Concepts",
-          "Chapter 2: Theoretical Framework & Architecture",
-          "Chapter 3: Algorithms, Models & Design Patterns",
-          "Chapter 4: Practical Implementation & Case Studies",
-          "Chapter 5: Advanced Topics & Future Directions"
-        ];
+      : [];
 
+  if (chapters.length === 0) {
+    page2.drawText("Table of Contents will be included in the complete published edition.", {
+      x: 64,
+      y: y2,
+      size: 10,
+      font: fontRegular,
+      color: muted
+    });
+  }
   chapters.forEach((chapter, idx) => {
     if (y2 < 230) return;
     const estPage = 1 + idx * Math.max(16, Math.floor((book.pages || 240) / (chapters.length + 1)));
@@ -356,7 +353,7 @@ async function generateBookPreviewPdfBuffer(book: Book): Promise<Buffer> {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const bookId = searchParams.get("bookId") || "10";
+    const bookId = searchParams.get("bookId") || "1";
     const book = await getCurrentBook(bookId);
 
     // 1. Custom base64 uploaded preview PDF
@@ -451,3 +448,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

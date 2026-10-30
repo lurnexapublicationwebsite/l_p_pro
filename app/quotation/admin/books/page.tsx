@@ -33,7 +33,7 @@ export default function BooksManagementPage() {
   async function fetchBooks() {
     try {
       setLoading(true);
-      const res = await fetch("/api/quotation/books");
+      const res = await fetch("/api/quotation/books/");
       if (!res.ok) throw new Error("Failed to fetch books");
       const data = await res.json();
       setBooks(data.books || []);
@@ -48,7 +48,7 @@ export default function BooksManagementPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch("/api/quotation/books", {
+      const res = await fetch("/api/quotation/books/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ book_name: bookName, description }),
@@ -80,7 +80,7 @@ export default function BooksManagementPage() {
     if (!targetBook) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/quotation/books", {
+      const res = await fetch("/api/quotation/books/", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: targetBook.id, book_name: bookName, description }),
@@ -105,7 +105,7 @@ export default function BooksManagementPage() {
     if (!targetBook) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/quotation/books?id=${targetBook.id}`, {
+      const res = await fetch(`/api/quotation/books/?id=${targetBook.id}`, {
         method: "DELETE",
       });
 

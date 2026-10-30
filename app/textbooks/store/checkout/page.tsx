@@ -98,6 +98,12 @@ const getSoftCopyPrice = (plan: string, bookId?: string): number => {
   if (bookId === "4") {
     return 269;
   }
+  if (bookId === "12") {
+    return 200;
+  }
+  if (bookId === "13") {
+    return 299;
+  }
   if (bookId === "6") {
     if (plan === "caselet") return 60;
     if (plan === "book_caselet") return 295;
@@ -245,7 +251,36 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     isbn: "978-81-903315-0-0",
     isbnDigital: "978-81-903315-2-4",
     coverColor: "from-amber-600 to-orange-950",
-    pdfFileName: "entrepreneurship.pdf"
+    pdfFileName: "entrepreneurship.pdf"  },
+  {
+    id: "12",
+    title: "C PROGRAMMING In 24 Days",
+    code: "CP",
+    description: "This textbook presents the fundamentals of the C programming language in a structured, classroom-tested format designed for beginners. It covers program structure, tokens, operators, expressions, control flow, arrays, strings, functions, structures, pointers, and preprocessor directives through practical examples.",
+    price: 350,
+    digitalPrice: 200,
+    authors: "Dr. M. Sayeekumar, Dr. C. Poongodi",
+    pages: 139,
+    isbn: "978-81-180403-5-4",
+    isbnDigital: "N/A",
+    coverColor: "from-blue-600 to-indigo-950",
+    pdfFileName: "CPROGRAMMING.pdf",
+    coverImg: "/portal_coverpages/CPROGRAMMING.jpeg"
+  },
+  {
+    id: "13",
+    title: "Data Analytics for Business: Concepts, Methods, Visualization, and AI-Driven Decision Making",
+    code: "DA",
+    description: "This book introduces the foundational concepts, practical methods, visualization techniques, and AI-driven frameworks essential for modern business analytics. It connects analytical concepts with business questions, covering descriptive, diagnostic, predictive, and prescriptive analytics alongside industry tools like SQL, Excel, Power BI, Tableau, R, and Python.",
+    price: 599,
+    digitalPrice: 299,
+    authors: "Dr Chinmaya Kumar Swain, Dr Abhilash Ponnam, Dr Guru Prasad, Mr Tulasi Ram",
+    pages: 389,
+    isbn: "978-81-180403-3-0",
+    isbnDigital: "978-81-180403-4-7",
+    coverColor: "from-indigo-600 to-slate-950",
+    pdfFileName: "data-analytics.pdf",
+    coverImg: "/portal_coverpages/data_analytics.jpeg"
   }
 ];
 

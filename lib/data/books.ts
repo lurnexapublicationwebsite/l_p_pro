@@ -29,6 +29,7 @@ export interface Book {
   hasCaselet?: boolean;
   rentalEnabled?: boolean; // Whether this book is available for rental
   rentalPriceOverride?: { [planCode: string]: number }; // Per-book custom rental pricing
+  format?: "both" | "soft" | "physical"; // Supported book formats
 }
 
 export function bookHasCaselet(bookId?: string): boolean {
@@ -66,6 +67,8 @@ export function getSoftCopyPrice(plan: string, bookId?: string, defaultDigitalPr
     else if (bookId === "6") basePrice = 199;
     else if (bookId === "8" || bookId === "9") basePrice = 299;
     else if (bookId === "4") basePrice = 269;
+    else if (bookId === "12") basePrice = 200;
+    else if (bookId === "13") basePrice = 299;
     else basePrice = 299;
   }
   if (plan === "caselet") return bookId === "6" ? 60 : 49;
@@ -487,113 +490,226 @@ The textbook thoroughly covers regression models, decision trees, neural network
       "Chapter 5: Venture Creation & Growth Strategies",
       "Chapter 6: Corporate Sustainability, ESG & Circular Economy"
     ]
-  }
-];
-
-export function getAllBooks(): Book[] {
-  return PUBLISHED_BOOKS_DATA;
-}
-
-export const BIRTHDAY_LAUNCH_FALLBACK_BOOKS: Book[] = [
+  },
   {
-    id: "10",
-    doiSuffix: "lp.book.010",
-    slug: "deep-learning-and-neural-network-architectures",
-    shortSlug: "deep-learning",
-    title: "DEEP LEARNING AND NEURAL NETWORK ARCHITECTURES: THEORY TO PRACTICE",
-    authors: "Lurnexa Academic Press",
-    domain: "Computer Science & Engineering / Deep Learning",
-    isbn: "978-81-903315-9-3",
-    isbnDigital: "978-81-903315-9-4",
-    pages: 264,
-    price: 649,
-    digitalPrice: 299,
-    code: "DL",
-    pdfFileName: "deep_learning.pdf",
-    coverImg: "/portal_coverpages/ai.jpeg",
-    publishedDate: "October 30, 2026",
-    tag: "Launched Oct 30",
+    id: "12",
+    doiSuffix: "lp.book.012",
+    slug: "c-programming-in-24-days",
+    shortSlug: "c-programming",
+    title: "C PROGRAMMING In 24 Days",
+    authors: "Dr. M. Sayeekumar, Dr. C. Poongodi",
+    domain: "Computer Science & Engineering / Programming",
+    isbn: "978-81-180403-5-4",
+    isbnDigital: "N/A",
+    pages: 139,
+    price: 350,
+    digitalPrice: 200,
+    code: "CP",
+    pdfFileName: "CPROGRAMMING.pdf",
+    coverImg: "/portal_coverpages/CPROGRAMMING.jpeg",
+    previewPdfUrl: "/published_books/previews/CPROGRAMMING.pdf",
+    publishedDate: "October 2026",
+    tag: "New Release",
     stockStatus: "in-stock",
     rentalEnabled: true,
+    hasCaselet: false,
     description:
-      "Specially launched on October 30 in celebration of Hasini's Birthday. This comprehensive textbook explores modern deep learning architectures, convolutional and transformer networks, optimization dynamics, and real-world AI deployment.",
+      "This textbook presents the fundamentals of the C programming language in a structured, classroom-tested format designed for beginners. It covers program structure, tokens, operators, expressions, control flow, arrays, strings, functions, structures, pointers, and preprocessor directives through practical examples.",
     longDescription:
-      "Deep Learning and Neural Network Architectures: Theory to Practice provides an authoritative, hands-on academic treatment of modern neural computation, backpropagation, CNNs, RNNs, Vision Transformers, Large Language Models, and generative AI systems. Officially inaugurated during the October 30 Grand Birthday Book Launch by Hasini.",
+      "C PROGRAMMING In 24 Days: A Foundational Textbook for Beginners is an authoritative, classroom-tested guide authored by Dr. M. Sayeekumar and Dr. C. Poongodi. Designed for undergraduate students and novice programmers, this book builds solid computational thinking and coding discipline.\n\nCovering fundamental syntax to advanced memory concepts, each chapter provides clear explanations, worked example programs with expected outputs, and review questions. Topics include control structures, modular programming with functions, array manipulation, structures, pointers, and preprocessor directives.",
     keywords: [
-      "Deep Learning",
-      "Neural Networks",
-      "Deep Learning textbook",
-      "Transformer architectures",
-      "Lurnexa Deep Learning book"
+      "C Programming",
+      "C Programming in 24 Days",
+      "C Programming textbook",
+      "Learn C language",
+      "Dr M Sayeekumar",
+      "Dr C Poongodi",
+      "C programming beginners",
+      "Structured programming in C",
+      "Pointers and functions in C",
+      "978-81-180403-5-4",
+      "Lurnexa C programming textbook"
     ],
     tableOfContents: [
-      "Chapter 1: Foundations of Deep Neural Networks & Perceptrons",
-      "Chapter 2: Backpropagation, Gradient Descent & Optimization",
-      "Chapter 3: Convolutional Neural Networks (CNNs) & Computer Vision",
-      "Chapter 4: Sequence Modeling, RNNs, LSTMs & Attention Mechanisms",
-      "Chapter 5: Transformers, Foundation Models & Generative AI",
-      "Chapter 6: Model Compression, Deployment & Responsible AI"
+      "Day 1: Introduction to C Programming",
+      "Day 2: Structure of a C Program",
+      "Day 3: C Tokens: Character Set, Keywords and Identifiers",
+      "Day 4: Operators",
+      "Day 5: Expressions",
+      "Day 6: Input and Output Statements",
+      "Day 7: Formatted Output Statements",
+      "Day 8: Decision Making: if, if-else and switch",
+      "Day 9: Nested if and else-if Ladder",
+      "Day 10: Looping Statements: the for Loop",
+      "Day 11: The while Loop",
+      "Day 12: The do-while Loop",
+      "Day 13: Unconditional Control Statements: break, continue and goto",
+      "Day 14: Arrays",
+      "Day 15: Two-Dimensional Arrays",
+      "Day 16: Strings",
+      "Day 17: Functions",
+      "Day 18: Function Prototypes",
+      "Day 19: Nesting of Functions",
+      "Day 20: Call by Value and Call by Reference",
+      "Day 21: Structures",
+      "Day 22: Pointers with Structures",
+      "Day 23: Pointers with Functions",
+      "Day 24: Preprocessor Directives"
     ]
   },
   {
-    id: "11",
-    doiSuffix: "lp.book.011",
-    slug: "cloud-computing-and-devops-engineering",
-    shortSlug: "cloud-computing",
-    title: "CLOUD COMPUTING AND MODERN DEVOPS ENGINEERING",
-    authors: "Lurnexa Academic Press",
-    domain: "Computer Science & Engineering / Cloud & DevOps",
-    isbn: "978-81-903315-9-5",
-    isbnDigital: "978-81-903315-9-6",
-    pages: 242,
+    id: "13",
+    doiSuffix: "lp.book.013",
+    slug: "data-analytics-for-business-concepts-methods-visualization-and-ai-driven-decision-making",
+    shortSlug: "data-analytics",
+    title: "Data Analytics for Business: Concepts, Methods, Visualization, and AI-Driven Decision Making",
+    authors: "Dr Chinmaya Kumar Swain, Dr Abhilash Ponnam, Dr Guru Prasad, Mr Tulasi Ram",
+    domain: "Management & Business Analytics / Data Science & AI",
+    isbn: "978-81-180403-3-0",
+    isbnDigital: "978-81-180403-4-7",
+    pages: 389,
     price: 599,
-    digitalPrice: 279,
-    code: "CC",
-    pdfFileName: "cloud_computing.pdf",
-    coverImg: "/portal_coverpages/data_streaming.jpeg",
-    publishedDate: "October 30, 2026",
-    tag: "Launched Oct 30",
+    digitalPrice: 299,
+    code: "DA",
+    pdfFileName: "data-analytics.pdf",
+    coverImg: "/portal_coverpages/data_analytics.jpeg",
+    previewPdfUrl: "/published_books/previews/data-analytics.pdf",
+    publishedDate: "October 2026",
+    tag: "Featured",
     stockStatus: "in-stock",
     rentalEnabled: true,
+    hasCaselet: false,
     description:
-      "Specially launched on October 30 in celebration of Hasini's Birthday. An industry-aligned textbook covering distributed cloud infrastructure, microservices, Docker, Kubernetes orchestration, and automated CI/CD pipelines.",
+      "This book introduces the foundational concepts, practical methods, visualization techniques, and AI-driven frameworks essential for modern business analytics. It connects analytical concepts with business questions, covering descriptive, diagnostic, predictive, and prescriptive analytics alongside industry tools like SQL, Excel, Power BI, Tableau, R, and Python.",
     longDescription:
-      "Cloud Computing and Modern DevOps Engineering guides students and engineers from foundational virtualization and cloud service models (IaaS, PaaS, SaaS) to container orchestration, serverless computing, Infrastructure as Code (IaC), and site reliability engineering. Officially inaugurated during the October 30 Grand Birthday Book Launch by Hasini.",
+      "Data Analytics for Business: Concepts, Methods, Visualization, and AI-Driven Decision Making is a comprehensive, industry-aligned textbook authored by Dr. Chinmaya Kumar Swain, Dr. Abhilash Ponnam, Dr. Guru Prasad, and Mr. Tulasi Ram. Designed for students and practitioners of management, commerce, and analytics, this book connects core analytical principles with real-world enterprise applications.\n\nProgressing across 21 chapters from foundational statistics and exploratory data analysis to machine learning, Big Data architectures (Hadoop, Spark, Data Lakes), and Generative AI, this book includes hands-on labs in SQL, Excel, Power BI, Tableau, R, and Python to empower evidence-based decision making.",
     keywords: [
-      "Cloud Computing",
-      "DevOps Engineering",
-      "Cloud Computing textbook",
-      "Kubernetes and Docker book",
-      "Lurnexa Cloud textbook"
+      "Data Analytics for Business",
+      "Business Analytics textbook",
+      "AI-Driven Decision Making",
+      "Data Visualization",
+      "SQL for Data Analytics",
+      "Power BI Tableau Excel R Python",
+      "Dr Chinmaya Kumar Swain",
+      "Dr Abhilash Ponnam",
+      "Dr Guru Prasad",
+      "Mr Tulasi Ram",
+      "Predictive Analytics Prescriptive Analytics",
+      "978-81-180403-3-0",
+      "Lurnexa Data Analytics textbook"
     ],
     tableOfContents: [
-      "Chapter 1: Cloud Computing Paradigms, Virtualization & Architecture",
-      "Chapter 2: Microservices Design & Containerization with Docker",
-      "Chapter 3: Kubernetes Orchestration & Cloud-Native Scaling",
-      "Chapter 4: Continuous Integration, Continuous Delivery (CI/CD) & DevOps",
-      "Chapter 5: Serverless Architectures, Observability & Cloud Security",
-      "Chapter 6: Multi-Cloud Cost Optimization & Site Reliability Engineering"
+      "Chapter 1: Introduction to Data Analytics",
+      "Chapter 2: Business Decision Making Using Data",
+      "Chapter 3: Data Types and Data Sources",
+      "Chapter 4: Data Collection and Data Preparation",
+      "Chapter 5: Data Analytics Lifecycle",
+      "Chapter 6: Statistics for Business Analytics",
+      "Chapter 7: Exploratory Data Analysis (EDA)",
+      "Chapter 8: Data Visualization",
+      "Chapter 9: Descriptive Analytics",
+      "Chapter 10: Diagnostic Analytics",
+      "Chapter 11: Predictive Analytics",
+      "Chapter 12: Prescriptive Analytics",
+      "Chapter 13: SQL for Data Analytics",
+      "Chapter 14: Excel for Business Analytics",
+      "Chapter 15: Power BI",
+      "Chapter 16: Tableau",
+      "Chapter 17: R for Data Analytics",
+      "Chapter 18: Python for Business Analytics",
+      "Chapter 19: Big Data Analytics",
+      "Chapter 20: Artificial Intelligence in Data Analytics",
+      "Chapter 21: Generative AI For Data Analytics"
     ]
   }
 ];
 
+function getCatalogOverrides(): { overrides: Record<string, Book>; deletedIds: string[] } {
+  if (typeof window !== "undefined") {
+    return { overrides: {}, deletedIds: [] };
+  }
+  try {
+    const fs = eval("require('fs')");
+    const path = eval("require('path')");
+    const localDir =
+      process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL
+        ? "/tmp"
+        : path.join(process.cwd(), "scratch");
+    const catalogFilePath = path.join(localDir, "textbooks_catalog.json");
+    if (fs.existsSync(catalogFilePath)) {
+      const raw = JSON.parse(fs.readFileSync(catalogFilePath, "utf-8"));
+      return {
+        overrides: raw?.overrides && typeof raw.overrides === "object" ? raw.overrides : {},
+        deletedIds: Array.isArray(raw?.deletedIds) ? raw.deletedIds.map(String) : [],
+      };
+    }
+  } catch {
+    // fallback
+  }
+  return { overrides: {}, deletedIds: [] };
+}
+
+export function getAllBooks(): Book[] {
+  const { overrides, deletedIds } = getCatalogOverrides();
+  const deletedSet = new Set(deletedIds);
+  const map = new Map<string, Book>();
+
+  for (const b of PUBLISHED_BOOKS_DATA) {
+    if (!deletedSet.has(String(b.id))) {
+      map.set(String(b.id), b);
+    }
+  }
+
+  for (const [id, overrideBook] of Object.entries(overrides)) {
+    if (deletedSet.has(id)) {
+      map.delete(id);
+    } else if (overrideBook && typeof overrideBook === "object") {
+      const existing = map.get(id);
+      const title = (overrideBook.title || existing?.title || "").trim();
+      const slug = (overrideBook.slug || (title ? slugifyBookTitle(title) : existing?.slug) || id).trim();
+      const shortSlug = (overrideBook.shortSlug || existing?.shortSlug || slug.slice(0, 32)).trim();
+      map.set(id, {
+        ...existing,
+        ...overrideBook,
+        id,
+        title,
+        slug,
+        shortSlug,
+      } as Book);
+    }
+  }
+
+  const result = Array.from(map.values());
+  result.sort((a, b) => {
+    const na = Number(a.id);
+    const nb = Number(b.id);
+    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+    return String(a.id).localeCompare(String(b.id));
+  });
+  return result;
+}
+
 export function getBookBySlug(slug: string): Book | undefined {
-  const normalized = slug.toLowerCase();
-  const catalog = [...PUBLISHED_BOOKS_DATA, ...BIRTHDAY_LAUNCH_FALLBACK_BOOKS];
+  if (!slug) return undefined;
+  const normalized = decodeURIComponent(slug).toLowerCase().trim();
+  const catalog = getAllBooks();
   return catalog.find(
     (b) =>
-      b.slug === normalized ||
+      (b.slug && b.slug.toLowerCase() === normalized) ||
       (b.shortSlug && b.shortSlug.toLowerCase() === normalized) ||
-      slugifyBookTitle(b.title) === normalized ||
-      b.id === normalized ||
-      b.code.toLowerCase() === normalized
+      (b.title && slugifyBookTitle(b.title) === normalized) ||
+      String(b.id).toLowerCase() === normalized ||
+      (b.code && b.code.toLowerCase() === normalized)
   );
 }
 
 export function getBookByIsbn(isbn: string): Book | undefined {
-  const clean = isbn.replace(/-/g, '');
-  const catalog = [...PUBLISHED_BOOKS_DATA, ...BIRTHDAY_LAUNCH_FALLBACK_BOOKS];
+  if (!isbn) return undefined;
+  const clean = isbn.replace(/-/g, "");
+  const catalog = getAllBooks();
   return catalog.find(
-    (b) => b.isbn.replace(/-/g, '') === clean || b.isbnDigital.replace(/-/g, '') === clean
+    (b) =>
+      (b.isbn && b.isbn.replace(/-/g, "") === clean) ||
+      (b.isbnDigital && b.isbnDigital.replace(/-/g, "") === clean)
   );
 }

@@ -44,7 +44,7 @@ export default function ReviewQuotationPage() {
       if (!requestId) return;
       try {
         setLoading(true);
-        const res = await fetch(`/api/quotation/admin/requests?id=${requestId}`);
+        const res = await fetch(`/api/quotation/admin/requests/?id=${requestId}`);
         if (!res.ok) throw new Error("Failed to load request details");
         const data = await res.json();
         
@@ -97,7 +97,7 @@ export default function ReviewQuotationPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/quotation/admin/review", {
+      const res = await fetch("/api/quotation/admin/review/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

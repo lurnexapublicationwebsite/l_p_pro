@@ -32,7 +32,7 @@ export default function AdminSettingsPage() {
     setUpdating(true);
 
     try {
-      const res = await fetch("/api/quotation/admin/settings", {
+      const res = await fetch("/api/quotation/admin/settings/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

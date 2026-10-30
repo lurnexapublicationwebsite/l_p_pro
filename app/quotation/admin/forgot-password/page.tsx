@@ -20,10 +20,11 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/quotation/admin/forgot-password", {
+      const res = await fetch("/api/quotation/admin/forgot-password/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        credentials: "include",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
       const data = await res.json();
@@ -139,9 +140,6 @@ export default function ForgotPasswordPage() {
           margin-top: 1rem;
           width: 100%;
           cursor: pointer;
-          display: block;
-          text-align: center;
-          text-decoration: none;
         }
 
         .btn-login:hover {
@@ -195,11 +193,11 @@ export default function ForgotPasswordPage() {
         }
 
         .icon-large {
+          text-align: center;
+          margin-bottom: 1.5rem;
+          color: #8a2be2;
           display: flex;
           justify-content: center;
-          align-items: center;
-          color: #8a2be2;
-          margin-bottom: 1.5rem;
         }
       `}} />
 
@@ -222,7 +220,7 @@ export default function ForgotPasswordPage() {
                   <p>We've emailed you instructions for setting your password, if an account exists with the email you entered. You should receive them shortly.</p>
                   <p className="mt-3"><small>If you don't receive an email, please make sure you've entered the address you registered with, and check your spam folder.</small></p>
                 </div>
-                <button onClick={() => router.push("/quotation/admin/login")} className="btn-login">
+                <button onClick={() => router.push("/quotation/admin/login/")} className="btn-login">
                   Return to Login
                 </button>
               </>
@@ -230,7 +228,7 @@ export default function ForgotPasswordPage() {
               <>
                 <div className="login-header">
                   <h2>Reset Password</h2>
-                  <p>Enter your registered admin email to receive a new password.</p>
+                  <p>Enter your registered admin email to receive a password reset link.</p>
                 </div>
                 
                 <form onSubmit={handleSubmit}>
@@ -262,7 +260,7 @@ export default function ForgotPasswordPage() {
                   
                   <div className="flex justify-center mb-4">
                     <span 
-                      onClick={() => router.push("/quotation/admin/login")} 
+                      onClick={() => router.push("/quotation/admin/login/")} 
                       className="forgot-link cursor-pointer"
                     >
                       Back to Login

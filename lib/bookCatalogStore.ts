@@ -2,12 +2,6 @@ import fs from "fs";
 import path from "path";
 import { pool } from "@/lib/dbPool";
 import { Book, PUBLISHED_BOOKS_DATA, slugifyBookTitle } from "@/lib/data/books";
-import {
-  BIRTHDAY_LAUNCH_EVENT_KEY,
-  BirthdayLaunchState,
-  DEFAULT_HASINI_LAUNCH_BOOKS,
-  normalizeLaunchBook
-} from "@/lib/birthdayLaunch";
 
 const localDir =
   typeof process !== "undefined" && (process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL)
@@ -15,7 +9,6 @@ const localDir =
     : path.join(process.cwd(), "scratch");
 
 const catalogFilePath = path.join(localDir, "textbooks_catalog.json");
-const birthdayFilePath = path.join(localDir, "birthday_book_launch.json");
 
 export interface CatalogStoreState {
   overrides: Record<string, Book>;
@@ -48,28 +41,6 @@ function writeLocalCatalogState(state: CatalogStoreState): void {
   }
 }
 
-function readLocalBirthdayState(): BirthdayLaunchState | null {
-  try {
-    if (!fs.existsSync(birthdayFilePath)) return null;
-    const raw = JSON.parse(fs.readFileSync(birthdayFilePath, "utf-8"));
-    if (!raw || typeof raw !== "object") return null;
-    return raw as BirthdayLaunchState;
-  } catch {
-    return null;
-  }
-}
-
-function writeLocalBirthdayState(state: BirthdayLaunchState): void {
-  try {
-    if (!fs.existsSync(localDir)) {
-      fs.mkdirSync(localDir, { recursive: true });
-    }
-    fs.writeFileSync(birthdayFilePath, JSON.stringify(state, null, 2), "utf-8");
-  } catch {
-    // Ignore
-  }
-}
-
 export async function ensureCatalogTables(): Promise<void> {
   try {
     await pool.query(`
@@ -77,15 +48,6 @@ export async function ensureCatalogTables(): Promise<void> {
         book_id VARCHAR(50) PRIMARY KEY,
         book_data JSONB,
         is_deleted BOOLEAN DEFAULT FALSE,
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS birthday_book_launch (
-        event_key VARCHAR(100) PRIMARY KEY,
-        is_launched BOOLEAN DEFAULT FALSE,
-        launched_at VARCHAR(100),
-        books_data JSONB,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -98,51 +60,41 @@ export function normalizeFullBook(input: Partial<Book>, fallback?: Book): Book {
   const base: Book = fallback || {
     id: String(input.id || "1"),
     slug: slugifyBookTitle(input.title || "textbook"),
-    shortSlug: slugifyBookTitle(input.title || "textbook").slice(0, 32),
-    title: input.title || "UNTITLED TEXTBOOK",
+    title: input.title || "Untitled Textbook",
     authors: input.authors || "Lurnexa Academic Press",
     domain: input.domain || "Computer Science & Engineering",
     isbn: input.isbn || "978-81-903315-0-0",
     isbnDigital: input.isbnDigital || "978-81-903315-0-1",
-    pages: Number(input.pages) || 220,
+    pages: Number(input.pages) || 240,
     price: Number(input.price) || 599,
-    digitalPrice: Number(input.digitalPrice) || 299,
-    code: (input.code || "BK").toUpperCase().slice(0, 2),
+    digitalPrice: Number(input.digitalPrice) || 279,
+    code: input.code || "BK",
     pdfFileName: input.pdfFileName || "minerals.pdf",
-    coverImg: input.coverImg || "/portal_coverpages/ml.jpeg",
-    publishedDate: input.publishedDate || "October 30, 2026",
-    description:
-      input.description ||
-      "Peer-reviewed academic textbook published by Lurnexa Publications.",
-    longDescription:
-      input.longDescription ||
-      input.description ||
-      "Peer-reviewed academic textbook published by Lurnexa Publications.",
-    tag: input.tag ?? "New Release",
+    coverImg: input.coverImg || "/portal_coverpages/minerals.jpeg",
+    publishedDate: input.publishedDate || "October 2026",
+    tag: input.tag || "Academic Edition",
     stockStatus: input.stockStatus || "in-stock",
+    rentalEnabled: true,
+    description: input.description || "",
+    longDescription: input.longDescription || input.description || "",
     keywords: Array.isArray(input.keywords) ? input.keywords : [],
-    tableOfContents: Array.isArray(input.tableOfContents)
-      ? input.tableOfContents
-      : [
-          "Chapter 1: Foundations & Core Principles",
-          "Chapter 2: Theoretical Models & Architecture",
-          "Chapter 3: Design Patterns & Algorithms",
-          "Chapter 4: Practical Implementation & Case Studies",
-          "Chapter 5: Advanced Applications & Future Directions"
-        ],
-    rentalEnabled: input.rentalEnabled ?? true
+    tableOfContents: Array.isArray(input.tableOfContents) ? input.tableOfContents : []
   };
 
   const id = String(input.id || base.id).trim();
-  const title = (input.title ?? base.title).trim();
-  const code = ((input.code ?? base.code) || "BK").trim().toUpperCase().slice(0, 2);
-  const toc =
+  const title = (input.title || base.title).trim();
+  const code = (input.code || base.code || "BK").trim().toUpperCase();
+
+  const toc: string[] =
     Array.isArray(input.tableOfContents)
-      ? input.tableOfContents.map((c) => String(c).trim()).filter(Boolean)
-      : base.tableOfContents || [];
+      ? input.tableOfContents.map((s) => String(s).trim()).filter(Boolean)
+      : Array.isArray(base.tableOfContents)
+      ? base.tableOfContents.map((s) => String(s).trim()).filter(Boolean)
+      : [];
 
   const customPreviewPdfDataUrl =
-    typeof input.customPreviewPdfDataUrl === "string"
+    typeof input.customPreviewPdfDataUrl === "string" &&
+    input.customPreviewPdfDataUrl.startsWith("data:application/pdf;base64,")
       ? input.customPreviewPdfDataUrl
       : base.customPreviewPdfDataUrl;
 
@@ -150,7 +102,7 @@ export function normalizeFullBook(input: Partial<Book>, fallback?: Book): Book {
 
   let previewPdfUrl = input.previewPdfUrl ?? base.previewPdfUrl;
   if (customPreviewPdfDataUrl) {
-    previewPdfUrl = `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(id)}`;
+    previewPdfUrl = `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(id)}`;
   } else {
     // Check if an authentic original preview PDF exists in public/published_books/previews/
     const previewsDir = path.join(process.cwd(), "public", "published_books", "previews");
@@ -178,7 +130,7 @@ export function normalizeFullBook(input: Partial<Book>, fallback?: Book): Book {
     if (foundStaticPreview) {
       previewPdfUrl = foundStaticPreview;
     } else if (!previewPdfUrl) {
-      previewPdfUrl = `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(id)}`;
+      previewPdfUrl = `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(id)}`;
     }
   }
 
@@ -209,75 +161,11 @@ export function normalizeFullBook(input: Partial<Book>, fallback?: Book): Book {
     stockStatus: input.stockStatus || base.stockStatus || "in-stock",
     tableOfContents: toc,
     previewPdfUrl,
-    customPreviewPdfDataUrl
-  };
-}
-
-export async function getBirthdayLaunchData(): Promise<BirthdayLaunchState> {
-  await ensureCatalogTables();
-  const local = readLocalBirthdayState();
-  const localCatalog = readLocalCatalogState();
-  const deletedSet = new Set<string>(localCatalog.deletedIds || []);
-
-  try {
-    const dbRes = await pool.query("SELECT book_id FROM textbooks_catalog_overrides WHERE is_deleted = TRUE");
-    for (const r of dbRes.rows) {
-      deletedSet.add(String(r.book_id));
-    }
-  } catch {
-    // Ignore
-  }
-
-  try {
-    const res = await pool.query(
-      "SELECT * FROM birthday_book_launch WHERE event_key = $1",
-      [BIRTHDAY_LAUNCH_EVENT_KEY]
-    );
-    if (res.rows && res.rows.length > 0) {
-      const row = res.rows[0];
-      const rawBooks = Array.isArray(row.books_data)
-        ? row.books_data
-        : DEFAULT_HASINI_LAUNCH_BOOKS;
-      const books = DEFAULT_HASINI_LAUNCH_BOOKS.map((fb, i) =>
-        normalizeLaunchBook(rawBooks[i] || {}, fb)
-      ).filter((b) => !deletedSet.has(String(b.id)));
-      return {
-        eventKey: BIRTHDAY_LAUNCH_EVENT_KEY,
-        honoreeName: "Hasini",
-        eventDate: "2026-10-30",
-        isLaunched: Boolean(row.is_launched),
-        launchedAt: row.launched_at || null,
-        books
-      };
-    }
-  } catch {
-    // Fallback to local
-  }
-
-  if (local) {
-    const rawBooks = Array.isArray(local.books)
-      ? local.books
-      : DEFAULT_HASINI_LAUNCH_BOOKS;
-    const books = DEFAULT_HASINI_LAUNCH_BOOKS.map((fb, i) =>
-      normalizeLaunchBook(rawBooks[i] || {}, fb)
-    ).filter((b) => !deletedSet.has(String(b.id)));
-    return {
-      eventKey: BIRTHDAY_LAUNCH_EVENT_KEY,
-      honoreeName: "Hasini",
-      eventDate: "2026-10-30",
-      isLaunched: Boolean(local.isLaunched),
-      launchedAt: local.launchedAt || null,
-      books
-    };
-  }
-
-  return {
-    eventKey: BIRTHDAY_LAUNCH_EVENT_KEY,
-    honoreeName: "Hasini",
-    eventDate: "2026-10-30",
-    isLaunched: false,
-    launchedAt: null,
-    books: DEFAULT_HASINI_LAUNCH_BOOKS.filter((b) => !deletedSet.has(String(b.id)))
+    customPreviewPdfDataUrl,
+    customFullBookPdfDataUrl: input.customFullBookPdfDataUrl ?? base.customFullBookPdfDataUrl,
+    fullBookPdfSize: input.fullBookPdfSize ?? base.fullBookPdfSize,
+    fullBookPdfUploadedAt: input.fullBookPdfUploadedAt ?? base.fullBookPdfUploadedAt,
+    format: input.format ?? base.format ?? "both"
   };
 }
 
@@ -285,8 +173,6 @@ export async function getMergedCatalogBooks(): Promise<{
   allAdminBooks: Book[];
   publicBooks: Book[];
   deletedIds: string[];
-  isBirthdayLaunched: boolean;
-  launchedAt: string | null;
 }> {
   await ensureCatalogTables();
 
@@ -325,22 +211,15 @@ export async function getMergedCatalogBooks(): Promise<{
     // Ignore
   }
 
-  const birthdayState = await getBirthdayLaunchData();
-
   // Base map of all books by ID
   const baseById = new Map<string, Book>();
 
-  // 1. Standard Published Books (IDs 1..9)
+  // 1. Standard Published Books (IDs 1..11)
   for (const b of PUBLISHED_BOOKS_DATA) {
     baseById.set(String(b.id), normalizeFullBook(b, b));
   }
 
-  // 2. Birthday Launch Books (IDs 10, 11)
-  for (const b of birthdayState.books) {
-    baseById.set(String(b.id), normalizeFullBook(b, b));
-  }
-
-  // 3. Any additional books from textbooks_textbooks not yet in baseById
+  // 2. Any additional books from textbooks_textbooks not yet in baseById
   for (const sb of dbSimpleBooks) {
     if (!baseById.has(sb.id) && !deletedSet.has(sb.id)) {
       baseById.set(
@@ -367,7 +246,7 @@ export async function getMergedCatalogBooks(): Promise<{
     }
   }
 
-  // 4. Apply Admin Catalog Overrides (from textbooks_catalog_overrides & scratch/textbooks_catalog.json)
+  // 3. Apply Admin Catalog Overrides (from textbooks_catalog_overrides & scratch/textbooks_catalog.json)
   for (const [bookId, overrideBook] of Object.entries(overridesMap)) {
     if (deletedSet.has(bookId)) continue;
     const existing = baseById.get(bookId);
@@ -390,31 +269,12 @@ export async function getMergedCatalogBooks(): Promise<{
     return a.id.localeCompare(b.id);
   });
 
-  // Public books: include birthday books (10, 11) when birthdayState.isLaunched is true
-  const birthdayIds = new Set(birthdayState.books.map((b) => String(b.id)));
-  const publicBooks = allAdminBooks.filter((b) => {
-    if (birthdayIds.has(String(b.id))) {
-      return birthdayState.isLaunched;
-    }
-    return true;
-  });
-
-  // Put newly launched birthday books first in publicBooks when launched
-  if (birthdayState.isLaunched) {
-    publicBooks.sort((a, b) => {
-      const aIsBday = birthdayIds.has(String(a.id)) ? 0 : 1;
-      const bIsBday = birthdayIds.has(String(b.id)) ? 0 : 1;
-      if (aIsBday !== bIsBday) return aIsBday - bIsBday;
-      return 0;
-    });
-  }
+  const publicBooks = [...allAdminBooks];
 
   return {
     allAdminBooks,
     publicBooks,
-    deletedIds: Array.from(deletedSet),
-    isBirthdayLaunched: birthdayState.isLaunched,
-    launchedAt: birthdayState.launchedAt
+    deletedIds: Array.from(deletedSet)
   };
 }
 
@@ -445,10 +305,41 @@ export async function saveCatalogBookOverride(inputBook: Partial<Book>): Promise
         const targetFile = path.basename(normalized.pdfFileName || `book_${id}_preview.pdf`);
         fs.writeFileSync(path.join(previewsDir, targetFile), Buffer.from(base64, "base64"));
       }
-      normalized.previewPdfUrl = `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(id)}`;
+      normalized.previewPdfUrl = `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(id)}`;
     }
   } catch {
     // Ignore on read-only fs
+  }
+
+
+  // If a custom full book PDF base64 was uploaded, write to portal_textbooks and s3-upload/textbooks
+  try {
+    if (
+      normalized.customFullBookPdfDataUrl &&
+      normalized.customFullBookPdfDataUrl.startsWith("data:application/pdf;base64,")
+    ) {
+      const base64 = normalized.customFullBookPdfDataUrl.replace(
+        "data:application/pdf;base64,",
+        ""
+      );
+      const safeFileName = path.basename(
+        normalized.pdfFileName || `${normalized.slug || `book_${id}`}.pdf`
+      );
+      normalized.pdfFileName = safeFileName;
+
+      const portalDir = path.join(process.cwd(), "public", "portal_textbooks");
+      if (!fs.existsSync(portalDir)) {
+        fs.mkdirSync(portalDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(portalDir, safeFileName), Buffer.from(base64, "base64"));
+
+      const s3UploadDir = path.join(process.cwd(), "s3-upload", "textbooks");
+      if (fs.existsSync(s3UploadDir)) {
+        fs.writeFileSync(path.join(s3UploadDir, safeFileName), Buffer.from(base64, "base64"));
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to write custom full book PDF to disk:", err);
   }
 
   // 1. Save to local scratch/textbooks_catalog.json
@@ -491,36 +382,6 @@ export async function saveCatalogBookOverride(inputBook: Partial<Book>): Promise
     // Local catalog file is already saved
   }
 
-  // 3. If this book is one of the birthday launch books (10 or 11), also sync birthday_book_launch
-  const birthdayState = await getBirthdayLaunchData();
-  const bdayIdx = birthdayState.books.findIndex((b) => String(b.id) === id);
-  if (bdayIdx !== -1) {
-    const nextBdayBooks = [...birthdayState.books];
-    nextBdayBooks[bdayIdx] = normalizeLaunchBook(normalized, nextBdayBooks[bdayIdx]);
-    const updatedBdayState: BirthdayLaunchState = {
-      ...birthdayState,
-      books: nextBdayBooks
-    };
-    writeLocalBirthdayState(updatedBdayState);
-    try {
-      await pool.query(
-        `INSERT INTO birthday_book_launch (event_key, is_launched, launched_at, books_data, updated_at)
-         VALUES ($1, $2, $3, $4::jsonb, CURRENT_TIMESTAMP)
-         ON CONFLICT (event_key) DO UPDATE SET
-           books_data = EXCLUDED.books_data,
-           updated_at = CURRENT_TIMESTAMP`,
-        [
-          updatedBdayState.eventKey,
-          updatedBdayState.isLaunched,
-          updatedBdayState.launchedAt,
-          JSON.stringify(updatedBdayState.books)
-        ]
-      );
-    } catch {
-      // Ignore
-    }
-  }
-
   return normalized;
 }
 
@@ -535,34 +396,6 @@ export async function deleteCatalogBook(bookId: string): Promise<void> {
     localCatalog.deletedIds.push(id);
   }
   writeLocalCatalogState(localCatalog);
-
-  // Also filter this deleted book out of birthday launch state so it cannot resurface in bookstore
-  const bdayState = readLocalBirthdayState();
-  if (bdayState && Array.isArray(bdayState.books)) {
-    const filteredBdayBooks = bdayState.books.filter((b) => String(b.id) !== id);
-    const updatedBdayState: BirthdayLaunchState = {
-      ...bdayState,
-      books: filteredBdayBooks
-    };
-    writeLocalBirthdayState(updatedBdayState);
-    try {
-      await pool.query(
-        `INSERT INTO birthday_book_launch (event_key, is_launched, launched_at, books_data, updated_at)
-         VALUES ($1, $2, $3, $4::jsonb, CURRENT_TIMESTAMP)
-         ON CONFLICT (event_key) DO UPDATE SET
-           books_data = EXCLUDED.books_data,
-           updated_at = CURRENT_TIMESTAMP`,
-        [
-          updatedBdayState.eventKey,
-          updatedBdayState.isLaunched,
-          updatedBdayState.launchedAt,
-          JSON.stringify(updatedBdayState.books)
-        ]
-      );
-    } catch {
-      // Ignore DB errors
-    }
-  }
 
   try {
     await pool.query(
@@ -579,4 +412,3 @@ export async function deleteCatalogBook(bookId: string): Promise<void> {
     // Ignore
   }
 }
-

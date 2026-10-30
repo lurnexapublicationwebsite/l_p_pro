@@ -37,7 +37,7 @@ export default function ConfirmQuotationPage() {
       if (!quoteId) return;
       try {
         setLoading(true);
-        const res = await fetch(`/api/quotation/confirm?quote_id=${quoteId}`);
+        const res = await fetch(`/api/quotation/confirm/?quote_id=${quoteId}`);
         if (!res.ok) throw new Error("Failed to load quotation details");
         const data = await res.json();
         
@@ -126,7 +126,7 @@ export default function ConfirmQuotationPage() {
       formData.append("quote_id", quoteId);
       formData.append("stamp", uploadBlob, file.name);
 
-      const res = await fetch("/api/quotation/confirm", {
+      const res = await fetch("/api/quotation/confirm/", {
         method: "POST",
         body: formData,
       });

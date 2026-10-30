@@ -41,7 +41,7 @@ export default function ConfirmedOrdersPage() {
   async function fetchOrders() {
     try {
       setLoading(true);
-      const res = await fetch("/api/quotation/admin/orders");
+      const res = await fetch("/api/quotation/admin/orders/");
       if (!res.ok) throw new Error("Failed to fetch orders");
       const data = await res.json();
       setOrders(data.orders || []);
@@ -55,7 +55,7 @@ export default function ConfirmedOrdersPage() {
   async function handleDelete(id: string) {
     try {
       setDeleting(true);
-      const res = await fetch("/api/quotation/admin/orders", {
+      const res = await fetch("/api/quotation/admin/orders/", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),

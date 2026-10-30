@@ -1,14 +1,12 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getAuthenticatedAdmin } from "@/lib/quotationAuth";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+export const dynamic = "force-dynamic";
 
-export default function AdminPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/quotation/admin/dashboard/");
-  }, [router]);
-
-  return null;
+export default async function AdminPage() {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    redirect("/quotation/admin/login/");
+  }
+  redirect("/quotation/admin/dashboard/");
 }

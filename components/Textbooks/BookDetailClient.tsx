@@ -453,12 +453,34 @@ export default function BookDetailClient({ book: initialBook, relatedBooks }: Bo
           </div>
 
           {/* Table of Contents (Chapters / Modules) & Preview PDF Button */}
-          <div className="space-y-3 pt-4 border-t border-slate-100">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <FileText size={18} className="text-fuchsia-600" />
-                Table of Contents (Chapters &amp; Modules)
-              </h2>
+          {book.tableOfContents && book.tableOfContents.length > 0 ? (
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <FileText size={18} className="text-fuchsia-600" />
+                  Table of Contents (Chapters &amp; Modules)
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 text-xs font-bold transition-all cursor-pointer"
+                >
+                  <FileText size={13} />
+                  <span>Preview Sample PDF</span>
+                </button>
+              </div>
+              <ul className="space-y-2 text-xs text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
+                {book.tableOfContents.map((chapter, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <CheckCircle2 size={14} className="text-fuchsia-600 mt-0.5 shrink-0" />
+                    <span>{chapter}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-400 italic">No chapters listed yet for this textbook.</span>
               <button
                 type="button"
                 onClick={() => setShowPreviewModal(true)}
@@ -468,17 +490,7 @@ export default function BookDetailClient({ book: initialBook, relatedBooks }: Bo
                 <span>Preview Sample PDF</span>
               </button>
             </div>
-            {book.tableOfContents && book.tableOfContents.length > 0 && (
-              <ul className="space-y-2 text-xs text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
-                {book.tableOfContents.map((chapter, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <CheckCircle2 size={14} className="text-fuchsia-600 mt-0.5 shrink-0" />
-                    <span>{chapter}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
 
           {showPreviewModal && (
             <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">

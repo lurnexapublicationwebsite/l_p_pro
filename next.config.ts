@@ -6,6 +6,7 @@ const require = createRequire(import.meta.url);
 const nextConfig: NextConfig = {
   // ✅ Trailing slash configuration to match Django URL patterns
   trailingSlash: true,
+  skipTrailingSlashRedirect: true,
   
   // ✅ Image & Build configuration
   typescript: { ignoreBuildErrors: true },
