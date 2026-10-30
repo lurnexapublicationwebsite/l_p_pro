@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Book, bookHasCaselet, getPhysicalPrice, getSoftCopyPrice } from '@/lib/data/books';
 import { 
@@ -17,7 +17,8 @@ import {
   Sparkles,
   Truck,
   Smartphone,
-  Clock
+  Clock,
+  X
 } from 'lucide-react';
 import RentalPlanSelector from '@/components/Textbooks/RentalPlanSelector';
 import { buildDoi, doiUrl } from '@/lib/crossref';
@@ -27,7 +28,29 @@ interface BookDetailClientProps {
   relatedBooks: Book[];
 }
 
-export default function BookDetailClient({ book, relatedBooks }: BookDetailClientProps) {
+export default function BookDetailClient({ book: initialBook, relatedBooks }: BookDetailClientProps) {
+  const [book, setBook] = useState<Book>(initialBook);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/textbooks/catalog')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data?.allAdminBooks)) {
+          const match = data.allAdminBooks.find(
+            (b: Book) =>
+              String(b.id) === String(initialBook.id) ||
+              b.slug === initialBook.slug ||
+              b.shortSlug === initialBook.shortSlug
+          );
+          if (match) {
+            setBook(match);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [initialBook]);
+
   const isDigitalExclusive = book.id === "9" || book.isbn === "N/A";
   const doi = buildDoi(book.doiSuffix);
   const [selectedFormat, setSelectedFormat] = useState<'physical' | 'soft' | 'rental'>(isDigitalExclusive ? 'soft' : 'physical');
@@ -102,7 +125,7 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
             <img
               src={book.coverImg}
               alt={`${book.title} cover`}
-              className="w-full h-full object-cover rounded-2xl"
+              className="w-full h-full object-contain rounded-2xl bg-slate-900/5"
             />
             <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/25 via-black/10 to-transparent" />
           </div>
@@ -429,13 +452,23 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
             )}
           </div>
 
-          {/* Table of Contents */}
-          {book.tableOfContents && book.tableOfContents.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-slate-100">
+          {/* Table of Contents (Chapters / Modules) & Preview PDF Button */}
+          <div className="space-y-3 pt-4 border-t border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <FileText size={18} className="text-fuchsia-600" />
-                Table of Contents
+                Table of Contents (Chapters &amp; Modules)
               </h2>
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 text-xs font-bold transition-all cursor-pointer"
+              >
+                <FileText size={13} />
+                <span>Preview Sample PDF</span>
+              </button>
+            </div>
+            {book.tableOfContents && book.tableOfContents.length > 0 && (
               <ul className="space-y-2 text-xs text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
                 {book.tableOfContents.map((chapter, idx) => (
                   <li key={idx} className="flex items-start gap-2">
@@ -444,6 +477,39 @@ export default function BookDetailClient({ book, relatedBooks }: BookDetailClien
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+
+          {showPreviewModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 line-clamp-1">{book.title}</h3>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      Sample Preview PDF &amp; Chapters
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPreviewModal(false)}
+                    className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="p-4 bg-slate-100 flex-1 min-h-[480px]">
+                  <iframe
+                    src={
+                      book.previewPdfUrl
+                        ? `${book.previewPdfUrl}#toolbar=0&navpanes=0`
+                        : `/published_books/previews/${book.pdfFileName || "minerals.pdf"}#toolbar=0&navpanes=0`
+                    }
+                    className="w-full h-[65vh] border-0 rounded-xl bg-white shadow"
+                    title="Book Sample Preview PDF"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

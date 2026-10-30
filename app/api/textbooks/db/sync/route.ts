@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { pool, initDbTables } from "@/lib/dbPool";
+import {
+  getMergedCatalogBooks,
+  saveCatalogBookOverride,
+  deleteCatalogBook
+} from "@/lib/bookCatalogStore";
 
 async function ensureTables() {
   try {
@@ -210,7 +215,8 @@ export async function GET() {
       collegeName: u.college_name,
       collegeId: u.college_id,
       facultyId: u.faculty_id,
-      collegeEmail: u.college_email,
+      email: u.email || u.college_email || "",
+      collegeEmail: u.college_email || u.email || "",
       department: u.department,
       facultyRole: u.faculty_role,
       subjectTeaching: u.subject_teaching,
@@ -256,10 +262,12 @@ export async function GET() {
       name: c.name
     }));
 
-    const textbooks = textbooksRes.rows.map(t => ({
-      id: t.id,
+    const { allAdminBooks } = await getMergedCatalogBooks();
+    const textbooks = allAdminBooks.map(t => ({
+      ...t,
+      id: String(t.id),
       title: t.title,
-      code: t.code
+      code: t.code || "BK"
     }));
 
     const quizzes = quizzesRes.rows.map(q => ({
@@ -291,6 +299,11 @@ export async function GET() {
     }));
 
     const chaptersMap: Record<string, number> = {};
+    for (const b of allAdminBooks) {
+      if (Array.isArray(b.tableOfContents) && b.tableOfContents.length > 0) {
+        chaptersMap[String(b.id)] = b.tableOfContents.length;
+      }
+    }
     bookChaptersRes.rows.forEach(bc => {
       chaptersMap[bc.book_id] = bc.chapters_count;
     });
@@ -471,6 +484,11 @@ export async function POST(request: Request) {
 
       } else if (table === "textbooks") {
         for (const t of items) {
+          try {
+            await saveCatalogBookOverride(t);
+          } catch {
+            // Fallback to textbooks_textbooks below
+          }
           await pool.query(`
             INSERT INTO textbooks_textbooks (id, title, code) VALUES ($1, $2, $3)
             ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, code = EXCLUDED.code;
@@ -641,6 +659,11 @@ export async function POST(request: Request) {
     } else if (action === "delete") {
       if (table === "textbooks") {
         const { bookId } = data;
+        try {
+          await deleteCatalogBook(String(bookId));
+        } catch {
+          // Ignore
+        }
         await pool.query("DELETE FROM textbooks_textbooks WHERE id = $1", [bookId]);
         await pool.query("DELETE FROM textbooks_book_chapters WHERE book_id = $1", [bookId]);
         await pool.query("DELETE FROM textbooks_allowed_access_ids WHERE book_id = $1", [bookId]);

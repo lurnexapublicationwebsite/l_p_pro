@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
-import { getSessionTarget, signSessionToken } from "@/lib/textbookSession";
+import {
+  getSessionTarget,
+  signSessionToken,
+  findSessionUser,
+} from "@/lib/textbookSession";
 import crypto from "crypto";
 
 function hashPassword(password: string): string {
@@ -34,7 +38,11 @@ export async function POST(req: Request) {
     // before an account is created or an existing password-less account is claimed.
     if (getSessionTarget(req) !== cleanEmail) {
       return NextResponse.json(
-        { error: "Please verify your email address with the code we sent you before creating an account.", emailVerificationRequired: true },
+        {
+          error:
+            "Please verify your email address with the code we sent you before creating an account.",
+          emailVerificationRequired: true,
+        },
         { status: 403 }
       );
     }
@@ -65,16 +73,25 @@ export async function POST(req: Request) {
     }
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password)) {
       return NextResponse.json(
-        { error: "Password must contain at least one special character (!@#$%^&* etc.)." },
+        {
+          error:
+            "Password must contain at least one special character (!@#$%^&* etc.).",
+        },
         { status: 400 }
       );
     }
 
     // Auto ensure table columns exist
     try {
-      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
-      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
-      await pool.query(`ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS purchased_books JSONB`);
+      await pool.query(
+        `ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`
+      );
+      await pool.query(
+        `ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`
+      );
+      await pool.query(
+        `ALTER TABLE textbooks_users ADD COLUMN IF NOT EXISTS purchased_books JSONB`
+      );
     } catch (e) {
       // Ignore migration errors if handled
     }
@@ -86,21 +103,28 @@ export async function POST(req: Request) {
     );
 
     if (existing.rows && existing.rows.length > 0) {
-      const existingUser = existing.rows[0];
+      const existingUser =
+        existing.rows.find((r: any) => Boolean(r.password_hash)) ||
+        existing.rows[0];
 
       // If account exists but has no password set yet (e.g. from purchase/rental), update password & complete setup
       if (!existingUser.password_hash) {
         const passwordHash = hashPassword(password);
-        const existingMobile = existingUser.mobile_number && !String(existingUser.mobile_number).includes("@")
-          ? existingUser.mobile_number
-          : "";
+        const existingMobile =
+          existingUser.mobile_number &&
+          !String(existingUser.mobile_number).includes("@")
+            ? existingUser.mobile_number
+            : "";
         const requestedMobile = mobileNumber ? mobileNumber.trim() : "";
 
         // mobile_number is the table's primary key: only move this row to the new phone
         // if no other row already uses it, otherwise keep the current key.
         let rowKey = existingUser.mobile_number;
         if (requestedMobile && requestedMobile !== existingUser.mobile_number) {
-          const taken = await pool.query(`SELECT 1 FROM textbooks_users WHERE mobile_number = $1 LIMIT 1`, [requestedMobile]);
+          const taken = await pool.query(
+            `SELECT 1 FROM textbooks_users WHERE mobile_number = $1 LIMIT 1`,
+            [requestedMobile]
+          );
           if (taken.rows.length === 0) rowKey = requestedMobile;
         }
         if (!rowKey) rowKey = cleanEmail;
@@ -111,26 +135,27 @@ export async function POST(req: Request) {
           [passwordHash, name.trim(), rowKey, cleanEmail, cleanEmail]
         );
 
+        const sessionUser = await findSessionUser(cleanEmail);
+        const purchasedBookIds = sessionUser?.purchasedBookIds || [];
+
         let rentedBookIds: string[] = [];
         try {
           const rentalsRes = await pool.query(
-            `SELECT DISTINCT book_id FROM book_rentals WHERE LOWER(user_email) = $1 AND status = 'active'`,
-            [cleanEmail]
+            `SELECT DISTINCT book_id FROM book_rentals
+             WHERE status = 'active'
+               AND (LOWER(user_email) = ANY($1)
+                    OR ($2 <> '' AND RIGHT(REGEXP_REPLACE(COALESCE(user_phone, ''), '\\D', '', 'g'), 10) = $2))`,
+            [
+              sessionUser?.emails?.length ? sessionUser.emails : [cleanEmail],
+              sessionUser?.phone || "",
+            ]
           );
-          rentedBookIds = (rentalsRes.rows || []).map((r: any) => r.book_id);
+          rentedBookIds = (rentalsRes.rows || []).map((r: any) =>
+            String(r.book_id)
+          );
         } catch (e) {
           // Ignore if book_rentals table doesn't exist
         }
-        let dbPurchased: string[] = [];
-        try {
-          if (typeof existingUser.purchased_books === "string") {
-            dbPurchased = JSON.parse(existingUser.purchased_books);
-          } else if (Array.isArray(existingUser.purchased_books)) {
-            dbPurchased = existingUser.purchased_books;
-          }
-        } catch (e) {}
-
-        const purchasedBookIds = dbPurchased.length > 0 ? dbPurchased : (existingUser.book_id ? [existingUser.book_id] : []);
 
         const userData = {
           name: name.trim(),
@@ -140,20 +165,23 @@ export async function POST(req: Request) {
           accessId: existingUser.access_id || `USR_${Date.now()}`,
           role: existingUser.role || "student",
           purchasedBooks: Array.from(new Set(purchasedBookIds.filter(Boolean))),
-          rentedBooks: rentedBookIds
+          rentedBooks: rentedBookIds,
         };
 
         return NextResponse.json({
           success: true,
           message: "Password created and account activated successfully!",
           user: userData,
-          token: signSessionToken(cleanEmail)
+          token: signSessionToken(cleanEmail),
         });
       }
 
       // If account already exists and HAS a password set, block signup and instruct user to log in
       return NextResponse.json(
-        { error: "An account with this Email address already exists. Please switch to the Log In tab to log in." },
+        {
+          error:
+            "An account with this Email address already exists. Please switch to the Log In tab to log in.",
+        },
         { status: 400 }
       );
     }
@@ -167,9 +195,16 @@ export async function POST(req: Request) {
     // used as the row key in that case.
     let rowKey = cleanMobile || cleanEmail;
     if (cleanMobile) {
-      const taken = await pool.query(`SELECT 1 FROM textbooks_users WHERE mobile_number = $1 LIMIT 1`, [cleanMobile]);
+      const taken = await pool.query(
+        `SELECT 1 FROM textbooks_users WHERE mobile_number = $1 LIMIT 1`,
+        [cleanMobile]
+      );
       if (taken.rows.length > 0) rowKey = cleanEmail;
     }
+
+    // Check if the customer already purchased books under this email or phone prior to signing up
+    const preSignupSession = await findSessionUser(cleanEmail);
+    const initialPurchasedBooks = preSignupSession?.purchasedBookIds || [];
 
     await pool.query(
       `INSERT INTO textbooks_users (
@@ -185,9 +220,27 @@ export async function POST(req: Request) {
         true,
         accessId,
         "complete",
-        JSON.stringify([])
+        JSON.stringify(initialPurchasedBooks),
       ]
     );
+
+    const postSignupSession = await findSessionUser(cleanEmail);
+    let rentedBookIds: string[] = [];
+    try {
+      const rentalsRes = await pool.query(
+        `SELECT DISTINCT book_id FROM book_rentals
+         WHERE status = 'active'
+           AND (LOWER(user_email) = ANY($1)
+                OR ($2 <> '' AND RIGHT(REGEXP_REPLACE(COALESCE(user_phone, ''), '\\D', '', 'g'), 10) = $2))`,
+        [
+          postSignupSession?.emails?.length
+            ? postSignupSession.emails
+            : [cleanEmail],
+          postSignupSession?.phone || "",
+        ]
+      );
+      rentedBookIds = (rentalsRes.rows || []).map((r: any) => String(r.book_id));
+    } catch (e) {}
 
     const userData = {
       name: name.trim(),
@@ -196,17 +249,16 @@ export async function POST(req: Request) {
       mobileNumber: cleanMobile,
       accessId,
       role: "student",
-      purchasedBooks: [],
-      rentedBooks: []
+      purchasedBooks: postSignupSession?.purchasedBookIds || initialPurchasedBooks,
+      rentedBooks: rentedBookIds,
     };
 
     return NextResponse.json({
       success: true,
       message: "Account created successfully!",
       user: userData,
-      token: signSessionToken(cleanEmail)
+      token: signSessionToken(cleanEmail),
     });
-
   } catch (err: any) {
     console.error("❌ Error in signup API route:", err);
     return NextResponse.json(

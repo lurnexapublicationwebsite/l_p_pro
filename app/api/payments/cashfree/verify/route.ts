@@ -2,13 +2,59 @@ import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
 import { sendOrderConfirmationEmails } from "@/lib/mailService";
 
+async function syncUserPurchasedBooks(
+  customerPhone: string,
+  customerEmail: string,
+  bookId: string,
+  targetPlan: string
+) {
+  const cleanEmail = (customerEmail || "").trim().toLowerCase();
+  const cleanPhone = (customerPhone || "").trim();
+  const userCheck = await pool.query(
+    "SELECT mobile_number, email, college_email, access_id, plan, purchased_books FROM textbooks_users WHERE mobile_number = $1 OR (email IS NOT NULL AND LOWER(email) = $2) OR (college_email IS NOT NULL AND LOWER(college_email) = $2)",
+    [cleanPhone, cleanEmail]
+  );
+
+  const newBookIds = String(bookId || "")
+    .split(",")
+    .map((b) => b.trim())
+    .filter((id) => id && id !== "CART");
+
+  if (userCheck.rows.length > 0) {
+    const mergedBooks = new Set<string>(newBookIds);
+    for (const row of userCheck.rows) {
+      let existing: any[] = [];
+      if (typeof row.purchased_books === "string") {
+        try {
+          existing = JSON.parse(row.purchased_books);
+        } catch {}
+      } else if (Array.isArray(row.purchased_books)) {
+        existing = row.purchased_books;
+      }
+      for (const b of existing) {
+        if (b && b !== "CART") mergedBooks.add(String(b));
+      }
+    }
+    const finalBooks = Array.from(mergedBooks);
+    await pool.query(
+      `UPDATE textbooks_users SET plan = $1, purchased_books = $2 WHERE mobile_number = $3 OR (email IS NOT NULL AND LOWER(email) = $4) OR (college_email IS NOT NULL AND LOWER(college_email) = $4)`,
+      [targetPlan || "complete", JSON.stringify(finalBooks), cleanPhone, cleanEmail]
+    );
+    return userCheck.rows[0].access_id || "";
+  }
+  return "";
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { orderId, isDemo, mockDetails } = body;
+    const { orderId } = body;
 
     if (!orderId) {
-      return NextResponse.json({ error: "Missing orderId parameter" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing orderId parameter" },
+        { status: 400 }
+      );
     }
 
     const appId = process.env.CASHFREE_APP_ID;
@@ -17,14 +63,29 @@ export async function POST(req: Request) {
 
     // Check if order is already created and paid in the database
     const prevOrderRes = await pool.query(
-      "SELECT status, order_status FROM textbooks_purchases WHERE order_id = $1",
+      "SELECT * FROM textbooks_purchases WHERE order_id = $1",
       [orderId]
     );
 
-    const isAlreadyPaid = prevOrderRes.rows.length > 0 && prevOrderRes.rows[0].status === "PAID";
+    const isAlreadyPaid =
+      prevOrderRes.rows.length > 0 && prevOrderRes.rows[0].status === "PAID";
 
     if (isAlreadyPaid) {
-      return NextResponse.json({ success: true, status: "PAID", message: "Order already verified and created." });
+      const existingOrder = prevOrderRes.rows[0];
+      try {
+        await syncUserPurchasedBooks(
+          existingOrder.customer_phone || existingOrder.user_identifier || "",
+          existingOrder.customer_email || "",
+          existingOrder.book_id || "",
+          existingOrder.purchase_plan || "complete"
+        );
+      } catch (e) {}
+      return NextResponse.json({
+        success: true,
+        status: "PAID",
+        message: "Order already verified and created.",
+        order: existingOrder,
+      });
     }
 
     let targetStatus = "PENDING";
@@ -32,13 +93,17 @@ export async function POST(req: Request) {
     let transactionId = "";
 
     if (!appId || !secretKey) {
-      return NextResponse.json({ error: "Cashfree API configuration is missing." }, { status: 500 });
+      return NextResponse.json(
+        { error: "Cashfree API configuration is missing." },
+        { status: 500 }
+      );
     }
 
     // Production/Sandbox Cashfree Verification flow
-    const cashfreeUrl = env.toUpperCase() === "PRODUCTION" 
-      ? `https://api.cashfree.com/pg/orders/${orderId}` 
-      : `https://sandbox.cashfree.com/pg/orders/${orderId}`;
+    const cashfreeUrl =
+      env.toUpperCase() === "PRODUCTION"
+        ? `https://api.cashfree.com/pg/orders/${orderId}`
+        : `https://sandbox.cashfree.com/pg/orders/${orderId}`;
 
     const response = await fetch(cashfreeUrl, {
       method: "GET",
@@ -54,12 +119,15 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       console.error("❌ Cashfree verify API error:", data);
-      return NextResponse.json({ error: data.message || "Failed to verify order on Cashfree" }, { status: 500 });
+      return NextResponse.json(
+        { error: data.message || "Failed to verify order on Cashfree" },
+        { status: 500 }
+      );
     }
 
     targetStatus = data.order_status; // e.g. "PAID", "ACTIVE", "FAILED"
     tags = data.order_tags || {};
-    
+
     // Attempt to retrieve a payment transaction ID
     if (data.payments && data.payments.length > 0) {
       transactionId = data.payments[0].cf_payment_id || "";
@@ -69,11 +137,22 @@ export async function POST(req: Request) {
 
     if (targetStatus === "PAID") {
       // Calculate amounts
-      const amount = Number(data.order_amount || tags.total_amount || tags.subtotal || 499);
+      const amount = Number(
+        data.order_amount || tags.total_amount || tags.subtotal || 499
+      );
       const bookId = tags.book_id || "1";
-      const customerPhone = data.customer_details?.customer_phone || tags.customer_phone || "9999999999";
-      const customerName = data.customer_details?.customer_name || tags.customer_name || "Customer";
-      const customerEmail = data.customer_details?.customer_email || tags.customer_email || "customer@lurnexa.in";
+      const customerPhone =
+        data.customer_details?.customer_phone ||
+        tags.customer_phone ||
+        "9999999999";
+      const customerName =
+        data.customer_details?.customer_name ||
+        tags.customer_name ||
+        "Customer";
+      const customerEmail =
+        data.customer_details?.customer_email ||
+        tags.customer_email ||
+        "customer@lurnexa.in";
       const shippingAddress = tags.shipping_address || "";
       const postalCode = tags.postal_code || tags.shipping_pincode || "";
       const couponCode = tags.coupon_code || "";
@@ -92,21 +171,36 @@ export async function POST(req: Request) {
         try {
           const existingUserRes = await pool.query(
             "SELECT access_id FROM textbooks_users WHERE (email IS NOT NULL AND LOWER(email) = $1) OR (college_email IS NOT NULL AND LOWER(college_email) = $1) OR mobile_number = $2",
-            [customerEmail ? customerEmail.trim().toLowerCase() : "", customerPhone ? customerPhone.trim() : ""]
+            [
+              customerEmail ? customerEmail.trim().toLowerCase() : "",
+              customerPhone ? customerPhone.trim() : "",
+            ]
           );
-          if (existingUserRes.rows.length > 0 && existingUserRes.rows[0].access_id) {
+          if (
+            existingUserRes.rows.length > 0 &&
+            existingUserRes.rows[0].access_id
+          ) {
             accessId = existingUserRes.rows[0].access_id;
           } else {
             const existingPurchaseRes = await pool.query(
               "SELECT access_id FROM textbooks_purchases WHERE ((customer_email IS NOT NULL AND LOWER(customer_email) = $1) OR customer_phone = $2) AND access_id != '' AND access_id != 'LURNEXA'",
-              [customerEmail ? customerEmail.trim().toLowerCase() : "", customerPhone ? customerPhone.trim() : ""]
+              [
+                customerEmail ? customerEmail.trim().toLowerCase() : "",
+                customerPhone ? customerPhone.trim() : "",
+              ]
             );
-            if (existingPurchaseRes.rows.length > 0 && existingPurchaseRes.rows[0].access_id) {
+            if (
+              existingPurchaseRes.rows.length > 0 &&
+              existingPurchaseRes.rows[0].access_id
+            ) {
               accessId = existingPurchaseRes.rows[0].access_id;
             }
           }
         } catch (err) {
-          console.error("Error looking up accessId fallback in verify route:", err);
+          console.error(
+            "Error looking up accessId fallback in verify route:",
+            err
+          );
         }
       }
 
@@ -139,9 +233,14 @@ export async function POST(req: Request) {
         cashfree_payment_id: transactionId,
         payment_status: "PAID",
         order_status: "CONFIRMED",
-        purchase_format: tags.purchase_format || (shippingAddress.includes("Digital") || shippingAddress === "Soft Copy Access" ? "soft" : "physical"),
+        purchase_format:
+          tags.purchase_format ||
+          (shippingAddress.includes("Digital") ||
+          shippingAddress === "Soft Copy Access"
+            ? "soft"
+            : "physical"),
         purchase_plan: tags.purchase_plan || "physical",
-        access_id: accessId
+        access_id: accessId,
       };
 
       // Create order ONLY AFTER successful payment verification
@@ -180,59 +279,52 @@ export async function POST(req: Request) {
           orderObj.order_status,
           orderObj.purchase_format,
           orderObj.purchase_plan,
-          orderObj.access_id
+          orderObj.access_id,
         ]
       );
 
-      // Always update user's plan and add the purchased book(s) to their profile under their 1 Access ID
-      const userCheck = await pool.query(
-        "SELECT access_id, plan, purchased_books FROM textbooks_users WHERE mobile_number = $1 OR (email IS NOT NULL AND LOWER(email) = $2) OR (college_email IS NOT NULL AND LOWER(college_email) = $2)",
-        [customerPhone, customerEmail.toLowerCase()]
+      const newBookIds = bookId.includes(",")
+        ? bookId.split(",").map((b) => b.trim())
+        : [bookId];
+
+      const existingAccessId = await syncUserPurchasedBooks(
+        customerPhone,
+        customerEmail,
+        bookId,
+        tags.purchase_plan || "complete"
       );
 
-      const newBookIds = bookId.includes(",") ? bookId.split(",").map(b => b.trim()) : [bookId];
-
-      if (userCheck.rows.length > 0) {
-        const currentUser = userCheck.rows[0];
-        if (currentUser.access_id) {
-          accessId = currentUser.access_id;
-          orderObj.access_id = currentUser.access_id;
-          // Update order record with exact user access ID
-          try {
-            await pool.query("UPDATE textbooks_purchases SET access_id = $1 WHERE order_id = $2", [accessId, orderId]);
-          } catch (e) {}
-        }
-        let pBooks = Array.isArray(currentUser.purchased_books) ? currentUser.purchased_books : [];
-        newBookIds.forEach(id => {
-          if (id && id !== "CART" && !pBooks.includes(id)) {
-            pBooks.push(id);
-          }
-        });
-        const targetPlan = tags.purchase_plan || "complete";
-        await pool.query(
-          `UPDATE textbooks_users SET plan = $1, purchased_books = $2 WHERE mobile_number = $3 OR (email IS NOT NULL AND LOWER(email) = $4) OR (college_email IS NOT NULL AND LOWER(college_email) = $4)`,
-          [targetPlan, JSON.stringify(pBooks), customerPhone, customerEmail.toLowerCase()]
-        );
+      if (existingAccessId) {
+        accessId = existingAccessId;
+        orderObj.access_id = existingAccessId;
+        try {
+          await pool.query(
+            "UPDATE textbooks_purchases SET access_id = $1 WHERE order_id = $2",
+            [accessId, orderId]
+          );
+        } catch (e) {}
       } else if (accessId) {
         // Create user record for new customer with their single unique Access ID
-        const initialBooks = newBookIds.filter(id => id && id !== "CART");
-        await pool.query(
-          `INSERT INTO textbooks_users (name, mobile_number, book_id, role, college_name, college_email, email, is_active, access_id, plan, purchased_books)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-          [
-            customerName,
-            customerPhone,
-            bookId,
-            'student',
-            tags.college_name || 'General',
-            customerEmail,
-            customerEmail,
-            true,
-            accessId,
-            plan,
-            JSON.stringify(initialBooks)
-          ]
-        );
+        const initialBooks = newBookIds.filter((id) => id && id !== "CART");
+        try {
+          await pool.query(
+            `INSERT INTO textbooks_users (name, mobile_number, book_id, role, college_name, college_email, email, is_active, access_id, plan, purchased_books)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [
+              customerName,
+              customerPhone,
+              bookId,
+              "student",
+              tags.college_name || "General",
+              customerEmail,
+              customerEmail,
+              true,
+              accessId,
+              plan,
+              JSON.stringify(initialBooks),
+            ]
+          );
+        } catch (e) {}
       }
 
       if (accessId) {
@@ -241,13 +333,11 @@ export async function POST(req: Request) {
           `INSERT INTO textbooks_allowed_access_ids (access_id, book_id, role, assigned_to, plan)
            VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (access_id) DO UPDATE SET plan = EXCLUDED.plan, assigned_to = EXCLUDED.assigned_to`,
-          [accessId, bookId, 'student', customerPhone, plan]
+          [accessId, bookId, "student", customerPhone, plan]
         );
       }
 
-      // Dispatch order confirmation email notifications in the background — email delivery
-      // (SMTP handshake, provider latency) must never block the customer's "payment succeeded"
-      // response, which otherwise leaves them staring at a spinner for many seconds.
+      // Dispatch order confirmation email notifications in the background
       sendOrderConfirmationEmails(orderObj).catch((err) => {
         console.error("❌ Failed to send order emails:", err);
       });
@@ -255,18 +345,20 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         status: "PAID",
-        order: orderObj
+        order: orderObj,
       });
     } else {
-      return NextResponse.json({ 
-        success: false, 
-        status: targetStatus, 
-        message: `Payment status is ${targetStatus}` 
+      return NextResponse.json({
+        success: false,
+        status: targetStatus,
+        message: `Payment status is ${targetStatus}`,
       });
     }
-
   } catch (err: any) {
     console.error("❌ Error in verify-order route:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

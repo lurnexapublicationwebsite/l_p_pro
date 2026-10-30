@@ -5,6 +5,21 @@
 
 @custom-variant white (&:is(.white *));
 
+/* Birthday launch: "fit" = landscape screens tall enough to show each act without scrolling.
+   Phones / portrait tablets scroll naturally instead. */
+@custom-variant fit (@media (min-width: 768px) and (min-height: 540px) and (min-aspect-ratio: 1/1));
+
+/* Birthday launch: scale up the whole ceremony on large TVs / 4K displays */
+@media (min-width: 1800px) and (min-height: 950px) {
+  .lx-zoom { zoom: 1.25; }
+}
+@media (min-width: 2400px) and (min-height: 1300px) {
+  .lx-zoom { zoom: 1.7; }
+}
+@media (min-width: 3400px) and (min-height: 1900px) {
+  .lx-zoom { zoom: 2.4; }
+}
+
 html, body {
   width: 100%;
   max-width: 100%;

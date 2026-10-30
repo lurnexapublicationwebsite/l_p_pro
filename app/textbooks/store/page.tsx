@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  BookOpen, 
-  Lock, 
-  FileText, 
-  ShoppingBag, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Truck, 
-  ShieldCheck, 
+import {
+  BookOpen,
+  Lock,
+  FileText,
+  ShoppingBag,
+  ArrowLeft,
+  CheckCircle2,
+  Truck,
+  ShieldCheck,
   Award,
   Sparkles,
   Search,
@@ -34,6 +34,11 @@ interface TextbookDetails {
   code: string;
   description: string;
   price: number;
+  digitalPrice?: number;
+  coverImg?: string;
+  previewPdfUrl?: string;
+  customPreviewPdfDataUrl?: string;
+  tableOfContents?: string[];
   authors: string;
   pages: number;
   isbn: string;
@@ -183,35 +188,55 @@ interface CartItem {
   plan?: string;
 }
 
-const getPhysicalPrice = (plan: string, bookId?: string): number => {
+const resolveBookCover = (book: TextbookDetails): string => {
+  if (book.coverImg && book.coverImg.trim()) return book.coverImg;
+  if (book.id === "2") return "/portal_coverpages/ml.jpeg";
+  if (book.id === "3") return "/portal_coverpages/dbms.jpeg";
+  if (book.id === "5") return "/portal_coverpages/microeconomics.jpeg";
+  if (book.id === "6") return "/portal_coverpages/ai.jpeg";
+  if (book.id === "7") return "/portal_coverpages/data_streaming.jpeg";
+  if (book.id === "8") return "/portal_coverpages/python_programming.jpeg";
+  if (book.id === "9") return "/portal_coverpages/nosql.jpeg";
+  if (book.id === "4") return "/portal_coverpages/entrepreneurship.jpeg";
+  return "/portal_coverpages/minerals.jpeg";
+};
+
+const getPhysicalPrice = (plan: string, bookId?: string, bookObj?: TextbookDetails | null): number => {
+  const basePrice = bookObj?.price !== undefined
+    ? Number(bookObj.price)
+    : (PUBLISHED_BOOKS.find(b => b.id === bookId)?.price ?? 649);
   if (bookId === "3") {
     if (plan === "caselet") return 99;
-    if (plan === "book_caselet") return 739;
-    return 649;
+    if (plan === "book_caselet") return basePrice + 90;
+    return basePrice;
   }
   if (bookId === "5") {
     if (plan === "caselet") return 99;
-    if (plan === "book_caselet") return 689;
-    return 599;
+    if (plan === "book_caselet") return basePrice + 90;
+    return basePrice;
   }
-  const found = PUBLISHED_BOOKS.find(b => b.id === bookId);
-  return found ? found.price : 649;
+  return basePrice;
 };
 
-const getSoftCopyPrice = (plan: string, bookId?: string): number => {
+const getSoftCopyPrice = (plan: string, bookId?: string, bookObj?: TextbookDetails | null): number => {
+  if (bookObj?.digitalPrice !== undefined && Number(bookObj.digitalPrice) > 0 && plan === "book_only") {
+    return Number(bookObj.digitalPrice);
+  }
   if (bookId === "1") {
     if (plan === "book_only") return 499;
     return 499;
   }
   if (bookId === "3") {
-    if (plan === "book_only") return 299;
+    const baseSoft = bookObj?.digitalPrice ? Number(bookObj.digitalPrice) : 299;
+    if (plan === "book_only") return baseSoft;
     if (plan === "caselet") return 49;
-    if (plan === "book_caselet") return 339;
+    if (plan === "book_caselet") return baseSoft + 40;
   }
   if (bookId === "5") {
-    if (plan === "book_only") return 299;
+    const baseSoft = bookObj?.digitalPrice ? Number(bookObj.digitalPrice) : 299;
+    if (plan === "book_only") return baseSoft;
     if (plan === "caselet") return 49;
-    if (plan === "book_caselet") return 339;
+    if (plan === "book_caselet") return baseSoft + 40;
   }
   if (bookId === "2") {
     if (plan === "book_only") return 249;
@@ -233,15 +258,14 @@ const getSoftCopyPrice = (plan: string, bookId?: string): number => {
     return 269;
   }
   if (bookId === "6") {
-    if (plan === "book_only") return 199;
+    const baseSoft = bookObj?.digitalPrice ? Number(bookObj.digitalPrice) : 199;
+    if (plan === "book_only") return baseSoft;
     if (plan === "caselet") return 60;
-    if (plan === "book_caselet") return 295;
-    return 199;
+    if (plan === "book_caselet") return baseSoft + 96;
+    return baseSoft;
   }
-  if (bookId === "5") {
-    if (plan === "book_only") return 370;
-    if (plan === "caselet") return 80;
-    if (plan === "book_caselet") return 405;
+  if (bookObj?.digitalPrice !== undefined && Number(bookObj.digitalPrice) > 0) {
+    return Number(bookObj.digitalPrice);
   }
   let price = 399;
   switch (plan) {
@@ -257,9 +281,13 @@ export default function BookstorePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [publishedPdfs, setPublishedPdfs] = useState<string[]>([]);
+  const [storeCatalogBooks, setStoreCatalogBooks] = useState<TextbookDetails[]>(PUBLISHED_BOOKS);
+  const [birthdayLaunchedBooks, setBirthdayLaunchedBooks] = useState<TextbookDetails[]>([]);
+  const [deletedBookIds, setDeletedBookIds] = useState<string[]>([]);
   const [selectedBookForPreview, setSelectedBookForPreview] = useState<TextbookDetails | null>(null);
+  const [isPreviewPdfLoaded, setIsPreviewPdfLoaded] = useState(false);
   const [mounted, setMounted] = useState(false);
-  
+
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -349,25 +377,25 @@ export default function BookstorePage() {
 
   const handleProceedToBuy = (book: TextbookDetails, format: 'physical' | 'soft', plan: string) => {
     const user = getLoggedInUser();
-      
+
     if (!user) {
       setPendingBuyBook({ book, format, plan });
       setShowLoginPromptModal(true);
       return;
     }
-    
+
     router.push(`/textbooks/store/checkout?bookId=${book.id}&format=${format}&plan=${plan}`);
   };
 
   const handleCartCheckout = () => {
     const user = getLoggedInUser();
-      
+
     if (!user) {
       setPendingBuyBook(null);
       setShowLoginPromptModal(true);
       return;
     }
-    
+
     router.push(`/textbooks/store/checkout?format=${cart[0]?.format || 'physical'}&plan=${cart[0]?.plan || 'physical'}`);
   };
 
@@ -375,20 +403,101 @@ export default function BookstorePage() {
     setSelectedSoftOption("book_only");
   }, [selectedBookForPurchase]);
 
+  useEffect(() => {
+    setIsPreviewPdfLoaded(false);
+  }, [selectedBookForPreview]);
+
   const saveCartToStorage = (updatedCart: CartItem[]) => {
     setCart(updatedCart);
     localStorage.setItem("lurnexa_store_cart", JSON.stringify(updatedCart));
   };
 
+  const safeJson = async (r: Response | null) => {
+    if (!r || !r.ok) return null;
+    const ct = r.headers.get("content-type") || "";
+    if (!ct.includes("application/json")) return null;
+    try {
+      return await r.json();
+    } catch {
+      return null;
+    }
+  };
+
   const fetchPublishedBooks = async () => {
     try {
-      const res = await fetch("/api/textbooks/published");
-      if (res.ok) {
-        const data = await res.json();
+      const [res, catalogRes, launchRes] = await Promise.all([
+        fetch("/api/textbooks/published").catch(() => null),
+        fetch("/api/textbooks/catalog").catch(() => null),
+        fetch("/api/birthday-launch").catch(() => null)
+      ]);
+      const data = await safeJson(res);
+      if (data) {
         setPublishedPdfs(data.files || []);
       }
+      const catalogData = await safeJson(catalogRes);
+      const launchData = await safeJson(launchRes);
+
+      const deletedFromCatalog = Array.isArray(catalogData?.deletedIds)
+        ? catalogData.deletedIds.map(String)
+        : [];
+      const deletedFromLaunch = Array.isArray(launchData?.deletedIds)
+        ? launchData.deletedIds.map(String)
+        : [];
+      const allDeleted = Array.from(new Set([...deletedFromCatalog, ...deletedFromLaunch]));
+      setDeletedBookIds(allDeleted);
+
+      if (catalogData && Array.isArray(catalogData?.publicBooks)) {
+        setStoreCatalogBooks(
+          catalogData.publicBooks
+            .filter((b: any) => !allDeleted.includes(String(b.id)))
+            .map((b: any) => ({
+              id: String(b.id),
+              title: b.title || "Untitled Textbook",
+              code: b.code || "BK",
+              description: b.description || "",
+              price: Number(b.price) || 599,
+              digitalPrice: b.digitalPrice !== undefined ? Number(b.digitalPrice) : undefined,
+              coverImg: b.coverImg || "",
+              previewPdfUrl: b.previewPdfUrl || `/published_books/previews/${b.pdfFileName || "minerals.pdf"}`,
+              customPreviewPdfDataUrl: b.customPreviewPdfDataUrl || "",
+              tableOfContents: Array.isArray(b.tableOfContents) ? b.tableOfContents : [],
+              authors: b.authors || "Lurnexa Academic Press",
+              pages: Number(b.pages) || 220,
+              isbn: b.isbn || "N/A",
+              isbnDigital: b.isbnDigital || "N/A",
+              pdfFileName: b.pdfFileName || "minerals.pdf",
+              tag: b.tag || "New Release",
+              stockStatus: b.stockStatus || "in-stock"
+            }))
+        );
+      }
+      if (launchData && launchData?.isLaunched && Array.isArray(launchData.books)) {
+        setBirthdayLaunchedBooks(
+          launchData.books
+            .filter((b: any) => !allDeleted.includes(String(b.id)))
+            .map((b: any) => ({
+              id: String(b.id),
+              title: b.title,
+              code: b.code || "BK",
+              description: b.description || "",
+              price: Number(b.price) || 599,
+              digitalPrice: Number(b.digitalPrice) || 299,
+              coverImg: b.coverImg || "/portal_coverpages/ai.jpeg",
+              previewPdfUrl: b.previewPdfUrl || `/published_books/previews/${b.pdfFileName || "minerals.pdf"}`,
+              customPreviewPdfDataUrl: b.customPreviewPdfDataUrl || "",
+              tableOfContents: Array.isArray(b.tableOfContents) ? b.tableOfContents : [],
+              authors: b.authors || "Lurnexa Academic Press",
+              pages: Number(b.pages) || 220,
+              isbn: b.isbn || "N/A",
+              isbnDigital: b.isbnDigital || "N/A",
+              pdfFileName: b.pdfFileName || "minerals.pdf",
+              tag: b.tag || "Launched Oct 30",
+              stockStatus: b.stockStatus || "in-stock"
+            }))
+        );
+      }
     } catch (err) {
-      console.error("Failed to fetch published books:", err);
+      console.warn("Failed to fetch published books:", err);
     } finally {
       setLoading(false);
     }
@@ -403,15 +512,7 @@ export default function BookstorePage() {
 
   // Cart Handlers
   const handleAddToCart = (book: TextbookDetails, format: 'physical' | 'soft' = 'physical', plan: string = 'physical', price?: number) => {
-    let coverImg = "/portal_coverpages/minerals.jpeg";
-    if (book.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
-    if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-    if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
-    if (book.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
-    if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
-    if (book.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
-    if (book.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
-    if (book.id === "4") coverImg = "/portal_coverpages/entrepreneurship.jpeg";
+    const coverImg = resolveBookCover(book);
 
     const finalPrice = price !== undefined ? price : book.price;
     const planLabel = format === "physical" ? "Paperback" : `Digital Copy - ${plan.replace(/_/g, " ").toUpperCase()}`;
@@ -444,14 +545,7 @@ export default function BookstorePage() {
       return;
     }
 
-    let coverImg = "/portal_coverpages/minerals.jpeg";
-    if (book.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
-    if (book.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-    if (book.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
-    if (book.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
-    if (book.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
-    if (book.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
-    if (book.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
+    const coverImg = resolveBookCover(book);
 
     const displayTitle = `${book.title} (Digital Rental - ${plan.displayName})`;
 
@@ -506,13 +600,18 @@ export default function BookstorePage() {
   const totalCartQty = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   // Filter books list
-  const filteredBooks = PUBLISHED_BOOKS.filter(book => {
-    const matchesSearch = 
+  const combinedStoreBooks = [
+    ...birthdayLaunchedBooks.filter(lb => !storeCatalogBooks.some(pb => pb.id === lb.id) && !deletedBookIds.includes(String(lb.id))),
+    ...storeCatalogBooks
+  ].filter(b => !deletedBookIds.includes(String(b.id)));
+
+  const filteredBooks = combinedStoreBooks.filter(book => {
+    const matchesSearch =
       book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       book.authors.toLowerCase().includes(searchQuery.toLowerCase()) ||
       book.isbn.includes(searchQuery) ||
       book.isbnDigital.includes(searchQuery);
-    
+
     if (activeCategory === "All") return matchesSearch;
     if (activeCategory === "Best Sellers") return matchesSearch && book.tag === "Best Seller";
     if (activeCategory === "New Releases") return matchesSearch; // All published textbooks are new releases
@@ -528,7 +627,7 @@ export default function BookstorePage() {
 
   return (
     <div suppressHydrationWarning className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans pb-24 antialiased selection:bg-fuchsia-500/10 selection:text-fuchsia-600">
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-lg border border-slate-800 flex items-center gap-2 animate-fadeIn">
@@ -552,10 +651,10 @@ export default function BookstorePage() {
               Browse and order peer-reviewed academic works. We publish high-quality physical textbooks and deliver them nationwide.
             </p>
           </div>
-          
+
           <div className="flex items-center flex-wrap gap-3">
             {currentUser ? (
-              <Link 
+              <Link
                 href="/textbooks/portal/login?view=mybooks"
                 className="inline-flex items-center gap-1.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-md shrink-0"
               >
@@ -563,7 +662,7 @@ export default function BookstorePage() {
                 <span>My Bookshelf ({currentUser.name})</span>
               </Link>
             ) : (
-              <Link 
+              <Link
                 href="/textbooks/portal/login"
                 className="inline-flex items-center gap-1.5 bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-700 px-4 py-2.5 rounded-lg text-xs font-bold border border-fuchsia-200/80 transition-all shadow-sm shrink-0"
               >
@@ -607,7 +706,7 @@ export default function BookstorePage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 mt-10">
-        
+
         {/* Category Controls & Search */}
         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-8">
           {/* Tabs */}
@@ -616,11 +715,10 @@ export default function BookstorePage() {
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  activeCategory === category
-                    ? "bg-white text-[#0F172A] shadow-sm"
-                    : "text-[#64748B] hover:text-[#0F172A]"
-                }`}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeCategory === category
+                  ? "bg-white text-[#0F172A] shadow-sm"
+                  : "text-[#64748B] hover:text-[#0F172A]"
+                  }`}
               >
                 {category}
               </button>
@@ -638,7 +736,7 @@ export default function BookstorePage() {
             />
             <Search size={14} className="absolute left-3.5 top-3.5 text-[#64748B]" />
             {searchQuery && (
-              <button 
+              <button
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-3.5 text-[#64748B] hover:text-slate-800"
               >
@@ -647,7 +745,7 @@ export default function BookstorePage() {
             )}
           </div>
         </div>
-        
+
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32 space-y-4">
             <div className="h-10 w-10 border-4 border-fuchsia-600 border-t-transparent rounded-full animate-spin" />
@@ -672,19 +770,11 @@ export default function BookstorePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredBooks.map((bookItem) => {
-              let coverImg = "/portal_coverpages/minerals.jpeg";
-              if (bookItem.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
-              if (bookItem.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-              if (bookItem.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
-              if (bookItem.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
-              if (bookItem.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
-              if (bookItem.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
-              if (bookItem.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
-              if (bookItem.id === "4") coverImg = "/portal_coverpages/entrepreneurship.jpeg";
+              const coverImg = resolveBookCover(bookItem);
 
               return (
-                <div 
-                  key={bookItem.id} 
+                <div
+                  key={bookItem.id}
                   className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group relative"
                 >
                   {/* Promo Tag */}
@@ -696,14 +786,14 @@ export default function BookstorePage() {
 
                   <div className="space-y-4">
                     {/* Cover presentation */}
-                    <div 
+                    <div
                       onClick={() => setSelectedBookForPreview(bookItem)}
                       className="w-full aspect-[4/5] rounded-xl bg-gradient-to-tr from-slate-100 to-fuchsia-50/40 flex items-center justify-center border border-[#E2E8F0]/50 shadow-inner relative hover:scale-[1.01] transition-all duration-300 cursor-pointer overflow-hidden p-5"
                     >
                       <div className="relative h-full aspect-[1/1.4] shadow-[0_10px_20px_-5px_rgba(0,0,0,0.15)] rounded-r overflow-hidden transition-transform duration-300 group-hover:scale-[1.02]">
-                        <img 
+                        <img
                           src={coverImg}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain bg-slate-900/5"
                           alt={bookItem.title}
                         />
                         <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/20 via-black/5 to-transparent" />
@@ -825,7 +915,7 @@ export default function BookstorePage() {
       {selectedBookForPreview && (
         <div className="fixed inset-0 z-50 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white border border-[#E2E8F0] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative">
-            
+
             {/* Header */}
             <div className="p-5 border-b border-[#E2E8F0] flex justify-between items-center bg-slate-50">
               <div className="flex items-center gap-3">
@@ -839,7 +929,7 @@ export default function BookstorePage() {
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedBookForPreview(null)}
                 className="text-[#64748B] hover:text-[#0F172A] p-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-[#E2E8F0] transition-all font-bold text-xs"
               >
@@ -849,7 +939,7 @@ export default function BookstorePage() {
 
             {/* Content area */}
             <div className="flex-grow flex flex-col md:flex-row min-h-[450px] max-h-[75vh] overflow-hidden bg-slate-50">
-              
+
               {/* Left Details Panel */}
               <div className="w-full md:w-[320px] p-5 bg-white border-r border-[#E2E8F0] flex flex-col justify-between overflow-y-auto space-y-4 shrink-0">
                 <div className="space-y-3">
@@ -884,12 +974,28 @@ export default function BookstorePage() {
                       <span className="font-semibold text-[#0F172A]">English</span>
                     </div>
                   </div>
+
+                  {selectedBookForPreview.tableOfContents && selectedBookForPreview.tableOfContents.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="block text-[9px] font-extrabold text-fuchsia-600 uppercase tracking-wider">
+                        Chapters / Modules ({selectedBookForPreview.tableOfContents.length})
+                      </span>
+                      <ul className="space-y-1 max-h-36 overflow-y-auto pr-1 text-[10px] text-[#475569] bg-slate-50 p-2.5 rounded-xl border border-[#E2E8F0]">
+                        {selectedBookForPreview.tableOfContents.map((ch, idx) => (
+                          <li key={idx} className="flex items-start gap-1.5 leading-snug">
+                            <CheckCircle2 size={11} className="text-fuchsia-600 mt-0.5 shrink-0" />
+                            <span>{ch}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
-                  <div className="space-y-2 pt-2">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-xl font-black text-[#0F172A]">₹{selectedBookForPreview.price}</span>
-                    </div>
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-black text-[#0F172A]">₹{selectedBookForPreview.price}</span>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => {
@@ -920,11 +1026,60 @@ export default function BookstorePage() {
 
               {/* Right PDF Viewer Panel */}
               <div className="flex-grow p-4 bg-slate-100 flex flex-col justify-between overflow-hidden">
-                <iframe 
-                  src={`/published_books/previews/${selectedBookForPreview.pdfFileName || "minerals.pdf"}#toolbar=0&navpanes=0`}
-                  className="w-full h-full min-h-[350px] border-0 rounded-xl shadow-sm bg-white"
-                  title="Sample Book PDF Viewer"
-                />
+                {!isPreviewPdfLoaded ? (
+                  <div className="w-full h-full min-h-[350px] bg-white rounded-2xl border border-slate-200/80 p-6 flex flex-col items-center justify-center text-center space-y-4 shadow-sm">
+                    <div className="w-16 h-16 rounded-2xl bg-fuchsia-50 border border-fuchsia-200 flex items-center justify-center text-fuchsia-600 shadow-sm">
+                      <FileText size={32} />
+                    </div>
+                    <div className="space-y-1.5 max-w-sm">
+                      <h4 className="text-sm font-bold text-[#0F172A] line-clamp-2">{selectedBookForPreview.title}</h4>
+                      <p className="text-xs text-[#64748B]">
+                        Verified Sample Preview &bull; {selectedBookForPreview.pages} Pages
+                      </p>
+                      <p className="text-[11px] text-[#94A3B8] leading-relaxed pt-1">
+                        Click below to view the authentic sample module and textbook overview in your browser.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsPreviewPdfLoaded(true)}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs shadow-md shadow-fuchsia-500/20 transition-all cursor-pointer active:scale-95"
+                    >
+                      <FileText size={15} />
+                      <span>Load Sample PDF Preview</span>
+                    </button>
+                    <div className="flex items-center gap-1.5 text-[10px] text-[#64748B] pt-2">
+                      <Lock size={12} className="text-fuchsia-600 shrink-0" />
+                      <span>Protected academic preview. Complete book delivered post-purchase.</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col h-full space-y-2">
+                    <div className="flex items-center justify-between pb-1 shrink-0">
+                      <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText size={12} className="text-fuchsia-600" /> Live Sample Viewer
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsPreviewPdfLoaded(false)}
+                        className="text-[10px] font-semibold text-slate-500 hover:text-slate-800 bg-white border border-slate-200 px-2.5 py-1 rounded-lg transition-all hover:bg-slate-50"
+                      >
+                        Unload PDF
+                      </button>
+                    </div>
+                    <iframe
+                      src={
+                        selectedBookForPreview.customPreviewPdfDataUrl
+                          ? selectedBookForPreview.customPreviewPdfDataUrl
+                          : `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(
+                              selectedBookForPreview.id
+                            )}#toolbar=0&navpanes=0&view=FitH`
+                      }
+                      className="w-full flex-grow min-h-[350px] border-0 rounded-xl shadow-sm bg-white"
+                      title="Sample Book PDF Viewer"
+                    />
+                  </div>
+                )}
                 <div className="bg-white p-2.5 border border-[#E2E8F0] flex items-center gap-2 mt-2 rounded-xl shrink-0">
                   <Lock size={12} className="text-fuchsia-600 shrink-0" />
                   <p className="text-[9px] text-[#64748B] font-semibold leading-normal">
@@ -942,10 +1097,10 @@ export default function BookstorePage() {
       {isCartOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           <div className="absolute inset-0 bg-[#0F172A]/40 backdrop-blur-sm transition-opacity" onClick={() => setIsCartOpen(false)} />
-          
+
           <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
             <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col h-full border-l border-[#E2E8F0]">
-              
+
               {/* Cart Header */}
               <div className="p-6 border-b border-[#E2E8F0] flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -984,7 +1139,7 @@ export default function BookstorePage() {
                           <h4 className="text-xs font-bold text-[#0F172A] line-clamp-1 leading-tight">{item.title}</h4>
                           <span className="text-xs font-extrabold text-fuchsia-600 mt-1 block">₹{item.price}</span>
                         </div>
-                        
+
                         <div className="flex items-center justify-between">
                           {/* Quantity control */}
                           <div className="flex items-center bg-slate-50 border border-[#E2E8F0] rounded-lg px-1.5 py-0.5">
@@ -1074,7 +1229,7 @@ export default function BookstorePage() {
       {selectedBookForPurchase && (
         <div className="fixed inset-0 z-50 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white border border-[#E2E8F0] rounded-3xl w-full max-w-xl shadow-2xl p-6 relative animate-scaleIn flex flex-col max-h-[90vh]">
-            
+
             {/* Header */}
             <div className="flex items-start justify-between pb-3 border-b border-slate-100 shrink-0">
               <div>
@@ -1110,11 +1265,10 @@ export default function BookstorePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div
                     onClick={() => setPurchaseFormat("physical")}
-                    className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
-                      purchaseFormat === "physical"
-                        ? "border-fuchsia-600 bg-fuchsia-50/20"
-                        : "border-slate-200"
-                    }`}
+                    className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${purchaseFormat === "physical"
+                      ? "border-fuchsia-600 bg-fuchsia-50/20"
+                      : "border-slate-200"
+                      }`}
                   >
                     <ShoppingBag size={24} className={purchaseFormat === "physical" ? "text-fuchsia-600" : "text-slate-400"} />
                     <span className="text-xs font-bold text-slate-900">Paperback</span>
@@ -1123,11 +1277,10 @@ export default function BookstorePage() {
 
                   <div
                     onClick={() => setPurchaseFormat("soft")}
-                    className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${
-                      purchaseFormat === "soft"
-                        ? "border-fuchsia-600 bg-fuchsia-50/20"
-                        : "border-slate-200"
-                    }`}
+                    className={`border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center gap-2 hover:border-fuchsia-500/50 ${purchaseFormat === "soft"
+                      ? "border-fuchsia-600 bg-fuchsia-50/20"
+                      : "border-slate-200"
+                      }`}
                   >
                     <BookOpen size={24} className={purchaseFormat === "soft" ? "text-fuchsia-600" : "text-slate-400"} />
                     <span className="text-xs font-bold text-slate-900">Digital Copy</span>
@@ -1142,7 +1295,7 @@ export default function BookstorePage() {
                   <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
                     Select Plan Package {["3", "5"].includes(selectedBookForPurchase?.id || "") && "(Multiselect Available)"}
                   </span>
-                  
+
                   <div className="space-y-2.5">
                     {["3", "5"].includes(selectedBookForPurchase?.id || "") ? (
                       <>
@@ -1159,11 +1312,10 @@ export default function BookstorePage() {
                               setSelectedSoftOption(isCaseletOn ? "book_caselet" : "book_only");
                             }
                           }}
-                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                            selectedSoftOption === "book_only" || selectedSoftOption === "book_caselet"
-                              ? 'bg-white border-fuchsia-600 shadow-sm text-slate-900'
-                              : 'bg-slate-100/70 border-slate-200 text-slate-500 hover:border-slate-300'
-                          }`}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${selectedSoftOption === "book_only" || selectedSoftOption === "book_caselet"
+                            ? 'bg-white border-fuchsia-600 shadow-sm text-slate-900'
+                            : 'bg-slate-100/70 border-slate-200 text-slate-500 hover:border-slate-300'
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <input
@@ -1181,8 +1333,8 @@ export default function BookstorePage() {
                           </div>
                           <span className="text-xs font-bold text-fuchsia-600">
                             ₹{purchaseFormat === "soft"
-                              ? getSoftCopyPrice("book_only", selectedBookForPurchase?.id)
-                              : getPhysicalPrice("book_only", selectedBookForPurchase?.id)}
+                              ? getSoftCopyPrice("book_only", selectedBookForPurchase?.id, selectedBookForPurchase)
+                              : getPhysicalPrice("book_only", selectedBookForPurchase?.id, selectedBookForPurchase)}
                           </span>
                         </div>
 
@@ -1199,11 +1351,10 @@ export default function BookstorePage() {
                               setSelectedSoftOption(isBookOn ? "book_caselet" : "caselet");
                             }
                           }}
-                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                            selectedSoftOption === "caselet" || selectedSoftOption === "book_caselet"
-                              ? 'bg-white border-fuchsia-600 shadow-sm text-slate-900'
-                              : 'bg-slate-100/70 border-slate-200 text-slate-500 hover:border-slate-300'
-                          }`}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${selectedSoftOption === "caselet" || selectedSoftOption === "book_caselet"
+                            ? 'bg-white border-fuchsia-600 shadow-sm text-slate-900'
+                            : 'bg-slate-100/70 border-slate-200 text-slate-500 hover:border-slate-300'
+                            }`}
                         >
                           <div className="flex items-center gap-3">
                             <input
@@ -1219,8 +1370,8 @@ export default function BookstorePage() {
                           </div>
                           <span className="text-xs font-bold text-fuchsia-600">
                             ₹{purchaseFormat === "soft"
-                              ? getSoftCopyPrice("caselet", selectedBookForPurchase?.id)
-                              : getPhysicalPrice("caselet", selectedBookForPurchase?.id)}
+                              ? getSoftCopyPrice("caselet", selectedBookForPurchase?.id, selectedBookForPurchase)
+                              : getPhysicalPrice("caselet", selectedBookForPurchase?.id, selectedBookForPurchase)}
                           </span>
                         </div>
                       </>
@@ -1236,9 +1387,9 @@ export default function BookstorePage() {
                         <div className="flex-1 flex justify-between text-xs font-bold text-slate-900">
                           <span>Book</span>
                           <span className="text-fuchsia-600">
-                            ₹{purchaseFormat === "soft" 
-                              ? getSoftCopyPrice("book_only", selectedBookForPurchase?.id) 
-                              : getPhysicalPrice("book_only", selectedBookForPurchase?.id)}
+                            ₹{purchaseFormat === "soft"
+                              ? getSoftCopyPrice("book_only", selectedBookForPurchase?.id, selectedBookForPurchase)
+                              : getPhysicalPrice("book_only", selectedBookForPurchase?.id, selectedBookForPurchase)}
                           </span>
                         </div>
                       </label>
@@ -1264,10 +1415,10 @@ export default function BookstorePage() {
                 onClick={() => {
                   if (!selectedBookForPurchase) return;
                   const finalPlan = selectedSoftOption;
-                  const finalPrice = purchaseFormat === "soft" 
-                    ? getSoftCopyPrice(finalPlan, selectedBookForPurchase.id) 
-                    : getPhysicalPrice(finalPlan, selectedBookForPurchase.id);
-                  
+                  const finalPrice = purchaseFormat === "soft"
+                    ? getSoftCopyPrice(finalPlan, selectedBookForPurchase.id, selectedBookForPurchase)
+                    : getPhysicalPrice(finalPlan, selectedBookForPurchase.id, selectedBookForPurchase);
+
                   if (modalMode === "cart") {
                     handleAddToCart(selectedBookForPurchase, purchaseFormat || "physical", finalPlan, finalPrice);
                     setSelectedBookForPurchase(null);
@@ -1307,7 +1458,7 @@ export default function BookstorePage() {
             <div className="w-16 h-16 bg-fuchsia-50 rounded-full flex items-center justify-center mx-auto text-fuchsia-600 border border-fuchsia-100 shadow-sm">
               <User size={30} />
             </div>
-            
+
             <div className="space-y-2">
               <h3 className="text-xl font-black text-[#0F172A]">Log In or Sign Up Required</h3>
               <p className="text-xs text-[#64748B] leading-relaxed">
@@ -1329,7 +1480,7 @@ export default function BookstorePage() {
               <button
                 onClick={() => {
                   setShowLoginPromptModal(false);
-                  const queryStr = pendingBuyBook 
+                  const queryStr = pendingBuyBook
                     ? `redirect=checkout&bookId=${pendingBuyBook.book.id}&format=${pendingBuyBook.format}&plan=${pendingBuyBook.plan}`
                     : `redirect=checkout`;
                   router.push(`/textbooks/portal/login?${queryStr}`);

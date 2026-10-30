@@ -6,23 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
 
-
 export default function SetPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState<string | null>(null);
   const [session, setSession] = useState<string | null>(null);
-  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL &&
+    process.env.NEXT_PUBLIC_API_BASE_URL !== "undefined"
+      ? process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/+$/, "")
+      : "https://api.lurnexa.in";
 
   // 🔹 Load email & session from localStorage
   useEffect(() => {
     const storedEmail = localStorage.getItem("email")?.trim();
     const storedSession = localStorage.getItem("session")?.trim();
-    console.log("Stored Email:", storedEmail);
-    console.log("Stored Session:", storedSession);
-   if (!storedEmail || !storedSession) {
+    if (!storedEmail || !storedSession) {
       setError("Invalid or expired password reset session.");
       return;
     }
@@ -46,22 +48,25 @@ export default function SetPassword() {
     setError("");
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/complete-new-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email,
-            new_password: newPassword,
-            session: session,
-          }),
-        }
-      );
+      const res = await fetch(`${API_BASE_URL}/auth/complete-new-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          new_password: newPassword,
+          session: session,
+        }),
+      });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error("Server returned an invalid response. Please try again.");
+      }
 
       if (!res.ok) {
         throw new Error(data.detail || data.message || "Password update failed");
@@ -89,51 +94,40 @@ export default function SetPassword() {
   };
 
   return (
-   <div className="min-h-screen flex items-center justify-center bg-gray-50">
-  <div className="w-full max-w-md space-y-5 bg-white p-6 rounded-xl shadow">
-    <h2 className="text-xl font-semibold text-center">
-      Set New Password
-    </h2>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md space-y-5 bg-white p-6 rounded-xl shadow">
+        <h2 className="text-xl font-semibold text-center">Set New Password</h2>
 
-    <div className="space-y-2">
-      <Label htmlFor="new-password">New Password</Label>
+        <div className="space-y-2">
+          <Label htmlFor="new-password">New Password</Label>
 
-      {/* ONLY ADDITION: relative wrapper */}
-      <div className="relative">
-        <Input
-          id="new-password"
-          type={showNewPassword ? "text" : "password"}
-          placeholder="Enter a strong password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className="pr-10"
-        />
+          {/* ONLY ADDITION: relative wrapper */}
+          <div className="relative">
+            <Input
+              id="new-password"
+              type={showNewPassword ? "text" : "password"}
+              placeholder="Enter a strong password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="pr-10"
+            />
 
-        <button
-          type="button"
-          onClick={() => setShowNewPassword(!showNewPassword)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-        >
-          {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+
+        {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+
+        <Button onClick={handleUpdate} disabled={loading} className="w-full">
+          {loading ? "Updating..." : "Update Password"}
+        </Button>
       </div>
     </div>
-
-    {error && (
-      <p className="text-red-600 text-sm text-center">
-        {error}
-      </p>
-    )}
-
-    <Button
-      onClick={handleUpdate}
-      disabled={loading}
-      className="w-full"
-    >
-      {loading ? "Updating..." : "Update Password"}
-    </Button>
-  </div>
-</div>
-
   );
 }

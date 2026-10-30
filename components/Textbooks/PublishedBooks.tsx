@@ -1,23 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import { BookOpen, ShoppingBag, Eye, X, User, Tag, ShieldAlert, Calendar, ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { ShoppingBag, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
+import { Book, PUBLISHED_BOOKS_DATA } from "@/lib/data/books";
 
 export default function PublishedBooks() {
-  const router = useRouter();
+  const [allBooks, setAllBooks] = useState<Book[]>(PUBLISHED_BOOKS_DATA);
+
+  useEffect(() => {
+    fetch("/api/textbooks/catalog")
+      .then((res) =>
+        res.ok && (res.headers.get("content-type") || "").includes("application/json")
+          ? res.json()
+          : null
+      )
+      .then((data) => {
+        if (Array.isArray(data?.publicBooks) && data.publicBooks.length > 0) {
+          setAllBooks(data.publicBooks);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="py-4 w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto px-4">
-        {PUBLISHED_BOOKS_DATA.map((bookItem) => {
+        {allBooks.map((bookItem) => {
+          const isBirthdayLaunch = bookItem.id === "10" || bookItem.id === "11";
           return (
             <div 
               key={bookItem.id} 
-              className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group"
+              className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group relative"
             >
+              {isBirthdayLaunch && (
+                <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 text-[8px] text-amber-950 font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-2.5 py-1 rounded-full shadow-sm">
+                  <Sparkles size={10} />
+                  {bookItem.tag || "Launched Oct 30"}
+                </span>
+              )}
               <div className="space-y-4">
                 {/* Cover presentation */}
                 <Link 
@@ -27,7 +48,7 @@ export default function PublishedBooks() {
                   <div className="relative h-full aspect-[1/1.4] shadow-[0_10px_20px_-5px_rgba(0,0,0,0.15)] rounded-r overflow-hidden transition-transform duration-300 group-hover:scale-[1.02]">
                     <img 
                       src={bookItem.coverImg}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain bg-slate-900/5"
                       alt={bookItem.title}
                     />
                     {/* Spine overlay effect */}
