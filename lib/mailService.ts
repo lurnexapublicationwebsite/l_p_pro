@@ -20,10 +20,10 @@ export const getTransporter = () => {
 };
 
 export const getQuotationTransporter = () => {
-  const host = process.env.QUOTATION_SMTP_HOST;
-  const port = parseInt(process.env.QUOTATION_SMTP_PORT || "587", 10);
-  const user = process.env.QUOTATION_SMTP_USER;
-  const pass = process.env.QUOTATION_SMTP_PASS;
+  const host = process.env.QUOTATION_SMTP_HOST || process.env.SMTP_HOST;
+  const port = parseInt(process.env.QUOTATION_SMTP_PORT || process.env.SMTP_PORT || "587", 10);
+  const user = process.env.QUOTATION_SMTP_USER || process.env.SMTP_USER;
+  const pass = process.env.QUOTATION_SMTP_PASS || process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
     return null;
@@ -34,6 +34,9 @@ export const getQuotationTransporter = () => {
     port,
     secure: port === 465,
     auth: { user, pass },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 };
 

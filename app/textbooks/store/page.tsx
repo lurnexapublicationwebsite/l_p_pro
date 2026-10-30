@@ -26,12 +26,14 @@ import {
 import Link from "next/link";
 import RentalPlanSelector from "@/components/Textbooks/RentalPlanSelector";
 import { RentalPlan } from "@/lib/data/rentals";
+import { slugifyBookTitle } from "@/lib/data/books";
 import { downloadAndroidApk, useIsAndroidDevice } from "@/lib/androidApp";
 
 interface TextbookDetails {
   id: string;
   title: string;
   code: string;
+  slug?: string;
   description: string;
   price: number;
   digitalPrice?: number;
@@ -174,6 +176,39 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     isbnDigital: "978-81-903315-2-4",
     pdfFileName: "entrepreneurship.pdf",
     tag: "New Release",
+    stockStatus: "in-stock"  },
+  {
+    id: "12",
+    title: "C PROGRAMMING In 24 Days",
+    code: "CP",
+    description: "This textbook presents the fundamentals of the C programming language in a structured, classroom-tested format designed for beginners. It covers program structure, tokens, operators, expressions, control flow, arrays, strings, functions, structures, pointers, and preprocessor directives through practical examples.",
+    price: 350,
+    digitalPrice: 200,
+    authors: "Dr. M. Sayeekumar, Dr. C. Poongodi",
+    pages: 139,
+    isbn: "978-81-180403-5-4",
+    isbnDigital: "N/A",
+    pdfFileName: "CPROGRAMMING.pdf",
+    coverImg: "/portal_coverpages/CPROGRAMMING.jpeg",
+    previewPdfUrl: "/published_books/previews/CPROGRAMMING.pdf",
+    tag: "New Release",
+    stockStatus: "in-stock"
+  },
+  {
+    id: "13",
+    title: "Data Analytics for Business: Concepts, Methods, Visualization, and AI-Driven Decision Making",
+    code: "DA",
+    description: "This book introduces the foundational concepts, practical methods, visualization techniques, and AI-driven frameworks essential for modern business analytics. It connects analytical concepts with business questions, covering descriptive, diagnostic, predictive, and prescriptive analytics alongside industry tools like SQL, Excel, Power BI, Tableau, R, and Python.",
+    price: 599,
+    digitalPrice: 299,
+    authors: "Dr Chinmaya Kumar Swain, Dr Abhilash Ponnam, Dr Guru Prasad, Mr Tulasi Ram",
+    pages: 389,
+    isbn: "978-81-180403-3-0",
+    isbnDigital: "978-81-180403-4-7",
+    pdfFileName: "data-analytics.pdf",
+    coverImg: "/portal_coverpages/data_analytics.jpeg",
+    previewPdfUrl: "/published_books/previews/data-analytics.pdf",
+    tag: "Featured",
     stockStatus: "in-stock"
   }
 ];
@@ -198,6 +233,8 @@ const resolveBookCover = (book: TextbookDetails): string => {
   if (book.id === "8") return "/portal_coverpages/python_programming.jpeg";
   if (book.id === "9") return "/portal_coverpages/nosql.jpeg";
   if (book.id === "4") return "/portal_coverpages/entrepreneurship.jpeg";
+  if (book.id === "12") return "/portal_coverpages/CPROGRAMMING.jpeg";
+  if (book.id === "13") return "/portal_coverpages/data_analytics.jpeg";
   return "/portal_coverpages/minerals.jpeg";
 };
 
@@ -257,6 +294,14 @@ const getSoftCopyPrice = (plan: string, bookId?: string, bookObj?: TextbookDetai
     if (plan === "book_only") return 269;
     return 269;
   }
+  if (bookId === "12") {
+    if (plan === "book_only") return 200;
+    return 200;
+  }
+  if (bookId === "13") {
+    if (plan === "book_only") return 299;
+    return 299;
+  }
   if (bookId === "6") {
     const baseSoft = bookObj?.digitalPrice ? Number(bookObj.digitalPrice) : 199;
     if (plan === "book_only") return baseSoft;
@@ -282,7 +327,6 @@ export default function BookstorePage() {
   const [loading, setLoading] = useState(true);
   const [publishedPdfs, setPublishedPdfs] = useState<string[]>([]);
   const [storeCatalogBooks, setStoreCatalogBooks] = useState<TextbookDetails[]>(PUBLISHED_BOOKS);
-  const [birthdayLaunchedBooks, setBirthdayLaunchedBooks] = useState<TextbookDetails[]>([]);
   const [deletedBookIds, setDeletedBookIds] = useState<string[]>([]);
   const [selectedBookForPreview, setSelectedBookForPreview] = useState<TextbookDetails | null>(null);
   const [isPreviewPdfLoaded, setIsPreviewPdfLoaded] = useState(false);
@@ -425,25 +469,19 @@ export default function BookstorePage() {
 
   const fetchPublishedBooks = async () => {
     try {
-      const [res, catalogRes, launchRes] = await Promise.all([
+      const [res, catalogRes] = await Promise.all([
         fetch("/api/textbooks/published").catch(() => null),
-        fetch("/api/textbooks/catalog").catch(() => null),
-        fetch("/api/birthday-launch").catch(() => null)
+        fetch("/api/textbooks/catalog").catch(() => null)
       ]);
       const data = await safeJson(res);
       if (data) {
         setPublishedPdfs(data.files || []);
       }
       const catalogData = await safeJson(catalogRes);
-      const launchData = await safeJson(launchRes);
 
-      const deletedFromCatalog = Array.isArray(catalogData?.deletedIds)
+      const allDeleted = Array.isArray(catalogData?.deletedIds)
         ? catalogData.deletedIds.map(String)
         : [];
-      const deletedFromLaunch = Array.isArray(launchData?.deletedIds)
-        ? launchData.deletedIds.map(String)
-        : [];
-      const allDeleted = Array.from(new Set([...deletedFromCatalog, ...deletedFromLaunch]));
       setDeletedBookIds(allDeleted);
 
       if (catalogData && Array.isArray(catalogData?.publicBooks)) {
@@ -467,31 +505,6 @@ export default function BookstorePage() {
               isbnDigital: b.isbnDigital || "N/A",
               pdfFileName: b.pdfFileName || "minerals.pdf",
               tag: b.tag || "New Release",
-              stockStatus: b.stockStatus || "in-stock"
-            }))
-        );
-      }
-      if (launchData && launchData?.isLaunched && Array.isArray(launchData.books)) {
-        setBirthdayLaunchedBooks(
-          launchData.books
-            .filter((b: any) => !allDeleted.includes(String(b.id)))
-            .map((b: any) => ({
-              id: String(b.id),
-              title: b.title,
-              code: b.code || "BK",
-              description: b.description || "",
-              price: Number(b.price) || 599,
-              digitalPrice: Number(b.digitalPrice) || 299,
-              coverImg: b.coverImg || "/portal_coverpages/ai.jpeg",
-              previewPdfUrl: b.previewPdfUrl || `/published_books/previews/${b.pdfFileName || "minerals.pdf"}`,
-              customPreviewPdfDataUrl: b.customPreviewPdfDataUrl || "",
-              tableOfContents: Array.isArray(b.tableOfContents) ? b.tableOfContents : [],
-              authors: b.authors || "Lurnexa Academic Press",
-              pages: Number(b.pages) || 220,
-              isbn: b.isbn || "N/A",
-              isbnDigital: b.isbnDigital || "N/A",
-              pdfFileName: b.pdfFileName || "minerals.pdf",
-              tag: b.tag || "Launched Oct 30",
               stockStatus: b.stockStatus || "in-stock"
             }))
         );
@@ -600,10 +613,7 @@ export default function BookstorePage() {
   const totalCartQty = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   // Filter books list
-  const combinedStoreBooks = [
-    ...birthdayLaunchedBooks.filter(lb => !storeCatalogBooks.some(pb => pb.id === lb.id) && !deletedBookIds.includes(String(lb.id))),
-    ...storeCatalogBooks
-  ].filter(b => !deletedBookIds.includes(String(b.id)));
+  const combinedStoreBooks = storeCatalogBooks.filter(b => !deletedBookIds.includes(String(b.id)));
 
   const filteredBooks = combinedStoreBooks.filter(book => {
     const matchesSearch =
@@ -835,9 +845,13 @@ export default function BookstorePage() {
                       </div>
 
                       <div className="h-10 flex items-center">
-                        <h3 className="text-sm font-bold text-[#0F172A] line-clamp-2 leading-snug group-hover:text-fuchsia-600 transition-colors duration-200" title={bookItem.title}>
+                        <Link
+                          href={`/textbooks/${bookItem.slug || slugifyBookTitle(bookItem.title)}`}
+                          className="text-sm font-bold text-[#0F172A] line-clamp-2 leading-snug hover:text-fuchsia-600 transition-colors duration-200 block"
+                          title={bookItem.title}
+                        >
                           {bookItem.title}
-                        </h3>
+                        </Link>
                       </div>
 
                       <p className="text-[11px] text-[#64748B] font-semibold line-clamp-1">
@@ -1071,7 +1085,7 @@ export default function BookstorePage() {
                       src={
                         selectedBookForPreview.customPreviewPdfDataUrl
                           ? selectedBookForPreview.customPreviewPdfDataUrl
-                          : `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(
+                          : `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(
                               selectedBookForPreview.id
                             )}#toolbar=0&navpanes=0&view=FitH`
                       }

@@ -3,23 +3,27 @@ import { pool, initDbTables } from "@/lib/dbPool";
 import { getQuotationTransporter } from "@/lib/mailService";
 import crypto from "crypto";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
-    // Ensure tables are initialized (this also seeds the default admin user)
+    // Ensure tables are initialized (this also seeds the default admin user if none exists)
     await initDbTables();
 
-    const { email, password } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const { email, password } = body;
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
     }
 
+    const cleanEmail = email.toLowerCase().trim();
     const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
 
     // Fetch user from quotation_users
     const userResult = await pool.query(
       "SELECT * FROM quotation_users WHERE email = $1 AND password_hash = $2",
-      [email.toLowerCase().trim(), passwordHash]
+      [cleanEmail, passwordHash]
     );
 
     if (userResult.rows.length === 0) {
@@ -31,23 +35,22 @@ export async function POST(request: Request) {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
 
     // Upsert or insert OTP into quotation_otps
-    // Check if OTP already exists for this email
-    const otpExist = await pool.query("SELECT * FROM quotation_otps WHERE email = $1", [email]);
+    const otpExist = await pool.query("SELECT * FROM quotation_otps WHERE email = $1", [cleanEmail]);
     if (otpExist.rows.length > 0) {
       await pool.query(
         "UPDATE quotation_otps SET otp_code = $1, expires_at = $2, attempts = 0 WHERE email = $3",
-        [otp, expiresAt, email]
+        [otp, expiresAt, cleanEmail]
       );
     } else {
       await pool.query(
         "INSERT INTO quotation_otps (email, otp_code, expires_at) VALUES ($1, $2, $3)",
-        [email, otp, expiresAt]
+        [cleanEmail, otp, expiresAt]
       );
     }
 
     // Send OTP email
     const transporter = getQuotationTransporter();
-    const smtpFrom = process.env.QUOTATION_SMTP_FROM || process.env.QUOTATION_SMTP_USER || "noreply@lurnexa.in";
+    const smtpFrom = process.env.QUOTATION_SMTP_FROM || process.env.QUOTATION_SMTP_USER || process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@lurnexa.in";
 
     const subject = "Your Admin Login Security Code";
     const message = `Hello,
@@ -62,23 +65,32 @@ Lurnexa Security`;
 
     if (!transporter) {
       console.warn("⚠️ SMTP Transporter not configured. Outputting OTP locally:");
-      console.log(`[OTP] Email: ${email}, Code: ${otp}`);
+      console.log(`[OTP] Email: ${cleanEmail}, Code: ${otp}`);
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { error: "Email delivery system is not configured on the server. Please check SMTP settings." },
+          { status: 500 }
+        );
+      }
     } else {
       try {
         await transporter.sendMail({
           from: smtpFrom,
-          to: email,
+          to: cleanEmail,
           subject,
           text: message,
         });
-        console.log(`✅ Admin OTP sent successfully to: ${email}`);
-      } catch (mailError) {
+        console.log(`✅ Admin OTP sent successfully to: ${cleanEmail}`);
+      } catch (mailError: any) {
         console.error("❌ Error sending admin OTP email:", mailError);
-        return NextResponse.json({ error: "Failed to send verification code. Please try again." }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to send verification code: " + (mailError?.message || "Email error. Please try again.") },
+          { status: 500 }
+        );
       }
     }
 
-    return NextResponse.json({ success: true, email });
+    return NextResponse.json({ success: true, email: cleanEmail });
   } catch (error: any) {
     console.error("❌ Login Error:", error);
     return NextResponse.json(

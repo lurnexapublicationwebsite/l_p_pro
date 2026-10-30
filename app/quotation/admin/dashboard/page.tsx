@@ -18,7 +18,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch(`/api/quotation/admin/dashboard?t=${Date.now()}`, {
+        const res = await fetch(`/api/quotation/admin/dashboard/?t=${Date.now()}`, {
+          credentials: "include",
           cache: "no-store",
         });
         if (res.status === 401) {
@@ -63,7 +64,7 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
           </div>
-          <Link href="/quotation/admin/books" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1">
+          <Link href="/quotation/admin/books/" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1">
             <span>Manage books</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M5 12h14M12 5l7 7-7 7" />
@@ -85,7 +86,7 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
           </div>
-          <Link href="/quotation/admin/requests" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1">
+          <Link href="/quotation/admin/requests/" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1">
             <span>View requests</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M5 12h14M12 5l7 7-7 7" />
@@ -107,7 +108,7 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
           </div>
-          <Link href="/quotation/admin/quotations" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1">
+          <Link href="/quotation/admin/quotations/" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1">
             <span>View sent</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M5 12h14M12 5l7 7-7 7" />
@@ -129,7 +130,7 @@ export default function AdminDashboardPage() {
               </svg>
             </div>
           </div>
-          <Link href="/quotation/admin/orders" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1">
+          <Link href="/quotation/admin/orders/" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] flex items-center gap-1">
             <span>View orders</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M5 12h14M12 5l7 7-7 7" />

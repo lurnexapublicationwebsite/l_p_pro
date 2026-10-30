@@ -1949,20 +1949,13 @@ export async function initDbTables() {
 
     const crypto = require("crypto");
     const defaultHash = crypto.createHash("sha256").update("admin123").digest("hex");
-    const adminCheck = await pool.query("SELECT * FROM quotation_users WHERE email = $1", ["lurnexaquotations@gmail.com"]);
+    const adminCheck = await pool.query("SELECT * FROM quotation_users LIMIT 1");
     if (adminCheck.rows.length === 0) {
       await pool.query(
         "INSERT INTO quotation_users (email, password_hash) VALUES ($1, $2)",
         ["lurnexaquotations@gmail.com", defaultHash]
       );
-    } else {
-      await pool.query(
-        "UPDATE quotation_users SET password_hash = $1 WHERE email = $2",
-        [defaultHash, "lurnexaquotations@gmail.com"]
-      );
     }
-    // Delete any other users so that only lurnexaquotations@gmail.com remains
-    await pool.query("DELETE FROM quotation_users WHERE email != $1", ["lurnexaquotations@gmail.com"]);
 
   } catch (err) {
     console.error("❌ Error initializing database tables in PostgreSQL:", err);

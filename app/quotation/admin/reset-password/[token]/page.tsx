@@ -23,7 +23,9 @@ export default function ResetPasswordConfirmPage() {
     async function checkToken() {
       if (!token) return;
       try {
-        const res = await fetch(`/api/quotation/admin/reset-password?token=${token}`);
+        const res = await fetch(`/api/quotation/admin/reset-password/?token=${token}`, {
+          cache: "no-store",
+        });
         const data = await res.json();
         setIsValid(data.valid);
       } catch (err) {
@@ -46,9 +48,10 @@ export default function ResetPasswordConfirmPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/quotation/admin/reset-password", {
+      const res = await fetch("/api/quotation/admin/reset-password/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ token, password }),
       });
 
@@ -59,7 +62,7 @@ export default function ResetPasswordConfirmPage() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push("/quotation/admin/login");
+        router.push("/quotation/admin/login/");
       }, 3000);
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");
@@ -176,9 +179,6 @@ export default function ResetPasswordConfirmPage() {
           margin-top: 1rem;
           width: 100%;
           cursor: pointer;
-          display: block;
-          text-align: center;
-          text-decoration: none;
         }
 
         .btn-login:hover {
@@ -230,6 +230,14 @@ export default function ResetPasswordConfirmPage() {
           0% { transform: translate(0, 0); }
           100% { transform: translate(30px, -30px); }
         }
+
+        .icon-large {
+          text-align: center;
+          margin-bottom: 1.5rem;
+          color: #10b981;
+          display: flex;
+          justify-content: center;
+        }
       `}} />
 
       <div className="login-body">
@@ -238,11 +246,26 @@ export default function ResetPasswordConfirmPage() {
         
         <div className="login-wrapper">
           <div className="glass-panel">
-            {isValid ? (
+            {success ? (
+              <>
+                <div className="icon-large">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                  </svg>
+                </div>
+                <div className="login-header">
+                  <h2>Password Updated!</h2>
+                  <p>Your administrative password has been securely reset. Redirecting you to login page...</p>
+                </div>
+                <button onClick={() => router.push("/quotation/admin/login/")} className="btn-login">
+                  Go to Login Now
+                </button>
+              </>
+            ) : isValid ? (
               <>
                 <div className="login-header">
                   <h2>Set New Password</h2>
-                  <p>Please enter your new password twice so we can verify you typed it in correctly.</p>
+                  <p>Choose a secure, strong password for your admin account.</p>
                 </div>
                 
                 <form onSubmit={handleSubmit}>
@@ -257,20 +280,6 @@ export default function ResetPasswordConfirmPage() {
                       fontSize: "0.9rem"
                     }}>
                       {error}
-                    </div>
-                  )}
-
-                  {success && (
-                    <div className="alert alert-success" style={{
-                      background: "rgba(40, 167, 69, 0.2)",
-                      border: "1px solid rgba(40, 167, 69, 0.4)",
-                      color: "#85e085",
-                      borderRadius: "12px",
-                      padding: "10px 15px",
-                      marginBottom: "1rem",
-                      fontSize: "0.9rem"
-                    }}>
-                      Success! Redirecting to login...
                     </div>
                   )}
                   
@@ -293,7 +302,7 @@ export default function ResetPasswordConfirmPage() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
                           <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755q-.247.248-.517.486z"/>
                           <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829"/>
-                          <path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12-1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/>
+                          <path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/>
                         </svg>
                       ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
@@ -323,7 +332,7 @@ export default function ResetPasswordConfirmPage() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
                           <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755q-.247.248-.517.486z"/>
                           <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829"/>
-                          <path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12-1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/>
+                          <path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/>
                         </svg>
                       ) : (
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
@@ -346,7 +355,7 @@ export default function ResetPasswordConfirmPage() {
                   <p style={{ color: "#ff6b6b" }}>The password reset link was invalid, possibly because it has already been used.</p>
                 </div>
                 <button 
-                  onClick={() => router.push("/quotation/admin/forgot-password")} 
+                  onClick={() => router.push("/quotation/admin/forgot-password/")} 
                   className="btn-login"
                 >
                   Request a new password reset

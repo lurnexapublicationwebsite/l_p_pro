@@ -3,18 +3,24 @@ import { pool } from "@/lib/dbPool";
 import { signQuotationToken } from "@/lib/quotationAuth";
 import { cookies } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
-    const { email, otp } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const { email, otp } = body;
 
     if (!email || !otp) {
       return NextResponse.json({ error: "Email and verification code are required" }, { status: 400 });
     }
 
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanOtp = String(otp).trim();
+
     // Retrieve OTP from quotation_otps
     const otpResult = await pool.query(
       "SELECT * FROM quotation_otps WHERE email = $1 ORDER BY id DESC LIMIT 1",
-      [email]
+      [cleanEmail]
     );
 
     if (otpResult.rows.length === 0) {
@@ -29,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     // Check if code matches
-    if (otpRecord.otp_code !== otp) {
+    if (String(otpRecord.otp_code).trim() !== cleanOtp) {
       // Increment attempts
       await pool.query("UPDATE quotation_otps SET attempts = attempts + 1 WHERE id = $1", [otpRecord.id]);
       return NextResponse.json({ error: "Invalid security code. Please try again." }, { status: 400 });
@@ -39,14 +45,14 @@ export async function POST(request: Request) {
     await pool.query("DELETE FROM quotation_otps WHERE id = $1", [otpRecord.id]);
 
     // Generate JWT
-    const token = signQuotationToken({ email, role: "admin" });
+    const token = signQuotationToken({ email: cleanEmail, role: "admin" });
 
     // Set cookie
     const cookieStore = await cookies();
     cookieStore.set("quotation_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
       maxAge: 8 * 60 * 60, // 8 hours
     });

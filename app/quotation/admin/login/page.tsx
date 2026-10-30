@@ -16,18 +16,33 @@ export default function AdminLoginPage() {
   useEffect(() => {
     setMounted(true);
     document.title = "Book Quotation System - Login";
-  }, []);
+
+    // If already authenticated, redirect directly to dashboard
+    fetch("/api/quotation/admin/dashboard/", {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((res) => {
+        if (res.ok) {
+          router.replace("/quotation/admin/dashboard/");
+        }
+      })
+      .catch(() => {});
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
-      const res = await fetch("/api/quotation/admin/login", {
+      const res = await fetch("/api/quotation/admin/login/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        credentials: "include",
+        body: JSON.stringify({ email: cleanEmail, password }),
       });
 
       const data = await res.json();
@@ -35,9 +50,9 @@ export default function AdminLoginPage() {
         throw new Error(data.error || "Login failed");
       }
 
-      // Store email in session storage for OTP verification page
-      sessionStorage.setItem("admin_login_email", email);
-      router.push("/quotation/admin/login/verify");
+      // Store normalized email in session storage for OTP verification page
+      sessionStorage.setItem("admin_login_email", cleanEmail);
+      router.push("/quotation/admin/login/verify/");
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -287,7 +302,7 @@ export default function AdminLoginPage() {
                   </label>
                 </div>
                 <span 
-                  onClick={() => router.push("/quotation/admin/forgot-password")} 
+                  onClick={() => router.push("/quotation/admin/forgot-password/")} 
                   className="forgot-link cursor-pointer"
                 >
                   Forgot password?

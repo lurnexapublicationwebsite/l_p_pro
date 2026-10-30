@@ -14,9 +14,9 @@ export default function OTPVerifyPage() {
     document.title = "2-Step Verification - Book Quotation System";
     const storedEmail = sessionStorage.getItem("admin_login_email");
     if (!storedEmail) {
-      router.push("/quotation/admin/login");
+      router.push("/quotation/admin/login/");
     } else {
-      setEmail(storedEmail);
+      setEmail(storedEmail.trim().toLowerCase());
     }
   }, [router]);
 
@@ -25,11 +25,15 @@ export default function OTPVerifyPage() {
     setError(null);
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = otp.trim();
+
     try {
-      const res = await fetch("/api/quotation/admin/verify", {
+      const res = await fetch("/api/quotation/admin/verify/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
+        credentials: "include",
+        body: JSON.stringify({ email: cleanEmail, otp: cleanOtp }),
       });
 
       const data = await res.json();
@@ -37,9 +41,9 @@ export default function OTPVerifyPage() {
         throw new Error(data.error || "Verification failed");
       }
 
-      // Clear email and go to dashboard
+      // Clear email and go to dashboard with fresh window location
       sessionStorage.removeItem("admin_login_email");
-      router.push("/quotation/admin/dashboard");
+      window.location.href = "/quotation/admin/dashboard/";
     } catch (err: any) {
       setError(err.message || "Invalid OTP code. Please try again.");
     } finally {
@@ -247,7 +251,7 @@ export default function OTPVerifyPage() {
               
               <div className="flex justify-center mb-4">
                 <span 
-                  onClick={() => router.push("/quotation/admin/login")} 
+                  onClick={() => router.push("/quotation/admin/login/")} 
                   className="forgot-link cursor-pointer"
                 >
                   Cancel and return to Login

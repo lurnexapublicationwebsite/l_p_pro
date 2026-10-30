@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { pool } from "@/lib/dbPool";
-import { getAuthenticatedAdmin } from "@/lib/quotationAuth";
+import { getAuthenticatedAdmin, clearQuotationToken } from "@/lib/quotationAuth";
 import crypto from "crypto";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
@@ -42,5 +44,15 @@ export async function POST(request: Request) {
       { error: "Internal server error", details: error.message },
       { status: 500 }
     );
+  }
+}
+
+export async function DELETE() {
+  try {
+    await clearQuotationToken();
+    return NextResponse.json({ success: true, message: "Logged out successfully" });
+  } catch (error: any) {
+    console.error("❌ Logout Error:", error);
+    return NextResponse.json({ success: true });
   }
 }

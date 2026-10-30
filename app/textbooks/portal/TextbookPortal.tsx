@@ -106,6 +106,7 @@ import {
   syncFromServer
 } from "@/lib/dbClient";
 import { Question } from "@/lib/data/practice_questions";
+import { slugifyBookTitle } from "@/lib/data/books";
 import {
   User,
   Lock,
@@ -159,7 +160,10 @@ import {
   Home,
   FileText,
   CreditCard,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  Globe,
+  FileCheck
 } from "lucide-react";
 
 const getQuizTotalMarks = (quiz: TextbookQuiz | null | undefined): number => {
@@ -265,8 +269,8 @@ const PORTAL_PUBLISHED_BOOKS = [
   { id: "8", title: "PYTHON PROGRAMMING: PRINCIPLES AND PRACTICE", pdfFileName: "python_programming.pdf", coverImg: "/portal_coverpages/python_programming.jpeg", author: "Dr. Prakash Shanmurthy, Dr. J. Somasekar, Mr. Vaibhav Prabhakar Raibole, Mr. Shiva Prasad Munukuntla", price: 599 },
   { id: "9", title: "NOSQL DATABASES USING MONGODB", pdfFileName: "nosql.pdf", coverImg: "/portal_coverpages/nosql.jpeg", author: "Dr. Sujeet S. Jagtap", price: 299 },
   { id: "4", title: "ENTREPRENEURSHIP DEVELOPMENT: CONCEPTS TO CREATION", pdfFileName: "entrepreneurship.pdf", coverImg: "/portal_coverpages/entrepreneurship.jpeg", author: "Dr. V Padmaja, Dr. C Udaya Kumar, Dr. Archan Mitra", price: 549 },
-  { id: "10", title: "DEEP LEARNING AND NEURAL NETWORK ARCHITECTURES: THEORY TO PRACTICE", pdfFileName: "ai.pdf", coverImg: "/portal_coverpages/ai.jpeg", author: "Lurnexa Academic Press", price: 649 },
-  { id: "11", title: "CLOUD COMPUTING AND MODERN DEVOPS ENGINEERING", pdfFileName: "data_streaming.pdf", coverImg: "/portal_coverpages/data_streaming.jpeg", author: "Lurnexa Academic Press", price: 599 }
+  { id: "12", title: "C PROGRAMMING IN 24 DAYS: A FOUNDATIONAL TEXTBOOK FOR BEGINNERS", pdfFileName: "CPROGRAMMING.pdf", coverImg: "/portal_coverpages/CPROGRAMMING.jpeg", author: "Dr. M. Sayeekumar, Dr. C. Poongodi", price: 350 },
+  { id: "13", title: "DATA ANALYTICS FOR BUSINESS: CONCEPTS, METHODS, VISUALIZATION, AND AI-DRIVEN DECISION MAKING", pdfFileName: "data-analytics.pdf", coverImg: "/portal_coverpages/data_analytics.jpeg", author: "Dr Chinmaya Kumar Swain, Dr Abhilash Ponnam, Dr Guru Prasad, Mr Tulasi Ram", price: 599 }
 ];
 
 interface Caselet {
@@ -942,13 +946,15 @@ export default function TextbookPortal({
   const [newBookCoverImg, setNewBookCoverImg] = useState("/portal_coverpages/ai.jpeg");
   const [newBookCustomPreviewPdf, setNewBookCustomPreviewPdf] = useState("");
   const [newBookDescription, setNewBookDescription] = useState("");
-  const [newBookChaptersList, setNewBookChaptersList] = useState<string[]>([
-    "Chapter 1: Foundations & Core Concepts",
-    "Chapter 2: Theoretical Framework & Architecture",
-    "Chapter 3: Applied Techniques & Implementation",
-    "Chapter 4: Case Studies & Real-World Systems",
-    "Chapter 5: Future Directions & Advanced Topics"
-  ]);
+  const [newBookFormat, setNewBookFormat] = useState<"both" | "soft" | "physical">("both");
+  const [newBookSlug, setNewBookSlug] = useState("");
+  const [newBookFullBookPdf, setNewBookFullBookPdf] = useState("");
+  const [newBookFullBookFileName, setNewBookFullBookFileName] = useState("");
+  const [newBookFullBookFileSize, setNewBookFullBookFileSize] = useState("");
+  const [newBookFullBookFileSizeNum, setNewBookFullBookFileSizeNum] = useState<number>(0);
+  const [newBookPdfFileName, setNewBookPdfFileName] = useState("");
+  const [isUploadingFullPdf, setIsUploadingFullPdf] = useState(false);
+  const [newBookChaptersList, setNewBookChaptersList] = useState<string[]>([]);
   const [editingTextbook, setEditingTextbook] = useState<Textbook | null>(null);
   const [isSavingTextbook, setIsSavingTextbook] = useState(false);
   const [adminPreviewPdfBook, setAdminPreviewPdfBook] = useState<Textbook | null>(null);
@@ -4050,7 +4056,7 @@ export default function TextbookPortal({
     const defaultChapters =
       Array.isArray(book.tableOfContents) && book.tableOfContents.length > 0
         ? [...book.tableOfContents]
-        : Array.from({ length: chaptersCount }, (_, i) => `Chapter ${i + 1}: Core Concepts & Applications`);
+        : [];
 
     setEditingTextbook({
       id: String(book.id),
@@ -4070,7 +4076,7 @@ export default function TextbookPortal({
       coverImg: book.coverImg || fallbackPortalBook?.coverImg || "/portal_coverpages/ai.jpeg",
       previewPdfUrl:
         book.previewPdfUrl ||
-        `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(String(book.id))}`,
+        `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(String(book.id))}`,
       customPreviewPdfDataUrl: book.customPreviewPdfDataUrl || "",
       pdfFileName: book.pdfFileName || fallbackPortalBook?.pdfFileName || "minerals.pdf",
       description:
@@ -4104,10 +4110,16 @@ export default function TextbookPortal({
       const cleanedChapters = (editingTextbook.tableOfContents || [])
         .map((c) => c.trim())
         .filter(Boolean);
+      const autoSlug = slugifyBookTitle(editingTextbook.title.trim());
+      const finalSlug = (editingTextbook.slug || autoSlug || `book-${editingTextbook.id}`).trim();
       const finalBook: Textbook = {
         ...editingTextbook,
         title: editingTextbook.title.trim(),
         code: editingTextbook.code.trim().toUpperCase(),
+        slug: finalSlug,
+        shortSlug: editingTextbook.shortSlug || finalSlug.slice(0, 32),
+        pdfFileName: (editingTextbook.pdfFileName || `${finalSlug}.pdf`).trim(),
+        customFullBookPdfDataUrl: editingTextbook.customFullBookPdfDataUrl || "",
         authors: (editingTextbook.authors || "Lurnexa Academic Press").trim(),
         domain: (editingTextbook.domain || "Computer Science & Engineering").trim(),
         pages: Math.max(1, Number(editingTextbook.pages) || 220),
@@ -4123,15 +4135,11 @@ export default function TextbookPortal({
           editingTextbook.customPreviewPdfDataUrl &&
           editingTextbook.customPreviewPdfDataUrl.startsWith("data:application/pdf")
             ? editingTextbook.customPreviewPdfDataUrl
-            : `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(String(editingTextbook.id))}&t=${Date.now()}`,
+            : `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(String(editingTextbook.id))}&t=${Date.now()}`,
         customPreviewPdfDataUrl: editingTextbook.customPreviewPdfDataUrl || "",
-        pdfFileName: (editingTextbook.pdfFileName || "minerals.pdf").trim(),
         description: (editingTextbook.description || "").trim(),
         longDescription: (editingTextbook.longDescription || editingTextbook.description || "").trim(),
-        tableOfContents:
-          cleanedChapters.length > 0
-            ? cleanedChapters
-            : ["Chapter 1: Foundations & Core Concepts"],
+        tableOfContents: cleanedChapters,
       };
 
       updateTextbook(finalBook);
@@ -4171,6 +4179,70 @@ export default function TextbookPortal({
     }
   };
 
+  const handleFullBookPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      showToast("Please select a valid PDF (.pdf) file for the textbook.", "error");
+      return;
+    }
+
+    const sizeFormatted = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.round(file.size / 1024)} KB`;
+
+    setIsUploadingFullPdf(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("bookId", newBookId.trim() || "new");
+      formData.append("title", newBookTitle.trim());
+      formData.append("type", "full");
+
+      const res = await fetch("/api/textbooks/upload-pdf", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setNewBookFullBookFileName(data.fileName || file.name);
+        setNewBookFullBookFileSize(data.fileSizeFormatted || sizeFormatted);
+        setNewBookFullBookFileSizeNum(data.fileSize || file.size);
+        setNewBookPdfFileName(data.fileName || file.name);
+        showToast(`Softcopy Book "${data.fileName || file.name}" uploaded successfully!`, "success");
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            setNewBookFullBookPdf(reader.result);
+            setNewBookFullBookFileName(file.name);
+            setNewBookFullBookFileSize(sizeFormatted);
+            setNewBookFullBookFileSizeNum(file.size);
+            setNewBookPdfFileName(file.name);
+            showToast("Softcopy Book loaded into form!", "success");
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          setNewBookFullBookPdf(reader.result);
+          setNewBookFullBookFileName(file.name);
+          setNewBookFullBookFileSize(sizeFormatted);
+          setNewBookFullBookFileSizeNum(file.size);
+          setNewBookPdfFileName(file.name);
+          showToast("Softcopy Book loaded into form!", "success");
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingFullPdf(false);
+    }
+  };
+
   const handleAddTextbook = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -4186,17 +4258,32 @@ export default function TextbookPortal({
       return;
     }
 
+    const hasSoftcopy = newBookFormat === "soft" || newBookFormat === "both";
+    // When admin selects softcopy, it must ask for the book for bookstore!
+    if (hasSoftcopy && !newBookFullBookPdf && !newBookPdfFileName.trim() && !newBookFullBookFileName.trim()) {
+      setErrorMessage("Please upload or provide the Softcopy Book (.pdf) for the bookstore reader since Softcopy format is selected.");
+      showToast("Softcopy Book (.pdf) is required for the bookstore!", "warning");
+      return;
+    }
+
     const cleanedChapters = newBookChaptersList.map(c => c.trim()).filter(Boolean);
     const idTrimmed = newBookId.trim();
+    const autoSlug = slugifyBookTitle(newBookTitle.trim());
+    const finalSlug = (newBookSlug.trim() || autoSlug || `book-${idTrimmed}`).trim();
+    const finalShortSlug = finalSlug.slice(0, 32);
+    const finalPdfFileName = (newBookPdfFileName.trim() || newBookFullBookFileName.trim() || `${finalSlug}.pdf`).trim();
+
     const newBookPayload: Textbook = {
       id: idTrimmed,
+      slug: finalSlug,
+      shortSlug: finalShortSlug,
       title: newBookTitle.trim(),
       code: newBookCode.trim().toUpperCase(),
       authors: newBookAuthors.trim() || "Lurnexa Academic Press",
       domain: newBookDomain.trim() || "Computer Science & Engineering",
       pages: Math.max(1, Number(newBookPages) || 220),
-      price: Math.max(0, Number(newBookPrice) || 599),
-      digitalPrice: Math.max(0, Number(newBookDigitalPrice) || 299),
+      price: newBookFormat === "soft" ? 0 : Math.max(0, Number(newBookPrice) || 599),
+      digitalPrice: hasSoftcopy ? Math.max(0, Number(newBookDigitalPrice) || 299) : 0,
       isbn: newBookIsbn.trim() || "N/A",
       isbnDigital: newBookIsbnDigital.trim() || "N/A",
       publishedDate: "2026",
@@ -4206,19 +4293,21 @@ export default function TextbookPortal({
       previewPdfUrl:
         newBookCustomPreviewPdf && newBookCustomPreviewPdf.startsWith("data:application/pdf")
           ? newBookCustomPreviewPdf
-          : `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(idTrimmed)}`,
+          : `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(idTrimmed)}`,
       customPreviewPdfDataUrl: newBookCustomPreviewPdf || "",
-      pdfFileName: "minerals.pdf",
+      customFullBookPdfDataUrl: newBookFullBookPdf || "",
+      pdfFileName: finalPdfFileName,
+      fullBookPdfSize: newBookFullBookFileSizeNum || 0,
+      fullBookPdfUploadedAt: (newBookFullBookPdf || newBookFullBookFileName) ? new Date().toISOString() : undefined,
+      rentalEnabled: hasSoftcopy,
+      format: newBookFormat,
       description:
         newBookDescription.trim() ||
         "Peer-reviewed academic textbook published by Lurnexa Publications.",
       longDescription:
         newBookDescription.trim() ||
         "Peer-reviewed academic textbook published by Lurnexa Publications.",
-      tableOfContents:
-        cleanedChapters.length > 0
-          ? cleanedChapters
-          : ["Chapter 1: Foundations & Core Concepts"],
+      tableOfContents: cleanedChapters,
     };
 
     const res = addTextbook(newBookPayload);
@@ -4228,19 +4317,36 @@ export default function TextbookPortal({
       return;
     }
 
+    // Persist to server catalog store so dynamic URLs and Bookstore work immediately
+    try {
+      await fetch("/api/textbooks/catalog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save_book", book: newBookPayload }),
+      });
+    } catch (err) {
+      console.warn("Failed to persist book to catalog server:", err);
+    }
+
     // Refresh textbooks list
     const updatedList = getAllTextbooks();
     setTextbooks(updatedList);
     await fetchCatalogIntoTextbooksState();
 
-    setSuccessMessage(`Textbook "${newBookTitle.trim()}" added successfully!`);
-    showToast(`Textbook "${newBookTitle.trim()}" added to catalog!`, "success");
+    setSuccessMessage(`Textbook "${newBookTitle.trim()}" added successfully with dynamic URL /textbooks/${finalSlug}!`);
+    showToast(`Textbook added! Dynamic URL created: /textbooks/${finalSlug}`, "success");
     setNewBookId("");
     setNewBookTitle("");
     setNewBookCode("");
+    setNewBookSlug("");
     setNewBookAuthors("");
     setNewBookDescription("");
     setNewBookCustomPreviewPdf("");
+    setNewBookFullBookPdf("");
+    setNewBookFullBookFileName("");
+    setNewBookFullBookFileSize("");
+    setNewBookFullBookFileSizeNum(0);
+    setNewBookPdfFileName("");
   };
 
   const handleDeleteTextbook = (bookId: string) => {
@@ -7549,10 +7655,165 @@ export default function TextbookPortal({
                             required
                             placeholder="e.g. Compiler Design & Engineering"
                             value={newBookTitle}
-                            onChange={(e) => setNewBookTitle(e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setNewBookTitle(val);
+                              setNewBookSlug(slugifyBookTitle(val));
+                            }}
                             className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3.5 py-2 focus:outline-none focus:border-fuchsia-500 font-semibold text-xs"
                           />
                         </div>
+
+                        {/* Automatic Dynamic URL for Book */}
+                        <div className="bg-fuchsia-50/50 border border-fuchsia-200/80 rounded-2xl p-3 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-fuchsia-700 flex items-center gap-1.5">
+                              <Globe size={12} className="text-fuchsia-600" />
+                              Auto Dynamic Bookstore URL
+                            </span>
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded font-bold font-mono">
+                              Automatic
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-white border border-fuchsia-200 rounded-xl px-2.5 py-1.5 text-xs font-mono text-slate-800 break-all shadow-xs">
+                            <span className="text-slate-400 select-none">/textbooks/</span>
+                            <span className="font-bold text-fuchsia-600">
+                              {slugifyBookTitle(newBookTitle) || "dynamic-book-url"}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 leading-snug">
+                            This dynamic URL is automatically created from the title for bookstore discovery, student reading, and SEO.
+                          </p>
+                        </div>
+
+                        {/* Format Selection (Both, Softcopy, Paperback) */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                            Book Format / Availability *
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setNewBookFormat("both")}
+                              className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all text-center flex flex-col items-center gap-1 ${
+                                newBookFormat === "both"
+                                  ? "bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm"
+                                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              <span className="text-[11px]">Both Formats</span>
+                              <span className="text-[9px] font-normal opacity-85">PB + Softcopy</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNewBookFormat("soft")}
+                              className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all text-center flex flex-col items-center gap-1 ${
+                                newBookFormat === "soft"
+                                  ? "bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm"
+                                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              <span className="text-[11px]">Softcopy Only</span>
+                              <span className="text-[9px] font-normal opacity-85">Digital PDF</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNewBookFormat("physical")}
+                              className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all text-center flex flex-col items-center gap-1 ${
+                                newBookFormat === "physical"
+                                  ? "bg-fuchsia-600 text-white border-fuchsia-600 shadow-sm"
+                                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              <span className="text-[11px]">Paperback Only</span>
+                              <span className="text-[9px] font-normal opacity-85">Printed Copy</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Dedicated Softcopy Book Upload section - Asks for book when softcopy is selected */}
+                        {(newBookFormat === "soft" || newBookFormat === "both") && (
+                          <div className="bg-gradient-to-r from-fuchsia-50/90 to-indigo-50/90 border-2 border-dashed border-fuchsia-300 rounded-2xl p-3.5 space-y-2.5 animate-fadeIn">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg bg-fuchsia-600 text-white flex items-center justify-center shrink-0">
+                                  <BookOpen size={13} />
+                                </div>
+                                <div>
+                                  <label className="block text-[11px] font-extrabold text-slate-900 uppercase tracking-wider">
+                                    Softcopy Book for Bookstore *
+                                  </label>
+                                  <span className="text-[10px] text-slate-500">
+                                    Full textbook PDF for digital bookstore reading & orders
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200">
+                                Required
+                              </span>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <label className="flex-1 cursor-pointer bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-xs transition-all">
+                                  <Upload size={14} className="text-fuchsia-600" />
+                                  <span className="truncate">
+                                    {isUploadingFullPdf
+                                      ? "Uploading PDF to Server..."
+                                      : newBookFullBookFileName
+                                      ? `${newBookFullBookFileName} (${newBookFullBookFileSize}) ✓`
+                                      : "Upload Softcopy Book (.pdf) *"}
+                                  </span>
+                                  <input
+                                    type="file"
+                                    accept="application/pdf,.pdf"
+                                    className="hidden"
+                                    disabled={isUploadingFullPdf}
+                                    onChange={handleFullBookPdfUpload}
+                                  />
+                                </label>
+                                {(newBookFullBookPdf || newBookFullBookFileName) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setNewBookFullBookPdf("");
+                                      setNewBookFullBookFileName("");
+                                      setNewBookFullBookFileSize("");
+                                      setNewBookFullBookFileSizeNum(0);
+                                      setNewBookPdfFileName("");
+                                    }}
+                                    className="px-2.5 py-2.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl border border-red-200 transition-all shrink-0"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+
+                              {newBookFullBookFileName && (
+                                <div className="flex items-center justify-between text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-medium">
+                                  <span className="flex items-center gap-1.5">
+                                    <Check size={12} className="text-emerald-600 stroke-[3]" />
+                                    Bookstore PDF attached: <strong className="font-mono">{newBookFullBookFileName}</strong>
+                                  </span>
+                                  <span className="font-mono text-emerald-700 font-bold">{newBookFullBookFileSize}</span>
+                                </div>
+                              )}
+
+                              <div>
+                                <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                                  PDF Filename on Server
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder={slugifyBookTitle(newBookTitle) ? `${slugifyBookTitle(newBookTitle)}.pdf` : "my_book.pdf"}
+                                  value={newBookPdfFileName}
+                                  onChange={(e) => setNewBookPdfFileName(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-3 py-1.5 font-mono text-[11px] focus:outline-none focus:border-fuchsia-500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         <div>
                           <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Author(s)</label>
@@ -7678,6 +7939,97 @@ export default function TextbookPortal({
                           </div>
                         </div>
 
+                        {/* Table of Contents / Chapters Editor */}
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                                Table of Contents (Chapters) {newBookChaptersList.length > 0 ? `(${newBookChaptersList.length})` : ""}
+                              </label>
+                              <span className="text-[10px] text-slate-500">
+                                Optional: Add or paste book chapters
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const text = prompt("Paste chapter titles (one per line):");
+                                  if (text) {
+                                    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+                                    if (lines.length > 0) {
+                                      setNewBookChaptersList(lines);
+                                      showToast(`Added ${lines.length} chapters!`, "success");
+                                    }
+                                  }
+                                }}
+                                className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-bold transition-all"
+                                title="Paste multiple chapters at once"
+                              >
+                                Paste
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setNewBookChaptersList([
+                                    ...newBookChaptersList,
+                                    `Chapter ${newBookChaptersList.length + 1}: `,
+                                  ])
+                                }
+                                className="px-2.5 py-1 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-lg text-[10px] font-bold inline-flex items-center gap-1 transition-all shadow-xs"
+                              >
+                                <Plus size={11} />
+                                <span>Add</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {newBookChaptersList.length === 0 ? (
+                            <p className="text-[10px] text-slate-400 italic">
+                              No chapters added yet. Leave empty or click &quot;Add&quot; / &quot;Paste&quot; to enter chapters.
+                            </p>
+                          ) : (
+                            <div className="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">
+                              {newBookChaptersList.map((chap, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-mono font-bold text-slate-400 w-5 text-right shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={chap}
+                                    placeholder={`Chapter ${idx + 1}: Title`}
+                                    onChange={(e) => {
+                                      const updated = [...newBookChaptersList];
+                                      updated[idx] = e.target.value;
+                                      setNewBookChaptersList(updated);
+                                    }}
+                                    className="flex-1 bg-white border border-slate-200 text-slate-800 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-fuchsia-500 font-medium"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = newBookChaptersList.filter((_, i) => i !== idx);
+                                      setNewBookChaptersList(updated);
+                                    }}
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
+                                    title="Delete chapter"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => setNewBookChaptersList([])}
+                                className="text-[10px] font-bold text-red-600 hover:text-red-700 pl-1"
+                              >
+                                Clear all chapters
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                         <div>
                           <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Description</label>
                           <textarea
@@ -7705,7 +8057,7 @@ export default function TextbookPortal({
                         <div>
                           <h3 className="text-xl font-bold text-slate-900">Available Textbooks Registry ({textbooks.length})</h3>
                           <p className="text-xs text-slate-500">
-                            Includes all Published Books (1–9) and Birthday Launch Textbooks (10–11). Click <strong>Edit / Customize</strong> on any book to modify its title, authors, pages, prices, cover, chapters, or preview PDF.
+                            Includes all Published Books (1–11). Click <strong>Edit / Customize</strong> on any book to modify its title, authors, pages, prices, cover, chapters, or preview PDF.
                           </p>
                         </div>
                         <div className="relative w-full sm:w-64 shrink-0">
@@ -7779,7 +8131,6 @@ export default function TextbookPortal({
                                       const chaptersCount = Array.isArray(b.tableOfContents) && b.tableOfContents.length > 0
                                         ? b.tableOfContents.length
                                         : (getBookChapters(b.id) || 5);
-                                      const isBirthdayBook = String(b.id) === "10" || String(b.id) === "11";
 
                                       return (
                                         <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
@@ -7792,11 +8143,7 @@ export default function TextbookPortal({
                                               />
                                               <div>
                                                 <span className="font-mono font-black text-slate-900 text-xs block">#{b.id}</span>
-                                                {isBirthdayBook && (
-                                                  <span className="inline-block mt-0.5 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                                                    🎂 Oct 30
-                                                  </span>
-                                                )}
+
                                               </div>
                                             </div>
                                           </td>
@@ -7809,6 +8156,19 @@ export default function TextbookPortal({
                                             </div>
                                             <div className="text-[11px] text-slate-500 font-medium line-clamp-1 mt-0.5">
                                               By {authorsText}
+                                            </div>
+                                            <div className="mt-1">
+                                              <a
+                                                href={`/textbooks/${b.slug || slugifyBookTitle(b.title)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-fuchsia-600 hover:text-fuchsia-800 bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-200/80 px-2 py-0.5 rounded-md transition-all group"
+                                                title="Open dynamic textbook page in bookstore"
+                                              >
+                                                <Globe size={10} className="text-fuchsia-500 shrink-0" />
+                                                <span className="truncate max-w-[190px]">/textbooks/{b.slug || slugifyBookTitle(b.title)}</span>
+                                                <ExternalLink size={9} className="opacity-70 group-hover:opacity-100 shrink-0" />
+                                              </a>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-1.5 mt-1">
                                               <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
@@ -7921,7 +8281,7 @@ export default function TextbookPortal({
                               </h3>
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5">
-                              Changes saved here immediately update Published Books, Bookstore, Book Detail page, Birthday Launch, and Student/Faculty Portals.
+                              Changes saved here immediately update Published Books, Bookstore, Book Detail page, and Student/Faculty Portals.
                             </p>
                           </div>
                           <button
@@ -7979,6 +8339,29 @@ export default function TextbookPortal({
                                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:border-fuchsia-500"
                               />
                             </div>
+                          </div>
+
+                          {/* Dynamic URL Auto Box in Edit Modal */}
+                          <div className="bg-fuchsia-50/60 border border-fuchsia-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-fuchsia-800 uppercase tracking-wider">
+                                <Globe size={13} className="text-fuchsia-600" />
+                                <span>Dynamic Bookstore URL (Auto-Generated from Title)</span>
+                              </div>
+                              <div className="font-mono text-xs text-slate-800 bg-white border border-fuchsia-200 rounded-lg px-2.5 py-1 inline-block">
+                                <span className="text-slate-400">/textbooks/</span>
+                                <strong className="text-fuchsia-600">{editingTextbook.slug || slugifyBookTitle(editingTextbook.title)}</strong>
+                              </div>
+                            </div>
+                            <a
+                              href={`/textbooks/${editingTextbook.slug || slugifyBookTitle(editingTextbook.title)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5 shrink-0 self-start sm:self-center"
+                            >
+                              <ExternalLink size={12} />
+                              <span>Open Live URL</span>
+                            </a>
                           </div>
 
                           {/* Row 2: Authors & Academic Domain */}
@@ -8126,6 +8509,85 @@ export default function TextbookPortal({
                             </div>
                           </div>
 
+                          {/* Softcopy Full Book PDF Card in Edit Modal */}
+                          <div className="bg-gradient-to-r from-fuchsia-50/80 to-indigo-50/80 border-2 border-dashed border-fuchsia-300 rounded-2xl p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-fuchsia-600 text-white flex items-center justify-center shrink-0">
+                                  <BookOpen size={14} />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider">
+                                    Softcopy Book for Bookstore Reader
+                                  </label>
+                                  <span className="text-[11px] text-slate-500">
+                                    Upload or replace the complete textbook PDF for student digital reading
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200">
+                                Softcopy
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2.5">
+                              <label className="cursor-pointer bg-fuchsia-600 hover:bg-fuchsia-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-all">
+                                <Upload size={13} />
+                                <span>
+                                  {editingTextbook.customFullBookPdfDataUrl || editingTextbook.pdfFileName
+                                    ? "Upload / Replace Softcopy Book PDF"
+                                    : "Upload Softcopy Book (.pdf) *"}
+                                </span>
+                                <input
+                                  type="file"
+                                  accept="application/pdf,.pdf"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    try {
+                                      const formData = new FormData();
+                                      formData.append("file", file);
+                                      formData.append("bookId", String(editingTextbook.id));
+                                      formData.append("title", editingTextbook.title);
+                                      formData.append("type", "full");
+                                      const res = await fetch("/api/textbooks/upload-pdf", {
+                                        method: "POST",
+                                        body: formData,
+                                      });
+                                      if (res.ok) {
+                                        const d = await res.json();
+                                        setEditingTextbook((prev) =>
+                                          prev ? { ...prev, pdfFileName: d.fileName || file.name, fullBookPdfSize: d.fileSize || file.size } : prev
+                                        );
+                                        showToast(`Softcopy Book updated to ${d.fileName || file.name}!`, "success");
+                                      } else {
+                                        handleTextbookPdfUpload(e, (dataUrl) =>
+                                          setEditingTextbook((prev) =>
+                                            prev ? { ...prev, customFullBookPdfDataUrl: dataUrl, pdfFileName: file.name, fullBookPdfSize: file.size } : prev
+                                          )
+                                        );
+                                      }
+                                    } catch {
+                                      handleTextbookPdfUpload(e, (dataUrl) =>
+                                        setEditingTextbook((prev) =>
+                                          prev ? { ...prev, customFullBookPdfDataUrl: dataUrl, pdfFileName: file.name, fullBookPdfSize: file.size } : prev
+                                        )
+                                      );
+                                    }
+                                  }}
+                                />
+                              </label>
+
+                              {(editingTextbook.customFullBookPdfDataUrl || editingTextbook.pdfFileName) && (
+                                <div className="text-[11px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5">
+                                  <Check size={13} className="text-emerald-600 stroke-[3]" />
+                                  <span>Current File: <strong>{editingTextbook.pdfFileName || "book.pdf"}</strong></span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
                           {/* Row 5: Cover Image & Sample Preview PDF */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                             {/* Cover Image */}
@@ -8214,7 +8676,7 @@ export default function TextbookPortal({
                                       setEditingTextbook({
                                         ...editingTextbook,
                                         customPreviewPdfDataUrl: "",
-                                        previewPdfUrl: `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(
+                                        previewPdfUrl: `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(
                                           String(editingTextbook.id)
                                         )}`,
                                       })
@@ -8287,7 +8749,7 @@ export default function TextbookPortal({
                                   Book Chapters / Modules ({(editingTextbook.tableOfContents || []).length})
                                 </label>
                                 <p className="text-[11px] text-slate-500">
-                                  Displayed on the Book Detail page, Bookstore Preview modal, Birthday Launch page, and Sample PDF.
+                                  Displayed on the Book Detail page, Bookstore Preview modal, and Sample PDF.
                                 </p>
                               </div>
                               <button
@@ -8430,7 +8892,7 @@ export default function TextbookPortal({
                               src={
                                 adminPreviewPdfBook.customPreviewPdfDataUrl
                                   ? adminPreviewPdfBook.customPreviewPdfDataUrl
-                                  : `/api/birthday-launch/preview-pdf?bookId=${encodeURIComponent(
+                                  : `/api/textbooks/preview-pdf?bookId=${encodeURIComponent(
                                       String(adminPreviewPdfBook.id)
                                     )}&t=${Date.now()}#toolbar=0&navpanes=0`
                               }

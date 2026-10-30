@@ -27,16 +27,15 @@ export default function PublishedBooks() {
     <div className="py-4 w-full">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto px-4">
         {allBooks.map((bookItem) => {
-          const isBirthdayLaunch = bookItem.id === "10" || bookItem.id === "11";
           return (
             <div 
               key={bookItem.id} 
               className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group relative"
             >
-              {isBirthdayLaunch && (
-                <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 text-[8px] text-amber-950 font-extrabold uppercase tracking-wider bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-2.5 py-1 rounded-full shadow-sm">
+              {bookItem.tag && (
+                <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 text-[8px] text-fuchsia-950 font-extrabold uppercase tracking-wider bg-fuchsia-100 border border-fuchsia-200 px-2.5 py-1 rounded-full shadow-sm">
                   <Sparkles size={10} />
-                  {bookItem.tag || "Launched Oct 30"}
+                  {bookItem.tag}
                 </span>
               )}
               <div className="space-y-4">

@@ -47,7 +47,7 @@ export default function EditQuotationPage() {
       if (!quoteId) return;
       try {
         setLoading(true);
-        const res = await fetch(`/api/quotation/admin/quotations?id=${quoteId}`);
+        const res = await fetch(`/api/quotation/admin/quotations/?id=${quoteId}`);
         if (!res.ok) throw new Error("Failed to load quotation details");
         const data = await res.json();
         
@@ -114,7 +114,7 @@ export default function EditQuotationPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/quotation/admin/quotations", {
+      const res = await fetch("/api/quotation/admin/quotations/", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

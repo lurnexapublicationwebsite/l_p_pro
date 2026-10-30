@@ -39,7 +39,7 @@ export default function GeneratedQuotationsPage() {
   async function fetchQuotations() {
     try {
       setLoading(true);
-      const res = await fetch("/api/quotation/admin/quotations");
+      const res = await fetch("/api/quotation/admin/quotations/");
       if (!res.ok) throw new Error("Failed to fetch quotations");
       const data = await res.json();
       setQuotations(data.quotations || []);
@@ -53,7 +53,7 @@ export default function GeneratedQuotationsPage() {
   async function handleDelete(id: string) {
     try {
       setDeleting(true);
-      const res = await fetch("/api/quotation/admin/quotations", {
+      const res = await fetch("/api/quotation/admin/quotations/", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),

@@ -33,14 +33,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     async function checkAuth() {
       try {
-        const res = await fetch("/api/quotation/admin/dashboard");
+        const res = await fetch("/api/quotation/admin/dashboard/", {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok) {
-          router.push("/quotation/admin/login");
+          setAuthenticated(false);
+          router.push("/quotation/admin/login/");
         } else {
           setAuthenticated(true);
         }
       } catch (err) {
-        router.push("/quotation/admin/login");
+        setAuthenticated(false);
+        router.push("/quotation/admin/login/");
       } finally {
         setLoading(false);
       }
@@ -55,13 +60,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/quotation/admin/settings", {
-        method: "DELETE", // We can use DELETE or POST/GET to clear token, let's check settings/auth endpoints later
+      await fetch("/api/quotation/admin/settings/", {
+        method: "DELETE",
+        credentials: "include",
       });
     } catch (err) {}
-    // Clear cookies client-side or let backend handle it.
     document.cookie = "quotation_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-    router.push("/quotation/admin/login");
+    window.location.href = "/quotation/admin/login/";
   };
 
   if (isBypassPage) {
@@ -80,7 +85,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-[#f3f4f6] font-sans antialiased text-[#111827]">
       {/* Sidebar */}
       <aside className="fixed top-0 left-0 w-[260px] h-screen bg-white border-r border-[#e5e7eb] p-6 flex flex-col z-30 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
-        <Link href="/quotation/admin/dashboard" className="text-xl font-extrabold text-[#4f46e5] mb-8 px-3 flex items-center gap-2 hover:text-[#4338ca] transition">
+        <Link href="/quotation/admin/dashboard/" className="text-xl font-extrabold text-[#4f46e5] mb-8 px-3 flex items-center gap-2 hover:text-[#4338ca] transition">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="shrink-0">
             <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
             <path d="M6 6h10" />
@@ -91,9 +96,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <nav className="flex flex-col gap-1 flex-grow">
           <Link
-            href="/quotation/admin/dashboard"
+            href="/quotation/admin/dashboard/"
             className={`flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition ${
-              pathname === "/quotation/admin/dashboard"
+              pathname?.startsWith("/quotation/admin/dashboard")
                 ? "bg-[#e0e7ff] text-[#4f46e5]"
                 : "text-[#6b7280] hover:bg-gray-50 hover:text-[#111827]"
             }`}
@@ -108,9 +113,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
 
           <Link
-            href="/quotation/admin/books"
+            href="/quotation/admin/books/"
             className={`flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition ${
-              pathname === "/quotation/admin/books"
+              pathname?.startsWith("/quotation/admin/books")
                 ? "bg-[#e0e7ff] text-[#4f46e5]"
                 : "text-[#6b7280] hover:bg-gray-50 hover:text-[#111827]"
             }`}
@@ -124,9 +129,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
 
           <Link
-            href="/quotation/admin/requests"
+            href="/quotation/admin/requests/"
             className={`flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition ${
-              pathname === "/quotation/admin/requests"
+              pathname?.startsWith("/quotation/admin/requests")
                 ? "bg-[#e0e7ff] text-[#4f46e5]"
                 : "text-[#6b7280] hover:bg-gray-50 hover:text-[#111827]"
             }`}
@@ -139,9 +144,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
 
           <Link
-            href="/quotation/admin/quotations"
+            href="/quotation/admin/quotations/"
             className={`flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition ${
-              pathname === "/quotation/admin/quotations"
+              pathname?.startsWith("/quotation/admin/quotations")
                 ? "bg-[#e0e7ff] text-[#4f46e5]"
                 : "text-[#6b7280] hover:bg-gray-50 hover:text-[#111827]"
             }`}
@@ -157,9 +162,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
 
           <Link
-            href="/quotation/admin/orders"
+            href="/quotation/admin/orders/"
             className={`flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition ${
-              pathname === "/quotation/admin/orders"
+              pathname?.startsWith("/quotation/admin/orders")
                 ? "bg-[#e0e7ff] text-[#4f46e5]"
                 : "text-[#6b7280] hover:bg-gray-50 hover:text-[#111827]"
             }`}
@@ -172,9 +177,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
 
           <Link
-            href="/quotation/admin/settings"
+            href="/quotation/admin/settings/"
             className={`flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition ${
-              pathname === "/quotation/admin/settings"
+              pathname?.startsWith("/quotation/admin/settings")
                 ? "bg-[#e0e7ff] text-[#4f46e5]"
                 : "text-[#6b7280] hover:bg-gray-50 hover:text-[#111827]"
             }`}

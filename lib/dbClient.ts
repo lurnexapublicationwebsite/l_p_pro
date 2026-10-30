@@ -1,6 +1,6 @@
 import { SEED_QUESTIONS, Question } from './data/practice_questions';
 import { PUBLISHED_BOOKS_DATA } from './data/books';
-import { DEFAULT_HASINI_LAUNCH_BOOKS } from './birthdayLaunch';
+
 
 export interface InterviewQuestion {
   id: string;
@@ -117,6 +117,11 @@ export interface Textbook {
   tableOfContents?: string[];
   previewPdfUrl?: string;
   customPreviewPdfDataUrl?: string;
+  customFullBookPdfDataUrl?: string;
+  fullBookPdfSize?: number;
+  fullBookPdfUploadedAt?: string;
+  rentalEnabled?: boolean;
+  format?: "both" | "soft" | "physical";
 }
 
 export interface TextbookQuiz {
@@ -445,9 +450,9 @@ export function initDb(): void {
     };
   }
 
-  // Initialize Textbooks (including standard published books 1-9 and Birthday Launch books 10-11)
+  // Initialize Textbooks (published books 1-11)
   if (!IN_MEMORY_DB['lurnexa_textbooks']) {
-    const combinedSeed = [...PUBLISHED_BOOKS_DATA, ...DEFAULT_HASINI_LAUNCH_BOOKS];
+    const combinedSeed = [...PUBLISHED_BOOKS_DATA];
     combinedSeed.sort((a, b) => Number(a.id) - Number(b.id));
     const defaultBooks: Textbook[] = combinedSeed.map(b => ({
       ...b,

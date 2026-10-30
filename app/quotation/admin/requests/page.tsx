@@ -51,7 +51,7 @@ export default function PendingRequestsPage() {
   async function fetchRequests() {
     try {
       setLoading(true);
-      const res = await fetch("/api/quotation/admin/requests");
+      const res = await fetch("/api/quotation/admin/requests/");
       if (!res.ok) throw new Error("Failed to fetch pending requests");
       const data = await res.json();
       setRequests(data.requests || []);
@@ -72,7 +72,7 @@ export default function PendingRequestsPage() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      const res = await fetch("/api/quotation/admin/requests", {
+      const res = await fetch("/api/quotation/admin/requests/", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: deleteTarget.id }),
