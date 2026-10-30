@@ -301,7 +301,7 @@ export default function JsonLd() {
       },
       'mainEntity': {
         '@type': 'ItemList',
-        'numberOfItems': 8,
+        'numberOfItems': 9,
         'itemListElement': [
           {
             '@type': 'ListItem',
@@ -358,6 +358,13 @@ export default function JsonLd() {
             'name': 'NOSQL DATABASES USING MONGODB',
             'url': 'https://lurnexa.in/textbooks/nosql-mongodb/',
             'image': 'https://lurnexa.in/portal_coverpages/nosql.jpeg',
+          },
+          {
+            '@type': 'ListItem',
+            'position': 9,
+            'name': 'ENTREPRENEURSHIP DEVELOPMENT: CONCEPTS TO CREATION',
+            'url': 'https://lurnexa.in/textbooks/entrepreneurship/',
+            'image': 'https://lurnexa.in/portal_coverpages/entrepreneurship.jpeg',
           },
         ],
       },

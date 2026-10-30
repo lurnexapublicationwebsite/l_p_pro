@@ -5,18 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
   ArrowLeft, 
-  Clock, 
-  RefreshCw, 
   Lock, 
-  AlertTriangle, 
   Moon, 
   Sun, 
   ZoomIn, 
   ZoomOut, 
-  Maximize2,
-  BookOpen,
-  ChevronLeft,
-  ChevronRight
 } from "lucide-react";
 import RentalTimer from "@/components/Textbooks/RentalTimer";
 
@@ -63,11 +56,30 @@ export default function SecureReaderPage({ params }: ReaderPageProps) {
   useEffect(() => {
     if (!rentalId) return;
 
-    const savedEmail = localStorage.getItem("lurnexa_reader_email") || 
-                       localStorage.getItem("lurnexa_user_email") || 
-                       localStorage.getItem("user_email");
+    let savedEmail =
+      localStorage.getItem("lurnexa_reader_email") ||
+      localStorage.getItem("lurnexa_user_email") ||
+      localStorage.getItem("user_email") ||
+      "";
 
     if (!savedEmail) {
+      try {
+        const rawUser =
+          sessionStorage.getItem("lurnexa_current_user") ||
+          localStorage.getItem("lurnexa_user");
+        if (rawUser) {
+          const parsed = JSON.parse(rawUser);
+          savedEmail =
+            parsed?.email || parsed?.collegeEmail || parsed?.mobileNumber || "";
+        }
+      } catch {}
+    }
+
+    const token =
+      sessionStorage.getItem("lurnexa_session_token") ||
+      localStorage.getItem("lurnexa_session_token");
+
+    if (!savedEmail && !token) {
       setError("Please log in to your library to access this book.");
       setLoading(false);
       return;
@@ -80,11 +92,16 @@ export default function SecureReaderPage({ params }: ReaderPageProps) {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem("lurnexa_session_token") || localStorage.getItem("lurnexa_session_token");
+      const token =
+        sessionStorage.getItem("lurnexa_session_token") ||
+        localStorage.getItem("lurnexa_session_token");
       const res = await fetch("/api/rentals/access", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ rentalId, userEmail })
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ rentalId, userEmail }),
       });
 
       const data = await res.json();
@@ -100,7 +117,6 @@ export default function SecureReaderPage({ params }: ReaderPageProps) {
       setRentalData(data.rental);
       setPdfUrl(data.pdfUrl);
       setWatermarkText(data.watermarkText);
-
     } finally {
       setLoading(false);
     }
@@ -251,7 +267,6 @@ export default function SecureReaderPage({ params }: ReaderPageProps) {
         </div>
 
       </main>
-
     </div>
   );
 }

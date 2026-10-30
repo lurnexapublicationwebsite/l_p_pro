@@ -13,7 +13,10 @@ export async function POST(req: Request) {
 
     if (!secretKey) {
       console.error("❌ Cashfree API secret key configuration is missing.");
-      return NextResponse.json({ error: "Configuration missing" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Configuration missing" },
+        { status: 500 }
+      );
     }
 
     // Verify signature
@@ -44,9 +47,13 @@ export async function POST(req: Request) {
         [orderId]
       );
 
-      const isAlreadyPaid = prevOrderRes.rows.length > 0 && prevOrderRes.rows[0].status === "PAID";
+      const isAlreadyPaid =
+        prevOrderRes.rows.length > 0 && prevOrderRes.rows[0].status === "PAID";
       if (isAlreadyPaid) {
-        return NextResponse.json({ success: true, message: "Order already verified and updated" });
+        return NextResponse.json({
+          success: true,
+          message: "Order already verified and updated",
+        });
       }
 
       // Order tags are sent inside order_tags from creation payload
@@ -54,9 +61,14 @@ export async function POST(req: Request) {
       const amount = Number(order.order_amount || 499);
       const bookId = tags.book_id || "1";
       const customerDetails = order.customer_details || {};
-      const customerPhone = customerDetails.customer_phone || tags.customer_phone || "9999999999";
-      const customerName = customerDetails.customer_name || tags.customer_name || "Customer";
-      const customerEmail = customerDetails.customer_email || tags.customer_email || "customer@lurnexa.in";
+      const customerPhone =
+        customerDetails.customer_phone || tags.customer_phone || "9999999999";
+      const customerName =
+        customerDetails.customer_name || tags.customer_name || "Customer";
+      const customerEmail =
+        customerDetails.customer_email ||
+        tags.customer_email ||
+        "customer@lurnexa.in";
       const shippingAddress = tags.shipping_address || "";
       const postalCode = tags.postal_code || tags.shipping_pincode || "";
       const couponCode = tags.coupon_code || "";
@@ -68,6 +80,8 @@ export async function POST(req: Request) {
       const country = tags.country || "India";
       const quantity = Number(tags.quantity || 1);
       const subtotal = Number(tags.subtotal || amount);
+      let accessId = tags.access_id || "";
+      const plan = tags.purchase_plan || "physical";
 
       const orderObj = {
         order_id: orderId,
@@ -93,9 +107,14 @@ export async function POST(req: Request) {
         cashfree_payment_id: transactionId,
         payment_status: "PAID",
         order_status: "CONFIRMED",
-        purchase_format: tags.purchase_format || (shippingAddress === "Soft Copy Access" ? "soft" : "physical"),
-        purchase_plan: tags.purchase_plan || "physical",
-        access_id: tags.access_id || ""
+        purchase_format:
+          tags.purchase_format ||
+          (shippingAddress.includes("Digital") ||
+          shippingAddress === "Soft Copy Access"
+            ? "soft"
+            : "physical"),
+        purchase_plan: plan,
+        access_id: accessId,
       };
 
       // Insert order details
@@ -134,37 +153,75 @@ export async function POST(req: Request) {
           orderObj.order_status,
           orderObj.purchase_format,
           orderObj.purchase_plan,
-          orderObj.access_id
+          orderObj.access_id,
         ]
       );
 
-      // Always update user's plan and add the purchased book to their profile if they have an account
+      // Update user's plan and add purchased book(s) across all matching user rows (phone or email)
+      const cleanEmail = (customerEmail || "").trim().toLowerCase();
       const userCheck = await pool.query(
-        "SELECT plan, purchased_books FROM textbooks_users WHERE mobile_number = $1",
-        [customerPhone]
+        "SELECT access_id, plan, purchased_books FROM textbooks_users WHERE mobile_number = $1 OR (email IS NOT NULL AND LOWER(email) = $2) OR (college_email IS NOT NULL AND LOWER(college_email) = $2)",
+        [customerPhone, cleanEmail]
       );
+      const newBookIds = String(bookId)
+        .split(",")
+        .map((b) => b.trim())
+        .filter((id) => id && id !== "CART");
+
       if (userCheck.rows.length > 0) {
-        const currentUser = userCheck.rows[0];
-        let pBooks = Array.isArray(currentUser.purchased_books) ? currentUser.purchased_books : [];
-        if (!pBooks.includes(bookId)) {
-          pBooks.push(bookId);
+        const mergedBooks = new Set<string>(newBookIds);
+        for (const row of userCheck.rows) {
+          let existing: any[] = [];
+          if (typeof row.purchased_books === "string") {
+            try {
+              existing = JSON.parse(row.purchased_books);
+            } catch {}
+          } else if (Array.isArray(row.purchased_books)) {
+            existing = row.purchased_books;
+          }
+          for (const b of existing) {
+            if (b && b !== "CART") mergedBooks.add(String(b));
+          }
         }
         const targetPlan = tags.purchase_plan || "complete";
         await pool.query(
-          `UPDATE textbooks_users SET plan = $1, purchased_books = $2 WHERE mobile_number = $3`,
-          [targetPlan, JSON.stringify(pBooks), customerPhone]
+          `UPDATE textbooks_users SET plan = $1, purchased_books = $2 WHERE mobile_number = $3 OR (email IS NOT NULL AND LOWER(email) = $4) OR (college_email IS NOT NULL AND LOWER(college_email) = $4)`,
+          [
+            targetPlan,
+            JSON.stringify(Array.from(mergedBooks)),
+            customerPhone,
+            cleanEmail,
+          ]
         );
+      } else if (accessId) {
+        try {
+          await pool.query(
+            `INSERT INTO textbooks_users (name, mobile_number, book_id, role, college_name, college_email, email, is_active, access_id, plan, purchased_books)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [
+              customerName,
+              customerPhone,
+              bookId,
+              "student",
+              tags.college_name || "General",
+              customerEmail,
+              customerEmail,
+              true,
+              accessId,
+              plan,
+              JSON.stringify(newBookIds),
+            ]
+          );
+        } catch (e) {}
       }
 
-      const accessId = tags.access_id || "";
-      const plan = tags.purchase_plan || "physical";
       if (accessId) {
-        // Pre-approve the access ID (unassigned)
+        // Pre-approve the access ID
         await pool.query(
           `INSERT INTO textbooks_allowed_access_ids (access_id, book_id, role, assigned_to, plan)
            VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (access_id) DO UPDATE SET plan = EXCLUDED.plan`,
-          [accessId, bookId, 'student', null, plan]
+          [accessId, bookId, "student", null, plan]
         );
       }
 
@@ -174,13 +231,18 @@ export async function POST(req: Request) {
       } catch (err) {
         console.error("❌ Failed to send webhook order emails:", err);
       }
-      return NextResponse.json({ success: true, message: "Order processed successfully" });
+      return NextResponse.json({
+        success: true,
+        message: "Order processed successfully",
+      });
     }
 
     return NextResponse.json({ success: true, message: "Webhook ignored" });
-
   } catch (err: any) {
     console.error("❌ Error in webhook API handler:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

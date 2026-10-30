@@ -30,7 +30,7 @@ const isPlaceholderUrl = connectionString && (
 const useLocalFallback = !connectionString || isPlaceholderUrl;
 
 // Local JSON File Database Path (inside workspace scratch directory or AWS Lambda /tmp)
-const fallbackDir = typeof process !== 'undefined' && process.env.AWS_LAMBDA_FUNCTION_NAME 
+const fallbackDir = typeof process !== 'undefined' && (process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.VERCEL) 
   ? "/tmp" 
   : path.join(process.cwd(), "scratch");
 const fallbackPath = path.join(fallbackDir, "otps.json");
@@ -319,16 +319,36 @@ export const pool = {
         return { rows: purchases };
       }
 
-      // SELECT ... WHERE LOWER(user_identifier) = $1 OR LOWER(customer_email) = $1 OR customer_phone = $1
-      // — used by /api/textbooks/user/orders (Order History). The LOWER() wrapping means this
-      // must be matched before the plain "USER_IDENTIFIER = $1" branch below, which won't see it.
+      // SELECT ... WHERE customer_email / customer_phone / user_identifier
+      // Supports single identifier (/api/textbooks/user/orders), identifier array (findSessionUser),
+      // and book_id + identifier array (canReadCaselet).
       if (cleanSql.includes("FROM TEXTBOOKS_PURCHASES") && cleanSql.includes("CUSTOMER_EMAIL") && cleanSql.includes("CUSTOMER_PHONE")) {
-        const needle = String(params[0] || "").toLowerCase();
-        const filtered = purchases.filter((p: any) =>
-          (p.user_identifier && p.user_identifier.toLowerCase() === needle) ||
-          (p.customer_email && p.customer_email.toLowerCase() === needle) ||
-          (p.customer_phone && p.customer_phone === params[0])
-        );
+        const hasBookFilter = cleanSql.includes("BOOK_ID = $1");
+        const bookIdParam = hasBookFilter ? String(params[0] || "") : null;
+        const rawIdents = hasBookFilter ? params[1] : params[0];
+        const phoneParam = String((hasBookFilter ? params[2] : params[1]) || "").replace(/\D/g, "").slice(-10);
+        const needles: string[] = Array.isArray(rawIdents)
+          ? rawIdents.map((x: any) => String(x || "").trim().toLowerCase()).filter(Boolean)
+          : [String(rawIdents || "").trim().toLowerCase()].filter(Boolean);
+
+        const filtered = purchases.filter((p: any) => {
+          if (cleanSql.includes("STATUS = 'PAID'") && p.status !== "PAID") return false;
+          if (bookIdParam !== null && String(p.book_id) !== bookIdParam) return false;
+          if (cleanSql.includes("PURCHASE_PLAN IN") && !["caselet", "book_caselet", "book_caselet_portal", "complete"].includes(p.purchase_plan)) {
+            return false;
+          }
+          const uIdent = String(p.user_identifier || "").trim().toLowerCase();
+          const cEmail = String(p.customer_email || "").trim().toLowerCase();
+          const aId = String(p.access_id || "").trim().toLowerCase();
+          const cPhone = String(p.customer_phone || "").replace(/\D/g, "").slice(-10);
+          return (
+            needles.includes(uIdent) ||
+            needles.includes(cEmail) ||
+            needles.includes(aId) ||
+            (phoneParam.length === 10 && cPhone === phoneParam) ||
+            needles.includes(String(p.customer_phone || "").trim().toLowerCase())
+          );
+        });
         filtered.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         return { rows: filtered };
       }
@@ -864,15 +884,30 @@ export const pool = {
       const list = readJSONTable("textbooks_users");
       if (cleanSql.startsWith("SELECT")) {
         if (cleanSql.includes("WHERE") && params.length > 0) {
-          const paramVal = String(params[0] || "").trim().toLowerCase();
-          if (paramVal) {
-            const filtered = list.filter((u: any) =>
-              (u.email && u.email.toLowerCase() === paramVal) ||
-              (u.college_email && u.college_email.toLowerCase() === paramVal) ||
-              (u.mobile_number && u.mobile_number.toLowerCase() === paramVal) ||
-              (u.access_id && u.access_id.toLowerCase() === paramVal) ||
-              (u.id && String(u.id).toLowerCase() === paramVal)
-            );
+          const paramValues = params
+            .flatMap((p: any) => (Array.isArray(p) ? p : [p]))
+            .map((p: any) => String(p || "").trim().toLowerCase())
+            .filter(Boolean);
+          const phoneDigits = paramValues
+            .map((v: string) => v.replace(/\D/g, "").slice(-10))
+            .filter((d: string) => d.length === 10);
+          if (paramValues.length > 0) {
+            const filtered = list.filter((u: any) => {
+              const uEmail = String(u.email || "").trim().toLowerCase();
+              const uCollegeEmail = String(u.college_email || "").trim().toLowerCase();
+              const uMobile = String(u.mobile_number || "").trim().toLowerCase();
+              const uMobileDigits = uMobile.replace(/\D/g, "").slice(-10);
+              const uAccessId = String(u.access_id || "").trim().toLowerCase();
+              const uId = String(u.id || "").trim().toLowerCase();
+              return (
+                paramValues.includes(uEmail) ||
+                paramValues.includes(uCollegeEmail) ||
+                paramValues.includes(uMobile) ||
+                paramValues.includes(uAccessId) ||
+                paramValues.includes(uId) ||
+                (uMobileDigits.length === 10 && phoneDigits.includes(uMobileDigits))
+              );
+            });
             return { rows: filtered };
           }
         }
@@ -1373,14 +1408,41 @@ export const pool = {
         filtered.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         return { rows: filtered };
       }
-      // SELECT by rental_id (with or without an additional email ownership check)
+      // SELECT by rental_id (with or without email/phone/admin ownership check)
       if (cleanSql.includes("SELECT") && cleanSql.includes("RENTAL_ID = $1")) {
         let filtered = rentals.filter((r: any) => r.rental_id === params[0]);
         if (cleanSql.includes("LOWER(USER_EMAIL)") && params[1] !== undefined) {
-          const needle = String(params[1] || "").toLowerCase();
-          filtered = filtered.filter((r: any) => r.user_email?.toLowerCase() === needle);
+          const isAdminParam = Boolean(params[3]);
+          if (!isAdminParam) {
+            const emails: string[] = Array.isArray(params[1])
+              ? params[1].map((e: any) => String(e || "").toLowerCase())
+              : [String(params[1] || "").toLowerCase()];
+            const phoneDigits = String(params[2] || "").replace(/\D/g, "").slice(-10);
+            filtered = filtered.filter((r: any) => {
+              const rEmail = String(r.user_email || "").toLowerCase();
+              const rPhone = String(r.user_phone || "").replace(/\D/g, "").slice(-10);
+              return emails.includes(rEmail) || (phoneDigits.length === 10 && rPhone === phoneDigits);
+            });
+          }
         }
         return { rows: filtered };
+      }
+      // SELECT active rental by book_id + user emails/phone (hasActiveRental)
+      if (cleanSql.includes("SELECT") && cleanSql.includes("BOOK_ID = $1") && cleanSql.includes("STATUS = 'ACTIVE'")) {
+        const bookId = String(params[0] || "");
+        const emails: string[] = Array.isArray(params[1])
+          ? params[1].map((e: any) => String(e || "").toLowerCase())
+          : [String(params[1] || "").toLowerCase()];
+        const phoneDigits = String(params[2] || "").replace(/\D/g, "").slice(-10);
+        const now = Date.now();
+        const active = rentals.filter((r: any) => {
+          if (String(r.book_id) !== bookId || r.status !== "active") return false;
+          if (r.expires_at && new Date(r.expires_at).getTime() <= now) return false;
+          const rEmail = String(r.user_email || "").toLowerCase();
+          const rPhone = String(r.user_phone || "").replace(/\D/g, "").slice(-10);
+          return emails.includes(rEmail) || (phoneDigits.length === 10 && rPhone === phoneDigits);
+        });
+        return { rows: active };
       }
       // SELECT by user_email
       if (cleanSql.includes("SELECT") && cleanSql.includes("USER_EMAIL = $1") && !cleanSql.includes("RENTAL_ID")) {
@@ -1396,13 +1458,18 @@ export const pool = {
         );
         return { rows: filtered };
       }
-      // SELECT DISTINCT book_id ... WHERE LOWER(user_email) = $1 AND status = 'active'
-      // — used by login/signup/me to report which books this one account has rented.
-      // Must be checked before the bare status-only branch below, or every user's
-      // rentedBooks would leak every other user's active rentals.
+      // SELECT DISTINCT book_id ... WHERE status = 'active' AND LOWER(user_email) = ...
       if (cleanSql.includes("SELECT") && cleanSql.includes("LOWER(USER_EMAIL)") && cleanSql.includes("STATUS = 'ACTIVE'")) {
-        const needle = String(params[0] || "").toLowerCase();
-        const active = rentals.filter((r: any) => r.user_email?.toLowerCase() === needle && r.status === 'active');
+        const emails: string[] = Array.isArray(params[0])
+          ? params[0].map((e: any) => String(e || "").toLowerCase())
+          : [String(params[0] || "").toLowerCase()];
+        const phoneDigits = String(params[1] || "").replace(/\D/g, "").slice(-10);
+        const active = rentals.filter((r: any) => {
+          if (r.status !== "active") return false;
+          const rEmail = String(r.user_email || "").toLowerCase();
+          const rPhone = String(r.user_phone || "").replace(/\D/g, "").slice(-10);
+          return emails.includes(rEmail) || (phoneDigits.length === 10 && rPhone === phoneDigits);
+        });
         return { rows: active };
       }
       // SELECT active rentals — no user filter (expiry cron sweep, "expiring soon" listings)

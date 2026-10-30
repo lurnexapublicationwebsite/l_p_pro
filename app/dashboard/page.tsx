@@ -22,6 +22,24 @@ export default function DashboardPage() {
   const { accessToken, logout, isAuthenticated } = useAuth();
 
   const SUB_ID = "21634dda-10d1-70a2-c1ab-07a0a7b8d721";
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL &&
+    process.env.NEXT_PUBLIC_API_BASE_URL !== "undefined"
+      ? process.env.NEXT_PUBLIC_API_BASE_URL.replace(/\/+$/, "")
+      : "https://api.lurnexa.in";
+
+  const safeParseJson = async (res: Response) => {
+    const contentType = res.headers.get("content-type") || "";
+    const text = await res.text();
+    if (!text || (!contentType.includes("application/json") && text.trim().startsWith("<"))) {
+      return null;
+    }
+    try {
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  };
 
   /* 🔐 ROUTE PROTECTION */
   useEffect(() => {
@@ -60,49 +78,75 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!accessToken) return;
 
+    const applyUserProfile = (user: any) => {
+      if (!user || typeof user !== "object") return false;
+      if (!user.subid && !user.id && !user.email && !user.name) return false;
+      const expertise = Array.isArray(user.area_of_expertise)
+        ? user.area_of_expertise[0] || ""
+        : user.area_of_expertise || "";
+      setFormData({
+        subid: user.subid || SUB_ID,
+        id: user.id || "",
+        email: user.email || "",
+        name: user.name || "",
+        role: user.role || "",
+        created_at: user.created_at || "",
+        college_id: user.college_id || "",
+        organization_name: user.organisation_name || user.organization_name || "",
+        contact_no: user.contact_no || "",
+        list_of_items: expertise,
+        recent_work: user.recent_work || "",
+        ongoing_work: user.ongoing_work || "",
+        description: user.description || "",
+        resume: user.resume || "",
+      });
+      return true;
+    };
+
     const loadProfile = async () => {
       try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/get_users`,
-          {
+        let loaded = false;
+
+        try {
+          const res = await fetch(`${API_BASE_URL}/get_users`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({ subid: SUB_ID }),
-          }
-        );
-
-        const result = await res.json();
-        if (result?.data?.length > 0) {
-          const user = result.data[0];
-          setFormData({
-            subid: user.subid || "",
-            id: user.id || "",
-            email: user.email || "",
-            name: user.name || "",
-            role: user.role || "",
-            created_at: user.created_at || "",
-            college_id: user.college_id || "",
-            organization_name: user.organisation_name || "",
-            contact_no: user.contact_no || "",
-            list_of_items: user.area_of_expertise?.[0] || "",
-            recent_work: user.recent_work || "",
-            ongoing_work: user.ongoing_work || "",
-            description: user.description || "",
-            resume: user.resume || "",
           });
+
+          const result = await safeParseJson(res);
+          if (result?.data?.length > 0) {
+            loaded = applyUserProfile(result.data[0]);
+          } else if (result && (result.subid || result.id)) {
+            loaded = applyUserProfile(result);
+          }
+        } catch {
+          // Fallback to internal /api/dashboard below
+        }
+
+        if (!loaded) {
+          const localRes = await fetch(
+            `/api/dashboard?subid=${encodeURIComponent(SUB_ID)}`
+          );
+          const localResult = await safeParseJson(localRes);
+          if (localResult?.data?.length > 0) {
+            applyUserProfile(localResult.data[0]);
+          } else if (localResult) {
+            applyUserProfile(localResult);
+          }
         }
       } catch (err) {
-        console.error(err);
+        console.warn("Dashboard profile fetch warning:", err);
       } finally {
         setLoading(false);
       }
     };
 
     loadProfile();
-  }, [accessToken]);
+  }, [accessToken, API_BASE_URL]);
 
   /* ================= FETCH IMAGE ================= */
   useEffect(() => {
@@ -123,7 +167,7 @@ export default function DashboardPage() {
         const blob = await res.blob();
         setImageUrl(URL.createObjectURL(blob));
       } catch (err) {
-        console.error(err);
+        console.warn("Image fetch warning:", err);
       }
     };
 
@@ -172,6 +216,18 @@ export default function DashboardPage() {
   const handleSave = async () => {
     try {
       const payload = {
+        subid: formData.subid || SUB_ID,
+        name: formData.name,
+        role: formData.role,
+        college_id: formData.college_id,
+        organization_name: formData.organization_name,
+        contact_no: formData.contact_no,
+        area_of_expertise: formData.list_of_items
+          ? [formData.list_of_items]
+          : [],
+        recent_work: formData.recent_work,
+        ongoing_work: formData.ongoing_work,
+        description: formData.description,
         data: {
           college_id: formData.college_id,
           organisation_name: formData.organization_name,
@@ -185,19 +241,30 @@ export default function DashboardPage() {
         },
       };
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/update_users`,
-        {
+      let updated = false;
+      try {
+        const res = await fetch(`${API_BASE_URL}/update_users`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(payload),
-        }
-      );
+        });
+        if (res.ok) updated = true;
+      } catch {
+        // Fallback to local /api/dashboard
+      }
 
-      if (!res.ok) throw new Error();
+      if (!updated) {
+        const localRes = await fetch("/api/dashboard", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!localRes.ok) throw new Error();
+      }
+
       alert("Profile updated successfully");
       setIsEditing(false);
     } catch {
@@ -256,7 +323,7 @@ export default function DashboardPage() {
           setFormData((p) => ({ ...p, resume: "uploaded" }));
         }
       } catch (err) {
-        console.error(err);
+        console.warn("Resume fetch warning:", err);
       }
     };
 
@@ -398,6 +465,5 @@ export default function DashboardPage() {
         </main>
       </div>
     </div>
-      );
-
+  );
 }

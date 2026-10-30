@@ -21,6 +21,11 @@ export interface Book {
   stockStatus: "in-stock" | "low-stock" | "out-of-stock";
   keywords: string[];
   tableOfContents?: string[];
+  previewPdfUrl?: string;
+  customPreviewPdfDataUrl?: string;
+  customFullBookPdfDataUrl?: string;
+  fullBookPdfSize?: number;
+  fullBookPdfUploadedAt?: string;
   hasCaselet?: boolean;
   rentalEnabled?: boolean; // Whether this book is available for rental
   rentalPriceOverride?: { [planCode: string]: number }; // Per-book custom rental pricing
@@ -38,59 +43,33 @@ export const CASELET_PDF_FILES: Record<string, string[]> = {
 };
 
 export function getPhysicalPrice(plan: string, bookId?: string, defaultPrice?: number): number {
-  if (bookId === "3") {
-    if (plan === "caselet") return 99;
-    if (plan === "book_caselet") return 739;
-    return 649;
-  }
-  if (bookId === "5") {
-    if (plan === "caselet") return 99;
-    if (plan === "book_caselet") return 689;
-    return 599;
-  }
-  const basePrice = defaultPrice || 649;
+  const basePrice =
+    defaultPrice !== undefined && defaultPrice > 0
+      ? defaultPrice
+      : bookId === "3"
+      ? 649
+      : bookId === "5"
+      ? 599
+      : 649;
   if (plan === "caselet") return 99;
   if (plan === "book_caselet") return basePrice + 90;
   return basePrice;
 }
 
 export function getSoftCopyPrice(plan: string, bookId?: string, defaultDigitalPrice?: number): number {
-  if (bookId === "1") {
-    return 499;
+  let basePrice = defaultDigitalPrice;
+  if (basePrice === undefined || basePrice <= 0) {
+    if (bookId === "1") basePrice = 499;
+    else if (bookId === "3" || bookId === "5") basePrice = 299;
+    else if (bookId === "2") basePrice = 249;
+    else if (bookId === "7") basePrice = 219;
+    else if (bookId === "6") basePrice = 199;
+    else if (bookId === "8" || bookId === "9") basePrice = 299;
+    else if (bookId === "4") basePrice = 269;
+    else basePrice = 299;
   }
-  if (bookId === "3") {
-    if (plan === "caselet") return 49;
-    if (plan === "book_caselet") return 339;
-    return 299;
-  }
-  if (bookId === "5") {
-    if (plan === "caselet") return 49;
-    if (plan === "book_caselet") return 339;
-    return 299;
-  }
-  if (bookId === "2") {
-    return 249;
-  }
-  if (bookId === "7") {
-    return 219;
-  }
-  if (bookId === "6") {
-    if (plan === "caselet") return 60;
-    if (plan === "book_caselet") return 295;
-    return 199;
-  }
-  if (bookId === "8") {
-    return 299;
-  }
-  if (bookId === "9") {
-    return 299;
-  }
-  if (bookId === "4") {
-    return 269;
-  }
-  const basePrice = defaultDigitalPrice || 299;
-  if (plan === "caselet") return 49;
-  if (plan === "book_caselet") return basePrice + 40;
+  if (plan === "caselet") return bookId === "6" ? 60 : 49;
+  if (plan === "book_caselet") return bookId === "6" ? basePrice + 96 : basePrice + 40;
   return basePrice;
 }
 
@@ -515,9 +494,93 @@ export function getAllBooks(): Book[] {
   return PUBLISHED_BOOKS_DATA;
 }
 
+export const BIRTHDAY_LAUNCH_FALLBACK_BOOKS: Book[] = [
+  {
+    id: "10",
+    doiSuffix: "lp.book.010",
+    slug: "deep-learning-and-neural-network-architectures",
+    shortSlug: "deep-learning",
+    title: "DEEP LEARNING AND NEURAL NETWORK ARCHITECTURES: THEORY TO PRACTICE",
+    authors: "Lurnexa Academic Press",
+    domain: "Computer Science & Engineering / Deep Learning",
+    isbn: "978-81-903315-9-3",
+    isbnDigital: "978-81-903315-9-4",
+    pages: 264,
+    price: 649,
+    digitalPrice: 299,
+    code: "DL",
+    pdfFileName: "deep_learning.pdf",
+    coverImg: "/portal_coverpages/ai.jpeg",
+    publishedDate: "October 30, 2026",
+    tag: "Launched Oct 30",
+    stockStatus: "in-stock",
+    rentalEnabled: true,
+    description:
+      "Specially launched on October 30 in celebration of Hasini's Birthday. This comprehensive textbook explores modern deep learning architectures, convolutional and transformer networks, optimization dynamics, and real-world AI deployment.",
+    longDescription:
+      "Deep Learning and Neural Network Architectures: Theory to Practice provides an authoritative, hands-on academic treatment of modern neural computation, backpropagation, CNNs, RNNs, Vision Transformers, Large Language Models, and generative AI systems. Officially inaugurated during the October 30 Grand Birthday Book Launch by Hasini.",
+    keywords: [
+      "Deep Learning",
+      "Neural Networks",
+      "Deep Learning textbook",
+      "Transformer architectures",
+      "Lurnexa Deep Learning book"
+    ],
+    tableOfContents: [
+      "Chapter 1: Foundations of Deep Neural Networks & Perceptrons",
+      "Chapter 2: Backpropagation, Gradient Descent & Optimization",
+      "Chapter 3: Convolutional Neural Networks (CNNs) & Computer Vision",
+      "Chapter 4: Sequence Modeling, RNNs, LSTMs & Attention Mechanisms",
+      "Chapter 5: Transformers, Foundation Models & Generative AI",
+      "Chapter 6: Model Compression, Deployment & Responsible AI"
+    ]
+  },
+  {
+    id: "11",
+    doiSuffix: "lp.book.011",
+    slug: "cloud-computing-and-devops-engineering",
+    shortSlug: "cloud-computing",
+    title: "CLOUD COMPUTING AND MODERN DEVOPS ENGINEERING",
+    authors: "Lurnexa Academic Press",
+    domain: "Computer Science & Engineering / Cloud & DevOps",
+    isbn: "978-81-903315-9-5",
+    isbnDigital: "978-81-903315-9-6",
+    pages: 242,
+    price: 599,
+    digitalPrice: 279,
+    code: "CC",
+    pdfFileName: "cloud_computing.pdf",
+    coverImg: "/portal_coverpages/data_streaming.jpeg",
+    publishedDate: "October 30, 2026",
+    tag: "Launched Oct 30",
+    stockStatus: "in-stock",
+    rentalEnabled: true,
+    description:
+      "Specially launched on October 30 in celebration of Hasini's Birthday. An industry-aligned textbook covering distributed cloud infrastructure, microservices, Docker, Kubernetes orchestration, and automated CI/CD pipelines.",
+    longDescription:
+      "Cloud Computing and Modern DevOps Engineering guides students and engineers from foundational virtualization and cloud service models (IaaS, PaaS, SaaS) to container orchestration, serverless computing, Infrastructure as Code (IaC), and site reliability engineering. Officially inaugurated during the October 30 Grand Birthday Book Launch by Hasini.",
+    keywords: [
+      "Cloud Computing",
+      "DevOps Engineering",
+      "Cloud Computing textbook",
+      "Kubernetes and Docker book",
+      "Lurnexa Cloud textbook"
+    ],
+    tableOfContents: [
+      "Chapter 1: Cloud Computing Paradigms, Virtualization & Architecture",
+      "Chapter 2: Microservices Design & Containerization with Docker",
+      "Chapter 3: Kubernetes Orchestration & Cloud-Native Scaling",
+      "Chapter 4: Continuous Integration, Continuous Delivery (CI/CD) & DevOps",
+      "Chapter 5: Serverless Architectures, Observability & Cloud Security",
+      "Chapter 6: Multi-Cloud Cost Optimization & Site Reliability Engineering"
+    ]
+  }
+];
+
 export function getBookBySlug(slug: string): Book | undefined {
   const normalized = slug.toLowerCase();
-  return PUBLISHED_BOOKS_DATA.find(
+  const catalog = [...PUBLISHED_BOOKS_DATA, ...BIRTHDAY_LAUNCH_FALLBACK_BOOKS];
+  return catalog.find(
     (b) =>
       b.slug === normalized ||
       (b.shortSlug && b.shortSlug.toLowerCase() === normalized) ||
@@ -529,7 +592,8 @@ export function getBookBySlug(slug: string): Book | undefined {
 
 export function getBookByIsbn(isbn: string): Book | undefined {
   const clean = isbn.replace(/-/g, '');
-  return PUBLISHED_BOOKS_DATA.find(
+  const catalog = [...PUBLISHED_BOOKS_DATA, ...BIRTHDAY_LAUNCH_FALLBACK_BOOKS];
+  return catalog.find(
     (b) => b.isbn.replace(/-/g, '') === clean || b.isbnDigital.replace(/-/g, '') === clean
   );
 }

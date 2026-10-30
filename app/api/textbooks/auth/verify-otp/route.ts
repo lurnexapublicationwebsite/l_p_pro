@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
 import { pool, initDbTables } from "@/lib/dbPool";
+import { signSessionToken } from "@/lib/textbookSession";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,34 +18,43 @@ export async function POST(req: NextRequest) {
     await initDbTables();
 
     const cleanAccessId = accessId.trim().toUpperCase();
-    const cleanTarget = target.includes("@") ? target.trim().toLowerCase() : target.trim();
+    const cleanTarget = target.includes("@")
+      ? target.trim().toLowerCase()
+      : target.trim();
     const cleanCode = code.trim();
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
+    if (!process.env.JWT_SECRET) {
       console.error("verify-otp: JWT_SECRET is not configured");
-      return NextResponse.json({ error: "Login is temporarily unavailable." }, { status: 500 });
+      return NextResponse.json(
+        { error: "Login is temporarily unavailable." },
+        { status: 500 }
+      );
     }
 
     // Demo student / faculty accounts for local testing only: DEMO_LOGIN_CODE must be set,
     // and it is ignored in production. Admin has no bypass - it always needs a real OTP.
-    const demoCode = process.env.NODE_ENV !== "production" ? process.env.DEMO_LOGIN_CODE : undefined;
-    const IS_DEMO_ACCOUNT = cleanAccessId.startsWith("LS") || cleanAccessId.startsWith("LF") || cleanAccessId.startsWith("LURN") || cleanAccessId.startsWith("LR");
-    if (demoCode && IS_DEMO_ACCOUNT && cleanAccessId !== "LURNEXA" && cleanTarget.endsWith("@lurnexa.in") && cleanCode === demoCode) {
-      const sessionToken = jwt.sign(
-        {
-          accessId: cleanAccessId,
-          target: cleanTarget,
-          verifiedAt: new Date().toISOString()
-        },
-        jwtSecret,
-        { expiresIn: "8h" }
-      );
+    const demoCode =
+      process.env.NODE_ENV !== "production"
+        ? process.env.DEMO_LOGIN_CODE
+        : undefined;
+    const IS_DEMO_ACCOUNT =
+      cleanAccessId.startsWith("LS") ||
+      cleanAccessId.startsWith("LF") ||
+      cleanAccessId.startsWith("LURN") ||
+      cleanAccessId.startsWith("LR");
+    if (
+      demoCode &&
+      IS_DEMO_ACCOUNT &&
+      cleanAccessId !== "LURNEXA" &&
+      cleanTarget.endsWith("@lurnexa.in") &&
+      cleanCode === demoCode
+    ) {
+      const sessionToken = signSessionToken(cleanTarget, cleanAccessId);
 
       return NextResponse.json({
         success: true,
         token: sessionToken,
-        message: "Demo verification successful."
+        message: "Demo verification successful.",
       });
     }
 
@@ -69,7 +78,10 @@ export async function POST(req: NextRequest) {
     // Check brute-force attempts
     if (otpRecord.attempts >= 3) {
       return NextResponse.json(
-        { error: "This verification code has been locked due to too many invalid attempts. Please request a new one." },
+        {
+          error:
+            "This verification code has been locked due to too many invalid attempts. Please request a new one.",
+        },
         { status: 429 }
       );
     }
@@ -84,16 +96,24 @@ export async function POST(req: NextRequest) {
     const expiry = new Date(otpRecord.expires_at).getTime();
     if (Date.now() > expiry) {
       return NextResponse.json(
-        { error: "This verification code has expired. Please request a new one." },
+        {
+          error:
+            "This verification code has expired. Please request a new one.",
+        },
         { status: 400 }
       );
     }
 
     // Compare hashed code
-    const incomingHash = crypto.createHash("sha256").update(cleanCode).digest("hex");
+    const incomingHash = crypto
+      .createHash("sha256")
+      .update(cleanCode)
+      .digest("hex");
     if (incomingHash !== otpRecord.otp_hash) {
       return NextResponse.json(
-        { error: `Invalid verification code. ${2 - otpRecord.attempts} attempts remaining.` },
+        {
+          error: `Invalid verification code. ${2 - otpRecord.attempts} attempts remaining.`,
+        },
         { status: 400 }
       );
     }
@@ -104,21 +124,13 @@ export async function POST(req: NextRequest) {
       [cleanAccessId, cleanTarget]
     );
 
-    // Generate JWT token
-    const sessionToken = jwt.sign(
-      {
-        accessId: cleanAccessId,
-        target: cleanTarget,
-        verifiedAt: new Date().toISOString()
-      },
-      jwtSecret,
-      { expiresIn: "8h" }
-    );
+    // Generate 7-day JWT session token
+    const sessionToken = signSessionToken(cleanTarget, cleanAccessId);
 
     return NextResponse.json({
       success: true,
       token: sessionToken,
-      message: "Verification successful."
+      message: "Verification successful.",
     });
   } catch (err: any) {
     console.error("❌ Error in /api/textbooks/auth/verify-otp route:", err);

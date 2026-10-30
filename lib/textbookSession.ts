@@ -37,42 +37,139 @@ export function getSessionTarget(req: Request): string | null {
 }
 
 export interface SessionUser {
+  target: string;
   emails: string[]; // lower-cased email and college email
   phone: string | null; // last 10 digits
+  accessIds: string[];
   purchasedBookIds: string[];
+  plans: string[];
+  isAdmin: boolean;
 }
 
 const lastTenDigits = (value: string) => value.replace(/\D/g, "").slice(-10);
 
-export async function findSessionUser(target: string): Promise<SessionUser | null> {
-  const digits = target.includes("@") ? "" : lastTenDigits(target);
-  const res = await pool.query(
-    `SELECT email, college_email, mobile_number, purchased_books, book_id FROM textbooks_users
-     WHERE LOWER(email) = $1 OR LOWER(college_email) = $1
-        OR ($2 <> '' AND RIGHT(REGEXP_REPLACE(COALESCE(mobile_number, ''), '\\D', '', 'g'), 10) = $2)
-     LIMIT 1`,
-    [target, digits]
-  );
-  const row = res.rows[0];
-  if (!row) return null;
-
-  let purchased: unknown[] = [];
-  try {
-    purchased = typeof row.purchased_books === "string" ? JSON.parse(row.purchased_books) : row.purchased_books || [];
-  } catch {
-    purchased = [];
+function parseBookIdList(raw: unknown): string[] {
+  if (!raw) return [];
+  let arr: unknown[] = [];
+  if (Array.isArray(raw)) {
+    arr = raw;
+  } else if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      arr = Array.isArray(parsed) ? parsed : raw.split(",");
+    } catch {
+      arr = raw.split(",");
+    }
   }
-  const purchasedBookIds = (Array.isArray(purchased) && purchased.length > 0 ? purchased : row.book_id ? [row.book_id] : [])
-    .filter(Boolean)
-    .map(String);
+  return arr
+    .flatMap((item) => String(item || "").split(","))
+    .map((s) => s.trim())
+    .filter((s) => Boolean(s) && s !== "CART" && s !== "ADMIN");
+}
 
-  const emails = [row.email, row.college_email, target.includes("@") ? target : null]
-    .filter((e): e is string => typeof e === "string" && e.includes("@"))
-    .map((e) => e.trim().toLowerCase());
+export async function findSessionUser(target: string): Promise<SessionUser | null> {
+  const cleanTarget = target.trim().toLowerCase();
+  if (!cleanTarget) return null;
 
-  const phone = row.mobile_number ? lastTenDigits(String(row.mobile_number)) || null : digits || null;
+  const digits = cleanTarget.includes("@") ? "" : lastTenDigits(cleanTarget);
+  const validDigits = digits.length === 10 ? digits : "";
 
-  return { emails: Array.from(new Set(emails)), phone, purchasedBookIds: Array.from(new Set(purchasedBookIds)) };
+  const emailSet = new Set<string>();
+  const accessIdSet = new Set<string>();
+  const bookIdSet = new Set<string>();
+  const planSet = new Set<string>();
+  let phone: string | null = validDigits || null;
+  let isAdmin =
+    cleanTarget === "lurnexa" ||
+    cleanTarget === "admin" ||
+    cleanTarget === "lurnexapublication@gmail.com";
+
+  if (cleanTarget.includes("@")) {
+    emailSet.add(cleanTarget);
+  }
+
+  try {
+    const res = await pool.query(
+      `SELECT email, college_email, mobile_number, purchased_books, book_id, access_id, role, plan FROM textbooks_users
+       WHERE LOWER(email) = $1 OR LOWER(college_email) = $1 OR LOWER(access_id) = $1 OR LOWER(mobile_number) = $1
+          OR ($2 <> '' AND RIGHT(REGEXP_REPLACE(COALESCE(mobile_number, ''), '\\D', '', 'g'), 10) = $2)`,
+      [cleanTarget, validDigits]
+    );
+
+    for (const row of res.rows || []) {
+      if (typeof row.email === "string" && row.email.includes("@")) {
+        emailSet.add(row.email.trim().toLowerCase());
+      }
+      if (typeof row.college_email === "string" && row.college_email.includes("@")) {
+        emailSet.add(row.college_email.trim().toLowerCase());
+      }
+      if (row.mobile_number) {
+        const rowDigits = lastTenDigits(String(row.mobile_number));
+        if (rowDigits.length === 10 && !String(row.mobile_number).includes("@")) {
+          phone = phone || rowDigits;
+        }
+      }
+      if (row.access_id) {
+        accessIdSet.add(String(row.access_id).trim().toUpperCase());
+      }
+      if (row.role === "admin" || String(row.access_id || "").toUpperCase() === "LURNEXA") {
+        isAdmin = true;
+      }
+      if (row.plan) {
+        planSet.add(String(row.plan).trim().toLowerCase());
+      }
+      for (const id of parseBookIdList(row.purchased_books)) {
+        bookIdSet.add(id);
+      }
+      if (row.book_id) {
+        for (const id of parseBookIdList(row.book_id)) {
+          bookIdSet.add(id);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("findSessionUser: error querying textbooks_users:", err);
+  }
+
+  // Also include books from verified PAID purchases in textbooks_purchases so buyers whose
+  // webhook/verify order wasn't mirrored into textbooks_users.purchased_books can still read.
+  try {
+    const identifiers = Array.from(new Set([...emailSet, cleanTarget, ...(phone ? [phone] : [])]));
+    const accessIds = Array.from(accessIdSet);
+    const purchasesRes = await pool.query(
+      `SELECT book_id, customer_email, customer_phone, purchase_plan, purchase_format FROM textbooks_purchases
+       WHERE status = 'PAID'
+         AND (LOWER(user_identifier) = ANY($1)
+              OR LOWER(customer_email) = ANY($1)
+              OR ($2 <> '' AND RIGHT(REGEXP_REPLACE(COALESCE(customer_phone, ''), '\\D', '', 'g'), 10) = $2)
+              OR (UPPER(COALESCE(access_id, '')) = ANY($3)))`,
+      [identifiers, phone || "", accessIds]
+    );
+    for (const p of purchasesRes.rows || []) {
+      if (p.purchase_format === "rental") continue;
+      for (const id of parseBookIdList(p.book_id)) {
+        bookIdSet.add(id);
+      }
+      if (typeof p.customer_email === "string" && p.customer_email.includes("@")) {
+        emailSet.add(p.customer_email.trim().toLowerCase());
+      }
+      if (p.purchase_plan) {
+        planSet.add(String(p.purchase_plan).trim().toLowerCase());
+      }
+    }
+  } catch (err) {
+    console.warn("findSessionUser: error querying textbooks_purchases:", err);
+  }
+
+  return {
+    target: cleanTarget,
+    emails: Array.from(emailSet),
+    phone,
+    accessIds: Array.from(accessIdSet),
+    purchasedBookIds: Array.from(bookIdSet),
+    plans: Array.from(planSet),
+    isAdmin,
+  };
 }
 
 export async function getSessionUser(req: Request): Promise<SessionUser | null> {

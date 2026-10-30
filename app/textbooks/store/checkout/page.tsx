@@ -71,51 +71,44 @@ const getPhysicalPrice = (plan: string, bookId?: string): number => {
 
 const getSoftCopyPrice = (plan: string, bookId?: string): number => {
   if (bookId === "1") {
-    if (plan === "book_only") return 499;
     return 499;
   }
   if (bookId === "3") {
-    if (plan === "book_only") return 299;
     if (plan === "caselet") return 49;
     if (plan === "book_caselet") return 339;
+    return 299;
   }
   if (bookId === "5") {
-    if (plan === "book_only") return 299;
     if (plan === "caselet") return 49;
     if (plan === "book_caselet") return 339;
+    return 299;
   }
   if (bookId === "2") {
-    if (plan === "book_only") return 249;
+    return 249;
   }
   if (bookId === "7") {
-    if (plan === "book_only") return 219;
     return 219;
   }
   if (bookId === "8") {
-    if (plan === "book_only") return 299;
     return 299;
   }
   if (bookId === "9") {
-    if (plan === "book_only") return 299;
     return 299;
   }
+  if (bookId === "4") {
+    return 269;
+  }
   if (bookId === "6") {
-    if (plan === "book_only") return 199;
     if (plan === "caselet") return 60;
     if (plan === "book_caselet") return 295;
     return 199;
   }
-  if (bookId === "5") {
-    if (plan === "book_only") return 370;
-    if (plan === "caselet") return 80;
-    if (plan === "book_caselet") return 405;
-  }
-  let price = 399;
+  let price = 299;
   switch (plan) {
-    case "book_only": price = 230; break;
-    case "caselet": price = 60; break;
-    case "book_caselet": price = 265; break;
-    default: price = 399;
+    case "book_only": price = 299; break;
+    case "caselet": price = 49; break;
+    case "book_caselet": price = 339; break;
+    default: price = 299;
   }
   return price;
 };
@@ -126,6 +119,8 @@ interface TextbookDetails {
   code: string;
   description: string;
   price: number;
+  digitalPrice?: number;
+  coverImg?: string;
   authors: string;
   pages: number;
   isbn: string;
@@ -238,6 +233,19 @@ const PUBLISHED_BOOKS: TextbookDetails[] = [
     isbnDigital: "978-81-903315-8-6",
     coverColor: "from-emerald-600 to-teal-950",
     pdfFileName: "nosql.pdf"
+  },
+  {
+    id: "4",
+    title: "ENTREPRENEURSHIP DEVELOPMENT: CONCEPTS TO CREATION",
+    code: "ED",
+    description: "This book provides a comprehensive and practical roadmap for aspiring entrepreneurs, students, and professionals who aim to transform ideas into successful ventures. It covers key theories, traits of successful entrepreneurs, and the evolving role of innovation in today's dynamic business environment, guiding readers from opportunity identification to business model development and resource mobilization.",
+    price: 549,
+    authors: "Dr. V Padmaja, Dr. C Udaya Kumar, Dr. Archan Mitra",
+    pages: 172,
+    isbn: "978-81-903315-0-0",
+    isbnDigital: "978-81-903315-2-4",
+    coverColor: "from-amber-600 to-orange-950",
+    pdfFileName: "entrepreneurship.pdf"
   }
 ];
 
@@ -356,9 +364,13 @@ function CheckoutContent() {
   useEffect(() => {
     initDb();
     fetch("/api/textbooks/db/sync")
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.coupons) {
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const ct = res.headers.get("content-type") || "";
+        return ct.includes("application/json") ? res.json() : null;
+      })
+      .then((data) => {
+        if (data?.success && data.coupons) {
           setAvailableCoupons(data.coupons);
         } else {
           setAvailableCoupons(getCoupons());
@@ -405,9 +417,13 @@ function CheckoutContent() {
 
     setIsFetchingSavedAddresses(true);
     fetch(`/api/textbooks/user/addresses?user=${encodeURIComponent(userIdent.trim())}`)
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const ct = res.headers.get("content-type") || "";
+        return ct.includes("application/json") ? res.json() : null;
+      })
       .then((data) => {
-        const addresses: SavedAddress[] = data.addresses || [];
+        const addresses: SavedAddress[] = data?.addresses || [];
         setSavedAddresses(addresses);
         if (addresses.length > 0) {
           applySavedAddress(addresses.find((a) => a.isDefault) || addresses[0]);
@@ -417,7 +433,7 @@ function CheckoutContent() {
         }
       })
       .catch((err) => {
-        console.error("Failed to load saved addresses:", err);
+        console.warn("Failed to load saved addresses:", err);
         setShowAddAddressForm(true);
       })
       .finally(() => setIsFetchingSavedAddresses(false));
@@ -465,56 +481,85 @@ function CheckoutContent() {
 
     const hasBookId = !!bookId;
     if (hasBookId) {
-      const selected = PUBLISHED_BOOKS.find((b) => b.id === bookId) || PUBLISHED_BOOKS[0];
-      setBook(selected);
-      let coverImg = "/portal_coverpages/minerals.jpeg";
-      if (selected.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
-      if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
-      if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
-      if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
-      if (selected.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
-      if (selected.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
-      if (selected.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
+      const applySelectedBook = (selected: TextbookDetails) => {
+        setBook(selected);
+        let coverImg = selected.coverImg || "/portal_coverpages/minerals.jpeg";
+        if (!selected.coverImg) {
+          if (selected.id === "2") coverImg = "/portal_coverpages/ml.jpeg";
+          if (selected.id === "3") coverImg = "/portal_coverpages/dbms.jpeg";
+          if (selected.id === "5") coverImg = "/portal_coverpages/microeconomics.jpeg";
+          if (selected.id === "6") coverImg = "/portal_coverpages/ai.jpeg";
+          if (selected.id === "7") coverImg = "/portal_coverpages/data_streaming.jpeg";
+          if (selected.id === "8") coverImg = "/portal_coverpages/python_programming.jpeg";
+          if (selected.id === "9") coverImg = "/portal_coverpages/nosql.jpeg";
+          if (selected.id === "4") coverImg = "/portal_coverpages/entrepreneurship.jpeg";
+        }
 
-      const formatFromUrl = searchParams.get("format");
-      const planFromUrl = searchParams.get("plan");
-      const isRental = formatFromUrl === "rental";
-      // Book 9 is digital-only, so it defaults to "soft" when no explicit format is set —
-      // but that must never override an explicit rental request. Without the !isRental guard,
-      // renting book 9 got silently flipped to a permanent soft-copy purchase on page load,
-      // because selectedFormat already equalling "rental" made the isRental branch below a
-      // no-op, letting this book-9 special case fall through and win.
-      const isSoft = !isRental && (formatFromUrl === "soft" || selected.id === "9");
-      
-      if (isRental && selectedFormat !== "rental") {
-        setSelectedFormat("rental");
-      } else if (isSoft && selectedFormat !== "soft") {
-        setSelectedFormat("soft");
-      }
+        const formatFromUrl = searchParams.get("format");
+        const planFromUrl = searchParams.get("plan");
+        const isRental = formatFromUrl === "rental";
+        const isSoft = !isRental && (formatFromUrl === "soft" || selected.id === "9");
+        
+        if (isRental && selectedFormat !== "rental") {
+          setSelectedFormat("rental");
+        } else if (isSoft && selectedFormat !== "soft") {
+          setSelectedFormat("soft");
+        }
 
-      let unitPrice = selected.price;
-      let planLabel = "Paperback";
+        let unitPrice = selected.price;
+        let planLabel = "Paperback";
 
-      if (isRental) {
-        unitPrice = getRentalPlanByCode(planFromUrl || "6_months")?.price || 149;
-        planLabel = `Digital Rental - ${(planFromUrl || "6_months").replace(/_/g, " ").toUpperCase()}`;
-      } else if (isSoft) {
-        unitPrice = getSoftCopyPrice(planFromUrl || "book_only", selected.id);
-        planLabel = `Digital Copy - ${(planFromUrl || "book_only").replace(/_/g, " ").toUpperCase()}`;
-      }
+        if (isRental) {
+          unitPrice = getRentalPlanByCode(planFromUrl || "6_months")?.price || 149;
+          planLabel = `Digital Rental - ${(planFromUrl || "6_months").replace(/_/g, " ").toUpperCase()}`;
+        } else if (isSoft) {
+          unitPrice = (selected.digitalPrice && planFromUrl !== "caselet" && planFromUrl !== "book_caselet")
+            ? Number(selected.digitalPrice)
+            : getSoftCopyPrice(planFromUrl || "book_only", selected.id);
+          planLabel = `Digital Copy - ${(planFromUrl || "book_only").replace(/_/g, " ").toUpperCase()}`;
+        }
 
-      setCheckoutItems([{
-        id: selected.id,
-        title: isRental || isSoft ? `${selected.title} (${planLabel})` : selected.title,
-        price: unitPrice,
-        quantity: quantity,
-        isbn: selected.isbn,
-        isbnDigital: selected.isbnDigital,
-        coverImg,
-        format: isRental ? "rental" : (isSoft ? "soft" : "physical"),
-        plan: planFromUrl || (isRental ? "6_months" : (isSoft ? "book_only" : "physical"))
-      } as any]);
-      setIsCartCheckout(false);
+        setCheckoutItems([{
+          id: selected.id,
+          title: isRental || isSoft ? `${selected.title} (${planLabel})` : selected.title,
+          price: unitPrice,
+          quantity: quantity,
+          isbn: selected.isbn,
+          isbnDigital: selected.isbnDigital,
+          coverImg,
+          format: isRental ? "rental" : (isSoft ? "soft" : "physical"),
+          plan: planFromUrl || (isRental ? "6_months" : (isSoft ? "book_only" : "physical"))
+        } as any]);
+        setIsCartCheckout(false);
+      };
+
+      const fallbackSelected = PUBLISHED_BOOKS.find((b) => b.id === bookId) || PUBLISHED_BOOKS[0];
+      applySelectedBook(fallbackSelected);
+
+      fetch("/api/textbooks/catalog")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          const allBooks: any[] = data?.allAdminBooks || data?.publicBooks || [];
+          const matched = allBooks.find((b) => String(b.id) === String(bookId));
+          if (matched) {
+            applySelectedBook({
+              id: String(matched.id),
+              title: matched.title || fallbackSelected.title,
+              code: matched.code || fallbackSelected.code || "BK",
+              description: matched.description || fallbackSelected.description || "",
+              price: Number(matched.price) || fallbackSelected.price || 599,
+              digitalPrice: matched.digitalPrice !== undefined ? Number(matched.digitalPrice) : undefined,
+              coverImg: matched.coverImg || "",
+              authors: matched.authors || fallbackSelected.authors || "Lurnexa Academic Press",
+              pages: Number(matched.pages) || fallbackSelected.pages || 220,
+              isbn: matched.isbn || fallbackSelected.isbn || "N/A",
+              isbnDigital: matched.isbnDigital || fallbackSelected.isbnDigital || "N/A",
+              coverColor: matched.coverColor || fallbackSelected.coverColor || "from-purple-600 to-indigo-950",
+              pdfFileName: matched.pdfFileName || fallbackSelected.pdfFileName || "minerals.pdf",
+            });
+          }
+        })
+        .catch(() => {});
     } else {
       const savedCart = localStorage.getItem("lurnexa_store_cart");
       if (savedCart) {
@@ -534,7 +579,11 @@ function CheckoutContent() {
   useEffect(() => {
     if (formPostalCode.length === 6) {
       fetch(`https://api.postalpincode.in/pincode/${formPostalCode}`)
-        .then((res) => res.json())
+        .then(async (res) => {
+          if (!res.ok) return null;
+          const ct = res.headers.get("content-type") || "";
+          return ct.includes("application/json") ? res.json() : null;
+        })
         .then((data) => {
           if (data && data[0] && data[0].Status === "Success") {
             const postOffice = data[0].PostOffice[0];
@@ -544,7 +593,7 @@ function CheckoutContent() {
             }
           }
         })
-        .catch((err) => console.error("Error looking up pincode:", err));
+        .catch((err) => console.warn("Error looking up pincode:", err));
     }
   }, [formPostalCode]);
 
